@@ -49,7 +49,7 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - Locked-in design decisions → ADR in `vault/decisions/NNNN-title.md`.
 - Every feature references its ROW-IDs in commit messages and test names so traceability to the vault holds.
 
-## Backend platform (built in Phase 0; see ADRs 0001–0005 in `vault/decisions/`)
+## Backend platform (built in Phase 0; see ADRs 0001–0006 in `vault/decisions/`)
 - **Run:** `docker compose up -d` (Postgres 16 on host port 5434), then `dotnet run --project backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api` → http://localhost:5100/swagger. In Development it migrates and seeds the demo tenant, six roles and one inactive user per role.
 - **Test:** `dotnet test backend/Aurigo.RowManagement` (unit tests use EF InMemory; integration tests host the real API with `WebApplicationFactory`; neither needs Docker).
 - **Migrations:** `dotnet tool restore`, then `dotnet ef migrations add <Name> --project src/Aurigo.RowManagement.Infrastructure --startup-project src/Aurigo.RowManagement.Api --output-dir Persistence/Migrations` from `backend/Aurigo.RowManagement`.
@@ -65,7 +65,14 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 ## Frontend (ADR 0005)
 `frontend/row-management-web`: file-based TanStack Router (`src/routes`, generated `routeTree.gen.ts` is committed), `AuthManager` session + guards in `src/auth`, fetch wrapper in `src/api`. `npm run dev` proxies `/api` to http://localhost:5100. Recipes for common jobs are in `SKILLS.md`.
 
+## Testing and acceptance (ADR 0006)
+- **Release gate: `node scripts/verify.mjs`** (needs Docker running). Builds with zero warnings, then unit, real-Postgres integration (`ROW_REQUIRE_PG=1`), frontend type-check/tests/build, and the Playwright end-to-end run in Edge. `--skip-e2e` is for quick checks only.
+- **Acceptance cases per user live in `vault/acceptance/`** (README, Everyone, one file per role). Case ids (`AT-TE-10`...) appear in the E2E test names. Pending jobs for later phases are `test.fixme` placeholders in `e2e/tests/future.spec.ts`.
+- **Access spec:** `backend/.../IntegrationTests/Support/Spec.cs` is the hand-written role x page table; it publishes `vault/acceptance/permission-matrix.json` (regenerate with `ROW_UPDATE_CONTRACT=1`) which the frontend and E2E tests read.
+- Real-Postgres tests skip when Docker is down unless `ROW_REQUIRE_PG=1`; never treat a skipped run as a pass.
+
 ## Working agreements
 - Work one phase at a time, in order; each phase doc has an exit checklist. Don't start a phase before the user confirms the prior one.
-- Backend: `dotnet test` green + `dotnet build` warning-free before a phase is done. Frontend: `npm run build`, `vitest`, and type-check green.
+- A phase is done only when `node scripts/verify.mjs` is green **and** its acceptance cases are automated for every role it touches (including the roles that must be refused). Add the cases as you build, not after.
+- Backend: `dotnet test` green + `dotnet build` warning-free. Frontend: `npm run build`, `vitest`, and type-check green. (The gate runs all of it.)
 - Open domain questions from vault/README_Final.md ("Yours to verify") are not ours to resolve; flag, don't guess.

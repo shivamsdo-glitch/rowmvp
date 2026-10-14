@@ -1,20 +1,17 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { CircleUser } from 'lucide-react'
 import { useAuth } from '@/auth/auth-context'
 
 export function AccountMenu() {
   const { user, manager } = useAuth()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
 
-  async function onSignOut() {
-    manager.signOut()
+  function onSignOut() {
     setOpen(false)
     qc.clear() // never leave one user's cached data around for the next sign-in
-    await navigate({ to: '/login', search: {} })
+    manager.signOut() // the shell sees the session end and returns to the login page
   }
 
   return (

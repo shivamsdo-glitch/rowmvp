@@ -168,6 +168,9 @@ public class RoleAcceptanceApiTests : IClassFixture<PgApi>
         (await negotiator.Upload("Payment", parcel, "supporting.pdf", new byte[] { 1 })).StatusCode.Should().Be(HttpStatusCode.Created);
         (await negotiator.Http.DeleteAsync($"/api/v1/documents/{id}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
+        // Finance sees the negotiator's supporting paper next to its own request.
+        (await finance.ReadJson(await finance.Http.GetAsync($"/api/v1/documents?entityType=Payment&entityId={parcel}"))).GetArrayLength().Should().Be(2);
+
         (await finance.Http.DeleteAsync($"/api/v1/documents/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 

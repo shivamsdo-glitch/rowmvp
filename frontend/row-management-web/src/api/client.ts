@@ -32,6 +32,8 @@ export interface ApiClientOptions {
   /** Called when a request made with a token comes back 401 (expired or revoked). */
   onUnauthorized?: () => void
   fetchImpl?: typeof fetch
+  /** A request that takes longer than this fails with code "timeout" instead of hanging the screen. Default 30 s. */
+  timeoutMs?: number
 }
 
 type Query = Record<string, string | number | boolean | undefined | null>
@@ -66,7 +68,21 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       body = JSON.stringify(init.body)
     }
 
-    const response = await (options.fetchImpl ?? fetch)(url(path, init.query), { method, headers, body })
+    let response: Response
+    try {
+      response = await (options.fetchImpl ?? fetch)(url(path, init.query), {
+        method,
+        headers,
+        body,
+        signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
+      })
+    } catch (e) {
+      const name = (e as { name?: string } | null)?.name
+      const timedOut = name === 'TimeoutError' || name === 'AbortError'
+      throw new ApiError(0, timedOut
+        ? { title: 'timeout', detail: 'The server took too long to respond. Please try again.' }
+        : { title: 'network_error', detail: 'Cannot reach the server. Check your connection and try again.' })
+    }
 
     if (!response.ok) {
       if (response.status === 401 && token) options.onUnauthorized?.()

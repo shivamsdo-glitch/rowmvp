@@ -1,5 +1,5 @@
 import { authApi, type CurrentUser, type PageKey, type PagePermission, type PermissionAction, type Role } from '@/api/auth'
-import { createApiClient, type ApiClient } from '@/api/client'
+import { ApiError, createApiClient, type ApiClient } from '@/api/client'
 
 export type AuthStatus = 'anonymous' | 'authenticated'
 
@@ -8,6 +8,8 @@ export interface AuthState {
   token: string | null
   user: CurrentUser | null
   permissions: PagePermission[]
+  /** True when the session ended because the server stopped accepting the token (not a deliberate sign-out). */
+  expired?: boolean
 }
 
 const STORAGE_KEY = 'row.auth.token'
@@ -45,7 +47,7 @@ export class AuthManager {
       baseUrl: options.baseUrl,
       fetchImpl: options.fetchImpl,
       getToken: () => this.state.token ?? readStoredToken(),
-      onUnauthorized: () => this.signOut(),
+      onUnauthorized: () => this.signOut(true),
     })
   }
 
@@ -68,8 +70,9 @@ export class AuthManager {
       if (!token || this.state.status === 'authenticated') return
       try {
         await this.load(token)
-      } catch {
-        this.signOut()
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) this.signOut()
+        else this.restoring = null // server unreachable right now: keep the token and try again on the next navigation
       }
     })()
     return this.restoring
@@ -105,10 +108,10 @@ export class AuthManager {
     this.set({ status: 'authenticated', token, user, permissions })
   }
 
-  signOut() {
+  signOut(expired = false) {
     writeStoredToken(null)
     this.restoring = null
-    this.set(ANONYMOUS)
+    this.set(expired ? { ...ANONYMOUS, expired: true } : ANONYMOUS)
   }
 
   hasRole(...roles: string[]) {

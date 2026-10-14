@@ -48,7 +48,7 @@ export function Sidebar({ collapsed, onToggle, currentPath }: { collapsed: boole
                   <SidebarToggleIcon collapsed={collapsed} />
                 </button>
               </div>
-              <nav className="flex flex-col">
+              <nav className="flex flex-col" aria-label={section.title}>
                 {section.items.map((item) => (
                   <SidebarItem key={item.label} item={item} collapsed={collapsed} currentPath={currentPath} />
                 ))}
@@ -76,7 +76,7 @@ export function SidebarSection({ title, collapsed, children }: { title: string; 
           {title}
         </div>
       )}
-      <nav className="flex flex-col">{children}</nav>
+      <nav className="flex flex-col" aria-label={title}>{children}</nav>
     </div>
   )
 }
