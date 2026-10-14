@@ -13,10 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, money, numOrNull, orNull, Pill, SelectField, TextField,
 } from './form-kit'
+import { ProjectParcelsTab } from '../parcels/ProjectParcelsTab'
 import { ProjectForm } from './ProjectForm'
 
 const TABS = [
-  ['overview', 'Overview'], ['estimates', 'Cost estimates'], ['budget', 'Budget'], ['authorizations', 'ROW authorizations'], ['clearance', 'Clearance'],
+  ['overview', 'Overview'], ['parcels', 'Parcels'], ['estimates', 'Cost estimates'], ['budget', 'Budget'], ['authorizations', 'ROW authorizations'], ['clearance', 'Clearance'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 
@@ -70,7 +71,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       <GateBanner project={p} />
       <Tabs>
         <TabsList role="tablist" aria-label="Project sections">
-          {TABS.map(([key, label]) => (
+          {TABS.filter(([key]) => key !== 'parcels' || manager.can('parcels')).map(([key, label]) => (
             <TabsTrigger key={key} role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls={`panel-${key}`} active={tab === key} onClick={() => setTab(key)}>
               {label}
             </TabsTrigger>
@@ -78,6 +79,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         </TabsList>
         <TabsContent role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
           {tab === 'overview' && <OverviewTab project={p} />}
+          {tab === 'parcels' && <ProjectParcelsTab projectId={p.id} />}
           {tab === 'estimates' && <EstimatesTab project={p} />}
           {tab === 'budget' && <BudgetTab project={p} />}
           {tab === 'authorizations' && <AuthorizationsTab project={p} />}

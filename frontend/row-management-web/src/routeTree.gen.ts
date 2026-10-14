@@ -14,6 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdministrationRouteImport } from './routes/_app/administration'
 import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
+import { Route as AppParcelsIndexRouteImport } from './routes/_app/parcels.index'
+import { Route as AppParcelsParcelIdRouteImport } from './routes/_app/parcels.$parcelId'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app/projects.index'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
 
@@ -41,6 +43,16 @@ const AppForbiddenRoute = AppForbiddenRouteImport.update({
   path: '/forbidden',
   getParentRoute: () => AppRoute,
 } as any)
+const AppParcelsIndexRoute = AppParcelsIndexRouteImport.update({
+  id: '/parcels/',
+  path: '/parcels/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParcelsParcelIdRoute = AppParcelsParcelIdRouteImport.update({
+  id: '/parcels/$parcelId',
+  path: '/parcels/$parcelId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -57,7 +69,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
+  '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/parcels/': typeof AppParcelsIndexRoute
   '/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -65,7 +79,9 @@ export interface FileRoutesByTo {
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
   '/': typeof AppIndexRoute
+  '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/parcels': typeof AppParcelsIndexRoute
   '/projects': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesById {
@@ -75,7 +91,9 @@ export interface FileRoutesById {
   '/_app/administration': typeof AppAdministrationRoute
   '/_app/forbidden': typeof AppForbiddenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/parcels/': typeof AppParcelsIndexRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRouteTypes {
@@ -85,7 +103,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/administration'
     | '/forbidden'
+    | '/parcels/$parcelId'
     | '/projects/$projectId'
+    | '/parcels/'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -93,7 +113,9 @@ export interface FileRouteTypes {
     | '/administration'
     | '/forbidden'
     | '/'
+    | '/parcels/$parcelId'
     | '/projects/$projectId'
+    | '/parcels'
     | '/projects'
   id:
     | '__root__'
@@ -102,7 +124,9 @@ export interface FileRouteTypes {
     | '/_app/administration'
     | '/_app/forbidden'
     | '/_app/'
+    | '/_app/parcels/$parcelId'
     | '/_app/projects/$projectId'
+    | '/_app/parcels/'
     | '/_app/projects/'
   fileRoutesById: FileRoutesById
 }
@@ -148,6 +172,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppForbiddenRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/parcels/': {
+      id: '/_app/parcels/'
+      path: '/parcels'
+      fullPath: '/parcels/'
+      preLoaderRoute: typeof AppParcelsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/parcels/$parcelId': {
+      id: '/_app/parcels/$parcelId'
+      path: '/parcels/$parcelId'
+      fullPath: '/parcels/$parcelId'
+      preLoaderRoute: typeof AppParcelsParcelIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/projects/': {
       id: '/_app/projects/'
       path: '/projects'
@@ -169,7 +207,9 @@ interface AppRouteChildren {
   AppAdministrationRoute: typeof AppAdministrationRoute
   AppForbiddenRoute: typeof AppForbiddenRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppParcelsParcelIdRoute: typeof AppParcelsParcelIdRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppParcelsIndexRoute: typeof AppParcelsIndexRoute
   AppProjectsIndexRoute: typeof AppProjectsIndexRoute
 }
 
@@ -177,7 +217,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdministrationRoute: AppAdministrationRoute,
   AppForbiddenRoute: AppForbiddenRoute,
   AppIndexRoute: AppIndexRoute,
+  AppParcelsParcelIdRoute: AppParcelsParcelIdRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppParcelsIndexRoute: AppParcelsIndexRoute,
   AppProjectsIndexRoute: AppProjectsIndexRoute,
 }
 

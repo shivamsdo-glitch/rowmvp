@@ -37,6 +37,8 @@ export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission
       return json({ id: 'u1', fullName: 'Dev User', initials: 'DU', email: 'dev@row.local', roles: [role], tenantId: 't1', tenantName: 'Demo DOT' })
     }
     if (url === '/api/v1/auth/permissions') return json(opts.rows ?? permissionsFor(opts.readable ?? []))
+    // The dashboard's next-actions card asks for reminders; an agency with no parcels has none.
+    if (url.startsWith('/api/v1/reminders')) return json([])
     return json({ title: 'not_found' }, 404)
   }
 }

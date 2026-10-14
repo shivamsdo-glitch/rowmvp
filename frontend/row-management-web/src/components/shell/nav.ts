@@ -27,7 +27,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/', label: 'Home', Icon: LayoutDashboard, page: 'dashboard' },
       { to: '/projects', label: 'Projects', Icon: FolderKanban, page: 'projects' },
-      { to: '/parcels', label: 'Parcels', Icon: LandPlot, page: 'parcels', enabled: false },
+      { to: '/parcels', label: 'Parcels', Icon: LandPlot, page: 'parcels' },
     ],
   },
   {

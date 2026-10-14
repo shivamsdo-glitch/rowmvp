@@ -9,11 +9,7 @@ import { test } from '@playwright/test'
  */
 const pending: Record<string, [id: string, job: string][]> = {
   'Project Manager': [
-    ['AT-PM-21', 'Phase 1: adds a parent tract and splits it into parcels, with remnant'],
     ['AT-PM-22', 'Phase 1: adds owners and ownership interests to a parcel'],
-    ['AT-PM-23', 'Phase 1: sets milestones and sees roll-up counts for the project'],
-    ['AT-PM-24', 'Phase 1: is blocked by the step gate; overriding needs a reason'],
-    ['AT-PM-25', 'Phase 1: updates the status of many parcels at once'],
     ['AT-PM-26', 'Phase 3: approves just compensation inside their approval band'],
     ['AT-PM-27', 'Phase 5: sees the pipeline, budget and overdue items on the dashboard'],
   ],
@@ -48,7 +44,6 @@ const pending: Record<string, [id: string, job: string][]> = {
   Administrator: [
     ['AT-AD-20', 'Phase 5: edits a role’s page permissions and the change applies on the next request'],
     ['AT-AD-21', 'Phase 3: configures approval-chain thresholds'],
-    ['AT-AD-22', 'Phase 1: configures statutory deadlines and the workflow per acquisition type'],
     ['AT-AD-23', 'Phase 5: invites, deactivates and re-activates users'],
     ['AT-AD-24', 'Phase 5: maintains document and report templates in the Library'],
   ],

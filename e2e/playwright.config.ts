@@ -11,6 +11,7 @@ export const PG = process.env.E2E_PG ?? 'Host=127.0.0.1;Port=5434;Username=row;P
 
 export default defineConfig({
   testDir: './tests',
+  globalSetup: './warm-up.ts',
   fullyParallel: true,
   workers: 4,
   retries: 0, // a retry would hide a flaky test; flakiness is a defect to fix

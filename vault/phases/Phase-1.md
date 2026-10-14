@@ -22,6 +22,13 @@ ROW-001–021, 071–077, 080, 233–241. (ROW-022 is Diagram 5 → deferred. RO
 ## Deferred / simplified
 002 configurable WBS depth; 235 real map; 074 outbound notifications; 084 cross-module sharing is implicit (single DB).
 
+## Delivery in slices
+- **Slice 1 — project core (done):** ROW-001, 003, 004, 012, 013, 076, 238. ADR 0006.
+- **Slice 2 — parcel core (done):** ROW-002, 005–011, 071–074, 233–237. Parcel, groups, parent tracts, interests, milestones, notice to owner, site visits, split/combine, batch update, status board, custom fields, step gating with override, statutory deadlines and reminders, synopsis. ADR 0008.
+  - 009 (print-friendly synopsis) is the browser print of the parcel Summary tab; 235 is the status-coloured board (no map).
+  - Seeded deadline periods and workflow steps are **placeholders** the agency must confirm (vault/README_Final.md "Yours to verify").
+- **Slice 3 — people & the rest (next):** ROW-014–021 (owners, contacts, tenants, abutters, tax ID, team, diary, notes), 077 right of entry, 080 request intake, 239 plan-review gate, 240 staff report/certificate, 241 acquisition plan, 075.
+
 ## Exit checklist
 - [ ] Create project → add parent tract → split into parcels → add owners/interests → set milestones, end to end in UI
 - [ ] Step-gate blocks out-of-order advance; override requires Admin/PM + reason
