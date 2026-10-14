@@ -1,5 +1,7 @@
 # Local development database only. The API and web app run on the host.
 # Credentials are development-only and match backend appsettings.Development.json.
+# Fixed project name: the container, network and data volume are the same from any checkout or git worktree.
+name: row-mvp
 services:
   postgres:
     image: postgres:16

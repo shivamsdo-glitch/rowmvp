@@ -24,7 +24,7 @@ public class SavedFilterTests
         }
 
         public CreateSavedFilterCommandHandler Create => new(Db, User, new PagePermissionService(Db, User));
-        public ListSavedFiltersQueryHandler List => new(Db, User);
+        public ListSavedFiltersQueryHandler List => new(Db, User, new PagePermissionService(Db, User));
         public UpdateSavedFilterCommandHandler Update => new(Db, User);
         public DeleteSavedFilterCommandHandler Delete => new(Db, User);
         public ValueTask DisposeAsync() => Db.DisposeAsync();

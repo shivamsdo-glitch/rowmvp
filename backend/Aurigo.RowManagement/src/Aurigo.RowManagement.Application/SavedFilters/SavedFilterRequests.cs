@@ -32,14 +32,23 @@ internal static class SavedFilterRules
     {
         try
         {
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.ValueKind == JsonValueKind.Object;
+            using var doc = JsonDocument.Parse(json); // default depth limit (64) rejects absurd nesting
+            // jsonb cannot store U+0000, even written as the escape \0; reject it instead of failing in the save.
+            return doc.RootElement.ValueKind == JsonValueKind.Object && !ContainsNul(doc.RootElement);
         }
         catch (JsonException)
         {
             return false;
         }
     }
+
+    private static bool ContainsNul(JsonElement e) => e.ValueKind switch
+    {
+        JsonValueKind.String => e.GetString()!.Contains('\0'),
+        JsonValueKind.Array => e.EnumerateArray().Any(ContainsNul),
+        JsonValueKind.Object => e.EnumerateObject().Any(p => p.Name.Contains('\0') || ContainsNul(p.Value)),
+        _ => false,
+    };
 
     public static SavedFilterDto ToDto(SavedFilterProfile p) => new(p.Id, p.PageKey, p.Name, p.FilterJson, p.UpdatedAt);
 }
@@ -59,15 +68,20 @@ public sealed class ListSavedFiltersQueryHandler : IRequestHandler<ListSavedFilt
 {
     private readonly IRowDbContext _db;
     private readonly ICurrentUser _user;
+    private readonly IPagePermissionService _permissions;
 
-    public ListSavedFiltersQueryHandler(IRowDbContext db, ICurrentUser user)
+    public ListSavedFiltersQueryHandler(IRowDbContext db, ICurrentUser user, IPagePermissionService permissions)
     {
         _db = db;
         _user = user;
+        _permissions = permissions;
     }
 
     public async Task<IReadOnlyList<SavedFilterDto>> Handle(ListSavedFiltersQuery request, CancellationToken ct)
     {
+        // Same rule as saving: no access to the page means nothing about it, filters included.
+        await _permissions.EnsureAsync(request.PageKey, PermissionAction.Read, ct);
+
         var rows = await _db.SavedFilterProfiles
             .Where(p => p.UserId == _user.Id && p.PageKey == request.PageKey)
             .OrderBy(p => p.Name)

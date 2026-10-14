@@ -18,10 +18,10 @@ function json(body: unknown, status = 200) {
 }
 
 /**
- * A fetch stand-in for the auth endpoints. `readable` is what GET /auth/permissions returns;
- * a request without the expected token is a 401, like the real API.
+ * A fetch stand-in for the auth endpoints. Give `readable` (pages the user can read) or full `rows`.
+ * A request without the expected token is a 401, like the real API.
  */
-export function fakeAuthFetch(opts: { readable: string[]; role?: string; token?: string }) {
+export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean }) {
   const token = opts.token ?? 'good-token'
   const role = opts.role ?? 'Admin'
   return async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -33,9 +33,10 @@ export function fakeAuthFetch(opts: { readable: string[]; role?: string; token?:
     }
     if (headers.Authorization !== `Bearer ${token}`) return json({ title: 'unauthorized' }, 401)
     if (url === '/api/v1/auth/me') {
+      if (opts.meFails) return json({ title: 'not_found' }, 404)
       return json({ id: 'u1', fullName: 'Dev User', initials: 'DU', email: 'dev@row.local', roles: [role], tenantId: 't1', tenantName: 'Demo DOT' })
     }
-    if (url === '/api/v1/auth/permissions') return json(permissionsFor(opts.readable))
+    if (url === '/api/v1/auth/permissions') return json(opts.rows ?? permissionsFor(opts.readable ?? []))
     return json({ title: 'not_found' }, 404)
   }
 }

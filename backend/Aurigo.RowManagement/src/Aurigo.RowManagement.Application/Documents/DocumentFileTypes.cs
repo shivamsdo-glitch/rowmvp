@@ -59,6 +59,7 @@ public static class DocumentFileTypes
             cleaned.Append(char.IsControl(c) || invalid.Contains(c) ? '_' : c);
 
         var result = cleaned.ToString().Trim().TrimEnd('.');
+        if (result.StartsWith('.')) result = "file" + result; // a bare ".pdf" has no name of its own
         const int max = 150;
         if (result.Length > max)
         {

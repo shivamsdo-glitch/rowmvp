@@ -7,9 +7,10 @@ import { BRAND } from '@/brand/brand'
 import { buttonClassName } from '@/components/ui/button'
 
 export const Route = createFileRoute('/login')({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; expired?: boolean } => ({
+    expired: search.expired === true || search.expired === 'true' ? true : undefined,
     // Only same-site paths: never bounce a user to an attacker-supplied address.
-    redirect: typeof search.redirect === 'string' && /^\/(?!\/)/.test(search.redirect) ? search.redirect : undefined,
+    redirect: typeof search.redirect === 'string' && /^\/(?![/\\])/.test(search.redirect) && !search.redirect.startsWith('/login') ? search.redirect : undefined,
   }),
   beforeLoad: async ({ context }) => {
     await context.auth.restore()
@@ -21,7 +22,7 @@ export const Route = createFileRoute('/login')({
 function LoginPage() {
   const auth = useAuthManager()
   const navigate = useNavigate()
-  const { redirect: target } = Route.useSearch()
+  const { redirect: target, expired } = Route.useSearch()
   const [busy, setBusy] = useState<Role | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,6 +62,9 @@ function LoginPage() {
             </button>
           ))}
         </div>
+        {expired && !error && (
+          <p role="status" className="mt-4 text-sm text-muted-foreground">Your session has expired. Please sign in again.</p>
+        )}
         {error && (
           <p role="alert" className="mt-4 text-sm text-destructive">
             {error}

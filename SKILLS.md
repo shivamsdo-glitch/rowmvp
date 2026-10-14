@@ -25,10 +25,15 @@ Implement `ISeedStep` (unique `Order`, set `DevelopmentOnly` for anything demo),
 ## Add a frontend page
 Create `src/routes/_app/<name>.tsx` with `createFileRoute('/_app/<name>')` and a `beforeLoad` using `requirePageAccess`. Add its entry to `NAV` in `src/routes/_app.tsx`. `npm run dev` (or `npm run build`) regenerates `src/routeTree.gen.ts`; commit it. Server calls go through `auth.api` / `src/api/*`, never raw `fetch`.
 
+## Add acceptance cases for a feature
+1. For every role the feature touches, write the job in `vault/acceptance/<Role>.md` (Pending until built), including the roles that must be *refused*.
+2. API side: add the cases to `RoleAcceptanceApiTests` against the spec table in `Support/Spec.cs`; extend the spec if the feature adds a page or record type.
+3. UI side: add the journey to `e2e/tests/jobs.spec.ts` (sign in through the real screen, do the job, check what the server stored), replace the matching `test.fixme` in `future.spec.ts`, and flip the status in the role file.
+4. Run `node scripts/verify.mjs`. Fix bugs at the lowest layer that can catch them and add a regression test there.
+
 ## Before calling work done
-- Backend: `dotnet build` with 0 warnings, `dotnet test`.
-- Frontend: `npm run build` (type-check + bundle), `npx vitest run`.
-- Real database check when persistence changed: `docker compose up -d`, run the API in Development, hit the endpoint.
+- **`node scripts/verify.mjs`** (the release gate: build, unit, real-Postgres integration, frontend, Playwright).
+- Quick loops while developing: `dotnet test`, `npx vitest run`, `cd e2e && npx playwright test -g "AT-TE"`.
 - Locked decision? Write an ADR. Open domain question? Flag it, don't guess.
 
 ## Environment gotchas
