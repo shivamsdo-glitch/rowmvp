@@ -1,4 +1,4 @@
-# ADR 0006 — Test strategy and the acceptance gate
+# ADR 0007 — Test strategy and the acceptance gate
 
 **Status:** accepted.
 
