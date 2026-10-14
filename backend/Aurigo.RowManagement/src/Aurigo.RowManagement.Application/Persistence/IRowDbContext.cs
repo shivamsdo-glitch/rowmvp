@@ -25,6 +25,19 @@ public interface IRowDbContext
     DbSet<RowAuthorization> RowAuthorizations { get; }
     DbSet<ProjectNumberSettings> ProjectNumberSettings { get; }
     DbSet<ProjectNumberCounter> ProjectNumberCounters { get; }
+    DbSet<ParcelStatus> ParcelStatuses { get; }
+    DbSet<ParcelGroup> ParcelGroups { get; }
+    DbSet<ParentTract> ParentTracts { get; }
+    DbSet<Parcel> Parcels { get; }
+    DbSet<ParcelInterest> ParcelInterests { get; }
+    DbSet<ParcelMilestone> ParcelMilestones { get; }
+    DbSet<ParcelSiteVisit> ParcelSiteVisits { get; }
+    DbSet<ParcelStepEvent> ParcelStepEvents { get; }
+    DbSet<CustomFieldDefinition> CustomFieldDefinitions { get; }
+    DbSet<WorkflowTemplate> WorkflowTemplates { get; }
+    DbSet<WorkflowStep> WorkflowSteps { get; }
+    DbSet<DeadlineRule> DeadlineRules { get; }
+    DbSet<StepGateSettings> StepGateSettings { get; }
 
     /// <summary>Exposed so a handler that recovers from a failed save can discard the unsaved changes.</summary>
     ChangeTracker ChangeTracker { get; }

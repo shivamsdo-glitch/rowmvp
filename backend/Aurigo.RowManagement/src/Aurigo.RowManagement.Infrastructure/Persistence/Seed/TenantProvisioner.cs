@@ -65,6 +65,51 @@ public sealed class TenantProvisioner
         }
 
         if (added > 0) await _db.SaveChangesAsync(ct);
+
+        await EnsureParcelRulesAsync(tenantId, ct);
         return added;
+    }
+
+    /// <summary>
+    /// Adds the default parcel statuses, workflow templates, placeholder deadline rules and step-gate settings an agency is
+    /// missing. Add-only: a status list or rule set an administrator has already edited is never touched.
+    /// </summary>
+    public async Task EnsureParcelRulesAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        var changed = false;
+
+        if (!await _db.ParcelStatuses.IgnoreQueryFilters().AnyAsync(s => s.TenantId == tenantId, ct))
+        {
+            var order = 0;
+            foreach (var d in DefaultParcelRules.Statuses)
+                _db.ParcelStatuses.Add(new ParcelStatus { TenantId = tenantId, Name = d.Name, Color = d.Color, IsInitial = d.IsInitial, SortOrder = order++ });
+            changed = true;
+        }
+
+        var haveTypes = await _db.WorkflowTemplates.IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.AcquisitionType).ToListAsync(ct);
+        foreach (var (type, steps) in DefaultParcelRules.Workflows.Where(w => !haveTypes.Contains(w.Key)))
+        {
+            var template = new WorkflowTemplate { TenantId = tenantId, AcquisitionType = type };
+            var order = 0;
+            foreach (var step in steps)
+                template.Steps.Add(new WorkflowStep { TenantId = tenantId, TemplateId = template.Id, Key = step.Key, Label = step.Label, Order = order++, RequiresAcquisitionGate = step.RequiresAcquisitionGate });
+            _db.WorkflowTemplates.Add(template);
+            changed = true;
+        }
+
+        if (!await _db.DeadlineRules.IgnoreQueryFilters().AnyAsync(r => r.TenantId == tenantId, ct))
+        {
+            foreach (var d in DefaultParcelRules.DeadlineRules)
+                _db.DeadlineRules.Add(new DeadlineRule { TenantId = tenantId, Name = d.Name, TriggerMilestone = d.Trigger, TargetMilestone = d.Target, Days = d.Days, IsPlaceholder = true });
+            changed = true;
+        }
+
+        if (!await _db.StepGateSettings.IgnoreQueryFilters().AnyAsync(s => s.TenantId == tenantId, ct))
+        {
+            _db.StepGateSettings.Add(new StepGateSettings { TenantId = tenantId });
+            changed = true;
+        }
+
+        if (changed) await _db.SaveChangesAsync(ct);
     }
 }

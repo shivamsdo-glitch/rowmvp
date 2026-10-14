@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
@@ -15,20 +13,14 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
 {
     private readonly IEnumerable<IValidator<TRequest>> _validators;
 
-    // Postgres text and jsonb cannot store U+0000; left alone it surfaces as a 500 deep inside the save.
-    // Rejecting it here, for every string on every request, turns that into a normal 400.
-    private static readonly PropertyInfo[] StringProperties = typeof(TRequest)
-        .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-        .Where(p => p.PropertyType == typeof(string) && p.CanRead && p.GetIndexParameters().Length == 0)
-        .ToArray();
-
     public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators) => _validators = validators;
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
-        var nul = StringProperties
-            .Where(p => p.GetValue(request) is string value && value.Contains('\0'))
-            .Select(p => new ValidationFailure(p.Name, "Must not contain null characters."))
+        // Postgres text and jsonb cannot store U+0000; left alone it surfaces as a 500 deep inside the save.
+        // Rejecting it here, anywhere in the request (nested objects, lists, dictionaries), turns that into a normal 400.
+        var nul = NullCharacterScanner.Find(request)
+            .Select(path => new ValidationFailure(path, "Must not contain null characters."))
             .ToList();
         if (nul.Count > 0) throw new ValidationException(nul);
 

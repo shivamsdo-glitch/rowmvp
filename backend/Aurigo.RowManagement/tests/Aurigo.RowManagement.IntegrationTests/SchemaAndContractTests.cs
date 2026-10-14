@@ -22,6 +22,8 @@ public class SchemaAndContractTests : IClassFixture<PgApi>
         "tenants", "app_users", "roles", "user_roles", "user_tokens", "audit_log",
         "role_page_permissions", "documents", "saved_filter_profiles",
         "projects", "project_cost_estimates", "project_budgets", "row_authorizations", "project_number_settings", "project_number_counters",
+        "parcel_statuses", "parcel_groups", "parent_tracts", "parcels", "parcel_interests", "parcel_milestones", "parcel_site_visits", "parcel_step_events",
+        "custom_field_definitions", "workflow_templates", "workflow_steps", "deadline_rules", "step_gate_settings",
     };
 
     [PgFact]

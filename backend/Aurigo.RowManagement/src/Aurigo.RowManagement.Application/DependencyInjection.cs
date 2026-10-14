@@ -3,6 +3,7 @@ using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Common;
 using FluentValidation;
 using MediatR;
+using Aurigo.RowManagement.Application.Parcels;
 using Aurigo.RowManagement.Application.Projects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IPagePermissionService, PagePermissionService>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<ProjectNumberGenerator>();
+        services.AddScoped<ParcelService>();
 
         // Calculations are static, stateless functions (see Calculations/README.md); nothing to register.
         return services;

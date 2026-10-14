@@ -1,5 +1,6 @@
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
+using Aurigo.RowManagement.Domain.Enums;
 using Aurigo.RowManagement.Infrastructure.Persistence.Seed;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -129,6 +130,53 @@ public class TenantProvisionerTests
 
         await using var read = TestDb.Create(store, tenant: null);
         var audit = await read.AuditLogs.IgnoreQueryFilters().ToListAsync();
-        audit.Should().HaveCount(ExpectedRows).And.OnlyContain(a => a.TenantId == TestDb.TenantA);
+        // Roles and permissions, plus the default parcel rules (statuses, workflow templates and their steps, deadline rules, step-gate settings).
+        var parcelRuleRows = DefaultParcelRules.Statuses.Count + DefaultParcelRules.Workflows.Count + DefaultParcelRules.Workflows.Values.Sum(s => s.Count)
+                             + DefaultParcelRules.DeadlineRules.Count + 1;
+        audit.Should().HaveCount(ExpectedRows + parcelRuleRows).And.OnlyContain(a => a.TenantId == TestDb.TenantA);
+    }
+
+    [Fact]
+    public async Task Default_parcel_rules_are_provisioned_once_and_never_overwrite_an_administrators_edits()
+    {
+        var store = TestDb.NewStoreName();
+        await using (var db = TestDb.Create(store, tenant: null))
+            await new TenantProvisioner(db).EnsureDefaultRolesAsync(TestDb.TenantA);
+
+        // An administrator renames a status, retires a rule and removes a workflow template.
+        await using (var db = TestDb.Create(store, tenant: null))
+        {
+            (await db.ParcelStatuses.IgnoreQueryFilters().SingleAsync(s => s.TenantId == TestDb.TenantA && s.Name == "Identified")).Name = "Staked";
+            (await db.DeadlineRules.IgnoreQueryFilters().FirstAsync(r => r.TenantId == TestDb.TenantA)).IsActive = false;
+            db.WorkflowTemplates.Remove(await db.WorkflowTemplates.IgnoreQueryFilters().SingleAsync(t => t.TenantId == TestDb.TenantA && t.AcquisitionType == AcquisitionType.Donation));
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = TestDb.Create(store, tenant: null))
+            await new TenantProvisioner(db).EnsureDefaultRolesAsync(TestDb.TenantA);
+
+        await using var read = TestDb.Create(store, tenant: null);
+        var statuses = await read.ParcelStatuses.IgnoreQueryFilters().Where(s => s.TenantId == TestDb.TenantA).Select(s => s.Name).ToListAsync();
+        statuses.Should().HaveCount(DefaultParcelRules.Statuses.Count).And.Contain("Staked").And.NotContain("Identified", "an edited list is left alone");
+        (await read.DeadlineRules.IgnoreQueryFilters().CountAsync(r => r.TenantId == TestDb.TenantA && !r.IsActive)).Should().Be(1);
+        (await read.WorkflowTemplates.IgnoreQueryFilters().AnyAsync(t => t.TenantId == TestDb.TenantA && t.AcquisitionType == AcquisitionType.Donation))
+            .Should().BeTrue("a missing workflow template is added back");
+        (await read.StepGateSettings.IgnoreQueryFilters().CountAsync(s => s.TenantId == TestDb.TenantA)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Each_agency_gets_its_own_parcel_rules()
+    {
+        var store = TestDb.NewStoreName();
+        await using (var db = TestDb.Create(store, tenant: null))
+        {
+            await new TenantProvisioner(db).EnsureDefaultRolesAsync(TestDb.TenantA);
+            await new TenantProvisioner(db).EnsureDefaultRolesAsync(TestDb.TenantB);
+        }
+
+        await using var asB = TestDb.Create(store, TestDb.TenantB);
+        (await asB.ParcelStatuses.CountAsync()).Should().Be(DefaultParcelRules.Statuses.Count);
+        (await asB.WorkflowTemplates.CountAsync()).Should().Be(DefaultParcelRules.Workflows.Count);
+        (await asB.ParcelStatuses.AllAsync(s => s.TenantId == TestDb.TenantB)).Should().BeTrue();
     }
 }

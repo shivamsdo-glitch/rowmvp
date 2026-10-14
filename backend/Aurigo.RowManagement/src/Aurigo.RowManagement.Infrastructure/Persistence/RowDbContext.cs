@@ -38,6 +38,19 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<RowAuthorization> RowAuthorizations => Set<RowAuthorization>();
     public DbSet<ProjectNumberSettings> ProjectNumberSettings => Set<ProjectNumberSettings>();
     public DbSet<ProjectNumberCounter> ProjectNumberCounters => Set<ProjectNumberCounter>();
+    public DbSet<ParcelStatus> ParcelStatuses => Set<ParcelStatus>();
+    public DbSet<ParcelGroup> ParcelGroups => Set<ParcelGroup>();
+    public DbSet<ParentTract> ParentTracts => Set<ParentTract>();
+    public DbSet<Parcel> Parcels => Set<Parcel>();
+    public DbSet<ParcelInterest> ParcelInterests => Set<ParcelInterest>();
+    public DbSet<ParcelMilestone> ParcelMilestones => Set<ParcelMilestone>();
+    public DbSet<ParcelSiteVisit> ParcelSiteVisits => Set<ParcelSiteVisit>();
+    public DbSet<ParcelStepEvent> ParcelStepEvents => Set<ParcelStepEvent>();
+    public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
+    public DbSet<WorkflowTemplate> WorkflowTemplates => Set<WorkflowTemplate>();
+    public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
+    public DbSet<DeadlineRule> DeadlineRules => Set<DeadlineRule>();
+    public DbSet<StepGateSettings> StepGateSettings => Set<StepGateSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

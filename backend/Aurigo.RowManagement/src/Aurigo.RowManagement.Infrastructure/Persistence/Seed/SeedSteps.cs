@@ -121,7 +121,12 @@ public sealed class DemoDataSeedStep : ISeedStep
     public async Task RunAsync(CancellationToken ct)
     {
         _db.CurrentTenantId = WellKnownIds.DevTenant;
-        if (await _db.Projects.AnyAsync(p => p.Number == "DEMO-001", ct)) return;
+        if (!await _db.Projects.AnyAsync(p => p.Number == "DEMO-001", ct)) await SeedProjectsAsync(ct);
+        await SeedParcelsAsync(ct);
+    }
+
+    private async Task SeedProjectsAsync(CancellationToken ct)
+    {
 
         var held = new Project
         {
@@ -173,5 +178,74 @@ public sealed class DemoDataSeedStep : ISeedStep
         _db.Projects.AddRange(held, cleared, local);
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Seeded 3 demo projects.");
+    }
+
+    /// <summary>
+    /// Sample parcels: a bridge corridor with a parent tract, a parcel at the offer step, one whose offer deadline has run out
+    /// (so reminders have something to show), a split-and-remnant pair, and a closed parcel. Skipped once the project has parcels.
+    /// </summary>
+    private async Task SeedParcelsAsync(CancellationToken ct)
+    {
+        var bridge = await _db.Projects.FirstOrDefaultAsync(p => p.Number == "DEMO-002", ct);
+        var corridorProject = await _db.Projects.FirstOrDefaultAsync(p => p.Number == "DEMO-001", ct);
+        if (bridge is null || corridorProject is null) return;
+        if (await _db.Parcels.AnyAsync(p => p.ProjectId == bridge.Id || p.ProjectId == corridorProject.Id, ct)) return;
+
+        var statuses = await _db.ParcelStatuses.ToDictionaryAsync(s => s.Name, s => s.Id, ct);
+        var templates = await _db.WorkflowTemplates.Include(t => t.Steps).ToDictionaryAsync(t => t.AcquisitionType, ct);
+        if (statuses.Count == 0 || templates.Count == 0) return; // rules are provisioned by the RBAC step; nothing to seed against yet
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var span = new ParcelGroup { ProjectId = bridge.Id, Name = "Main span", Description = "Parcels along the bridge approach" };
+        var tract = new ParentTract { ProjectId = bridge.Id, Number = "T-1001", Description = "Harbor Holdings LLC", TaxParcelNumbers = new List<string> { "APN 044-120-07", "APN 044-120-08" } };
+        _db.ParcelGroups.Add(span);
+        _db.ParentTracts.Add(tract);
+
+        Parcel Make(Project project, string number, string status, string step, decimal area, string? address, ParcelGroup? group = null, ParentTract? parent = null, bool remnant = false)
+        {
+            var parcel = new Parcel
+            {
+                ProjectId = project.Id, Number = number, Address = address, AreaSqFt = area, PropertyType = "Commercial",
+                StatusId = statuses[status], CurrentStepKey = step, GroupId = group?.Id, ParentTractId = parent?.Id, IsRemnant = remnant,
+            };
+            foreach (var name in MilestoneNames.Standard)
+                parcel.Milestones.Add(new ParcelMilestone { ParcelId = parcel.Id, Name = name, CompletedOn = name == MilestoneNames.ParcelSetUp ? today.AddDays(-200) : null });
+            return parcel;
+        }
+        void Done(Parcel p, string milestone, DateOnly on) => p.Milestones.Single(m => m.Name == milestone).CompletedOn = on;
+
+        var atOffer = Make(bridge, "001", "Negotiation", "offer", 12_500m, "100 Harbor Rd", span, tract);
+        Done(atOffer, MilestoneNames.NoticeToOwner, today.AddDays(-30));
+        atOffer.NoticeIssuedOn = today.AddDays(-30);
+        atOffer.NoticeMethod = NoticeMethod.CertifiedMail;
+        atOffer.Interests.Add(new ParcelInterest { ParcelId = atOffer.Id, Type = InterestType.FeeTaking, AreaSqFt = 8_000m });
+        atOffer.Interests.Add(new ParcelInterest { ParcelId = atOffer.Id, Type = InterestType.TemporaryEasement, AreaSqFt = 2_000m, Notes = "Staging area, 18 months" });
+        atOffer.SiteVisits.Add(new ParcelSiteVisit { ParcelId = atOffer.Id, VisitedOn = today.AddDays(-45), Notes = "Walked the frontage with the owner's representative.", OwnerContactConfirmed = true });
+
+        var late = Make(bridge, "002", "Negotiation", "negotiation", 6_200m, "112 Harbor Rd", span, tract);
+        Done(late, MilestoneNames.NoticeToOwner, today.AddDays(-120)); // the 90-day offer deadline has passed
+        late.NoticeIssuedOn = today.AddDays(-120);
+        late.NoticeMethod = NoticeMethod.HandDelivery;
+
+        var closed = Make(bridge, "003", "Closed", "closing", 3_000m, "9 Pier Ln", span);
+        Done(closed, MilestoneNames.NoticeToOwner, today.AddDays(-190));
+        Done(closed, MilestoneNames.OfferDelivered, today.AddDays(-150));
+        Done(closed, MilestoneNames.AgreementSigned, today.AddDays(-100));
+        Done(closed, MilestoneNames.Closed, today.AddDays(-60));
+
+        var original = Make(bridge, "004", "Identified", "setup", 20_000m, "Vacant lot, Pier Ln");
+        original.State = ParcelState.Split;
+        original.SupersededOn = DateTime.UtcNow;
+        var partA = Make(bridge, "004-A", "Identified", "setup", 12_000m, "Vacant lot, Pier Ln");
+        var remnant = Make(bridge, "004-R", "Identified", "setup", 8_000m, "Vacant lot, Pier Ln", remnant: true);
+        partA.SourceParcelIds = new List<Guid> { original.Id };
+        remnant.SourceParcelIds = new List<Guid> { original.Id };
+
+        var held1 = Make(corridorProject, "001", "Identified", "setup", 15_000m, "2 State Route 20");
+        var held2 = Make(corridorProject, "002", "Title & survey", "title_survey", 9_800m, "8 State Route 20");
+
+        _db.Parcels.AddRange(atOffer, late, closed, original, partA, remnant, held1, held2);
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Seeded demo parcels.");
     }
 }
