@@ -5,6 +5,8 @@ MVP for US State DOTs and City/County agencies. Greenfield. Domain research live
 ## Domain in one paragraph
 A transportation project needs parcels of land. Each parcel has owners/interests, a title and survey package, an appraisal that establishes **just compensation**, then a negotiation (offer → counter → agreement) and closing/recording. Federal-aid projects follow the Uniform Act (URA); approvals are **configurable chains by dollar threshold** because agencies differ. Evidence codes in vault: V = source-stated, A = agency SOP, O = original list, D = design decision, U = user decision.
 
+Also in the vault: `vault/features/` (feature workbook dumps — priority, release R01–R35, build sequence, `Depends on`, verbatim source traceability; see its README) and `vault/previews/` (rendered diagram PNGs). Check `Depends on` in `vault/features/ROW_Features.csv` before building a feature.
+
 ## MVP scope (v1): straight-through acquisition only
 Project & parcel setup → title & survey → appraisal & just compensation → negotiation → signed agreement → closing.
 Requirements: ROW-001–021, 023–048, 063–081, 107–110, 233–268 (see per-phase mapping in `vault/phases/`).
