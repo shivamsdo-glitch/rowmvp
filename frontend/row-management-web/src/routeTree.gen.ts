@@ -14,6 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdministrationRouteImport } from './routes/_app/administration'
 import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
+import { Route as AppProjectsIndexRouteImport } from './routes/_app/projects.index'
+import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -39,18 +41,32 @@ const AppForbiddenRoute = AppForbiddenRouteImport.update({
   path: '/forbidden',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsProjectIdRoute = AppProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
   '/': typeof AppIndexRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/projects': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +75,26 @@ export interface FileRoutesById {
   '/_app/administration': typeof AppAdministrationRoute
   '/_app/forbidden': typeof AppForbiddenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/administration' | '/forbidden'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/administration'
+    | '/forbidden'
+    | '/projects/$projectId'
+    | '/projects/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/administration' | '/forbidden' | '/'
+  to:
+    | '/login'
+    | '/administration'
+    | '/forbidden'
+    | '/'
+    | '/projects/$projectId'
+    | '/projects'
   id:
     | '__root__'
     | '/_app'
@@ -72,6 +102,8 @@ export interface FileRouteTypes {
     | '/_app/administration'
     | '/_app/forbidden'
     | '/_app/'
+    | '/_app/projects/$projectId'
+    | '/_app/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,6 +148,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppForbiddenRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/projects/': {
+      id: '/_app/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AppProjectsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/$projectId': {
+      id: '/_app/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AppProjectsProjectIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -123,12 +169,16 @@ interface AppRouteChildren {
   AppAdministrationRoute: typeof AppAdministrationRoute
   AppForbiddenRoute: typeof AppForbiddenRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppProjectsIndexRoute: typeof AppProjectsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdministrationRoute: AppAdministrationRoute,
   AppForbiddenRoute: AppForbiddenRoute,
   AppIndexRoute: AppIndexRoute,
+  AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppProjectsIndexRoute: AppProjectsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

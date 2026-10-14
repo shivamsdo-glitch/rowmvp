@@ -38,7 +38,7 @@ public abstract class ProjectFieldsValidator<T> : AbstractValidator<T> where T :
         RuleFor(x => x.Number).MaximumLength(ProjectNumbering.MaxLength)
             .Matches(@"^[A-Za-z0-9\-_/.]+$").When(x => !string.IsNullOrWhiteSpace(x.Number))
             .WithMessage("Project number may contain only letters, digits and - _ / .");
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.").MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(2000);
         RuleFor(x => x.Region).MaximumLength(100);
         RuleFor(x => x.District).MaximumLength(100);

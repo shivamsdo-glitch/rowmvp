@@ -9,7 +9,6 @@ import { test } from '@playwright/test'
  */
 const pending: Record<string, [id: string, job: string][]> = {
   'Project Manager': [
-    ['AT-PM-20', 'Phase 1: creates a project with a unique ID, region/district, funding and a versioned estimate'],
     ['AT-PM-21', 'Phase 1: adds a parent tract and splits it into parcels, with remnant'],
     ['AT-PM-22', 'Phase 1: adds owners and ownership interests to a parcel'],
     ['AT-PM-23', 'Phase 1: sets milestones and sees roll-up counts for the project'],

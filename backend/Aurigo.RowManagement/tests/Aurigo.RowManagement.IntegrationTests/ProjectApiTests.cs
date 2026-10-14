@@ -218,6 +218,8 @@ public class ProjectApiTests : IClassFixture<PgApi>
         summary.Created.Should().Be(2);
         summary.Failed.Should().Be(2);
         summary.Results.Select(r => r.Outcome).Should().Equal("Created", "Failed", "Created", "Failed");
+        summary.Results[1].Error.Should().Contain("already exists");
+        summary.Results[3].Error.Should().Be("Name is required.", "people see plain language, not a validator's default wording");
         (await PgTestDatabase.ScalarAsync(_api.Database, "select count(*) from projects where number in ('IMP-A','IMP-B')")).Should().Be(1);
     }
 

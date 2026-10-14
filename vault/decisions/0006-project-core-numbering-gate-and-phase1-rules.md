@@ -5,7 +5,8 @@
 ## Project number (ROW-001) — U
 - Configurable per tenant (`ProjectNumberSettings`): a pattern of literal text plus `{FY}`, `{YY}` and exactly one `{SEQ:n}`, and a fiscal-year start month. Default `{FY}-{SEQ:4}`, calendar year.
 - The system generates the number when none is supplied. A user may type one, edit it later, or supply it through bulk import (`POST /api/v1/projects/import`, max 500 rows, each row succeeds or fails alone). Numbers are unique per tenant, case-insensitive; generation skips numbers already taken.
-- The sequence restarts each fiscal year when the pattern contains a year token, otherwise it runs once per tenant. A counter row per scope carries a Postgres `xmin` concurrency token; a lost race returns 409 `project_number_conflict` and the client retries. A number is never issued twice.
+- The sequence restarts each fiscal year when the pattern contains a year token, otherwise it runs once per tenant. It **continues** when the pattern changes within the same fiscal year, so a number is never reused (the settings screen shows the actual next number).
+- Issuing is serialised per agency inside the server (a lock), so simultaneous creates queue and all succeed. The counter row also carries a Postgres `xmin` concurrency token and the create retries, which protects several servers sharing one database; only after repeated losses does a caller see 409 `project_number_conflict`. Real-Postgres tests create 20 projects at once and 10 identical typed numbers at once. The migration deliberately omits the `xmin` column (a Postgres system column the model merely maps).
 - Changing the pattern affects only later projects. Existing numbers are never rewritten.
 - Pure rules live in `Calculations/ProjectNumbering`.
 

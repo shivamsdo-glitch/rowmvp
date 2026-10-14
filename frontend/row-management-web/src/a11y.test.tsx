@@ -5,6 +5,7 @@ import axe from 'axe-core'
 import { ROLES } from '@/api/auth'
 import { permissionRowsFor } from '@/test/contract'
 import { fakeAuthFetch } from '@/test/fake-api'
+import { fakeProjectsApi } from '@/test/fake-projects'
 import { renderApp } from '@/test/render-app'
 
 beforeEach(() => sessionStorage.clear())
@@ -49,6 +50,71 @@ describe('accessibility (automated axe rules)', () => {
   it('the no-access page has no violations', async () => {
     renderApp({ path: '/administration', fetchImpl: fakeAuthFetch({ readable: ['dashboard'] }) as typeof fetch, signedIn: true })
     await screen.findByText(/don't have access/i)
+
+    expect(await violations()).toEqual([])
+  })
+})
+
+describe('accessibility of the project screens', () => {
+  const seed = [
+    { id: 'p1', number: '2026-0001', name: 'SR-20 Widening', region: 'North', district: 'D1', oversightType: 'Federal' as const },
+    { id: 'p2', number: '2026-0002', name: 'Maple Sidewalk', oversightType: 'Local' as const },
+  ]
+  function open(path: string, role = 'ProjectManager') {
+    const fake = fakeProjectsApi({
+      role, rows: permissionRowsFor(role), projects: seed,
+      budgets: { p1: [{ id: 'b1', fiscalYear: 2027, amount: 1000, notes: null }] },
+      authorizations: { p1: [{ id: 'a1', type: 'Preliminary', authorizedAmount: 5, federalSharePercent: 80, federalShareAmount: 4, authorizedOn: '2026-01-01', referenceNumber: null, programmingConfirmed: true, notes: null }] },
+    })
+    renderApp({ path, fetchImpl: fake.fetch, signedIn: true })
+  }
+
+  it.each(ROLES.map((r) => [r]))('the project list has no violations for %s', async (role) => {
+    open('/projects', role)
+    await screen.findByRole('table', { name: 'Projects' })
+
+    expect(await violations()).toEqual([])
+  })
+
+  it('the new-project form and the import panel have no violations', async () => {
+    const user = userEventModule.setup()
+    open('/projects')
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+    await screen.findByRole('form', { name: 'New project' })
+    expect(await violations()).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
+    await screen.findByText('Name is required.')
+    expect(await violations(), 'with validation errors showing').toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Import CSV' }))
+    await screen.findByLabelText('CSV file')
+    expect(await violations()).toEqual([])
+  })
+
+  it.each([['Overview'], ['Cost estimates'], ['Budget'], ['ROW authorizations'], ['Clearance']])('the project detail "%s" tab has no violations', async (tab) => {
+    const user = userEventModule.setup()
+    open('/projects/p1')
+    await user.click(await screen.findByRole('tab', { name: tab }))
+    await screen.findByRole('tabpanel')
+    await screen.findAllByText(/./)
+    // let the tab's own data finish loading
+    await new Promise((r) => setTimeout(r, 100))
+
+    expect(await violations()).toEqual([])
+  })
+
+  it('the project detail for a read-only role has no violations', async () => {
+    open('/projects/p1', 'Finance')
+    await screen.findByRole('heading', { name: /SR-20 Widening/ })
+
+    expect(await violations()).toEqual([])
+  })
+
+  it('the project number settings have no violations', async () => {
+    open('/administration', 'Admin')
+    await screen.findByLabelText('Number pattern')
 
     expect(await violations()).toEqual([])
   })

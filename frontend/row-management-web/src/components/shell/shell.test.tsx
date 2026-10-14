@@ -39,11 +39,12 @@ describe('sidebar', () => {
     }
   })
 
-  it('shows screens that are not built yet as disabled "Soon" items, not links', async () => {
+  it('shows built screens as links and screens that are not built yet as disabled "Soon" items', async () => {
     await openShell(ALL)
 
-    expect(screen.getByTitle('Projects (coming soon)')).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.queryByRole('link', { name: /Projects/ })).not.toBeInTheDocument()
+    expect(screen.getByTitle('Parcels (coming soon)')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('link', { name: /Parcels/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Projects/ })).toBeInTheDocument()
     expect(screen.getAllByText('Soon').length).toBeGreaterThan(0)
   })
 

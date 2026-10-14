@@ -29,7 +29,7 @@ export function EmptyState({
       <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Icon size={22} />
       </div>
-      <h4 className="font-sans text-sm font-semibold text-foreground">{title}</h4>
+      <h2 className="font-sans text-sm font-semibold text-foreground">{title}</h2>
       {description && <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -112,7 +112,7 @@ export function ErrorState({
       <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
         <AlertTriangle size={22} />
       </div>
-      <h4 className="font-sans text-sm font-semibold text-foreground">{title}</h4>
+      <h2 className="font-sans text-sm font-semibold text-foreground">{title}</h2>
       {description && <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>}
       {retry && (
         <button

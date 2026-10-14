@@ -14,7 +14,7 @@ export const attachmentPage = contract.attachmentPages as Record<string, string>
 /** The sidebar as the product defines it. `built` = a real screen exists today (else shown as "coming soon"). */
 export const NAV = [
   { label: 'Home', page: 'dashboard', built: true },
-  { label: 'Projects', page: 'projects', built: false },
+  { label: 'Projects', page: 'projects', built: true },
   { label: 'Parcels', page: 'parcels', built: false },
   { label: 'Title & Survey', page: 'title', built: false },
   { label: 'Appraisal', page: 'appraisals', built: false },
