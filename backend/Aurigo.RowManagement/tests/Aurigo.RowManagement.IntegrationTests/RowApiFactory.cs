@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Email;
+using Aurigo.RowManagement.IntegrationTests.Support;
 using Aurigo.RowManagement.Infrastructure.Persistence;
 using Aurigo.RowManagement.Infrastructure.Persistence.Interceptors;
 using Microsoft.AspNetCore.Hosting;
@@ -44,6 +45,23 @@ public sealed class RowApiFactory : WebApplicationFactory<Program>
     private readonly string _environment;
     private readonly Dictionary<string, string?> _settings;
     private readonly string _dbName = Guid.NewGuid().ToString("N");
+    private string? _pgDatabase;      // set => run against the real Postgres instead of EF InMemory
+    private bool _ownsPgDatabase;
+
+    /// <summary>The real Postgres database in use, or null when running on EF InMemory.</summary>
+    public string? PgDatabase => _pgDatabase;
+
+    /// <summary>
+    /// Runs the real API over a real, freshly migrated Postgres database (created now, dropped on dispose).
+    /// Pass <paramref name="existingDatabase"/> to boot a second app instance over the same data (restart tests).
+    /// </summary>
+    public static RowApiFactory WithPostgres(Dictionary<string, string?>? settings = null, string? existingDatabase = null, string environment = "Development")
+    {
+        var factory = new RowApiFactory(environment, settings);
+        factory._pgDatabase = existingDatabase ?? PgTestDatabase.CreateAsync().GetAwaiter().GetResult();
+        factory._ownsPgDatabase = existingDatabase is null;
+        return factory;
+    }
 
     public CapturingEmailSender Emails { get; } = new();
 
@@ -69,17 +87,31 @@ public sealed class RowApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(_environment);
+        if (_pgDatabase is not null)
+            builder.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Postgres"] = PgTestDatabase.ConnectionString(_pgDatabase),
+            }));
         builder.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(_settings));
         builder.ConfigureServices(services =>
         {
-            services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<RowDbContext>)));
-            services.AddDbContext<RowDbContext>((sp, opts) => opts
-                .UseInMemoryDatabase(_dbName)
-                .AddInterceptors(sp.GetRequiredService<AuditingSaveChangesInterceptor>()));
+            if (_pgDatabase is null)
+            {
+                services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<RowDbContext>)));
+                services.AddDbContext<RowDbContext>((sp, opts) => opts
+                    .UseInMemoryDatabase(_dbName)
+                    .AddInterceptors(sp.GetRequiredService<AuditingSaveChangesInterceptor>()));
+            }
 
             services.Remove(services.Single(d => d.ServiceType == typeof(IEmailSender)));
             services.AddSingleton<IEmailSender>(Emails);
         });
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        if (_pgDatabase is not null && _ownsPgDatabase) await PgTestDatabase.DropAsync(_pgDatabase);
     }
 
     public async Task<string> DevTokenAsync(HttpClient client, string role, Guid? tenant = null, Guid? user = null)

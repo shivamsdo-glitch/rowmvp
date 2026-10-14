@@ -42,7 +42,7 @@ public static class DependencyInjection
         {
             var connStr = sp.GetRequiredService<IConfiguration>().GetConnectionString("Postgres")
                           ?? throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
-            opts.UseNpgsql(connStr, npg => npg.MigrationsHistoryTable("__ef_migrations_history"))
+            opts.UseNpgsql(PostgresConnectionString.WithSafePool(connStr), npg => npg.MigrationsHistoryTable("__ef_migrations_history"))
                 .UseSnakeCaseNamingConvention()
                 .AddInterceptors(sp.GetRequiredService<AuditingSaveChangesInterceptor>());
         });

@@ -3,6 +3,7 @@ using Aurigo.RowManagement.Domain.Errors;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Aurigo.RowManagement.Api.Middleware;
 
@@ -52,6 +53,12 @@ public sealed class ExceptionHandlingMiddleware
             _log.LogWarning(ex, "Concurrency conflict");
             await Write(ctx, StatusCodes.Status409Conflict, "concurrent_edit",
                 "The record was changed by someone else. Refresh and try again.");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Two requests raced past an application-level duplicate check and the unique index caught the loser.
+            _log.LogInformation(ex, "Unique constraint hit for {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
+            await Write(ctx, StatusCodes.Status409Conflict, "already_exists", "That record already exists.");
         }
         catch (Exception ex)
         {

@@ -78,6 +78,20 @@ try
                 RoleClaimType = JwtOptions.RoleClaim,
                 ClockSkew = TimeSpan.FromMinutes(1),
             };
+            // A correctly signed token is still refused unless it identifies a real tenant and user.
+            // Every query filter and audit stamp depends on these; an absent or malformed value must be a
+            // 401 here, not a request that limps on with an empty tenant.
+            o.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = ctx =>
+                {
+                    var tenant = ctx.Principal?.FindFirst(JwtOptions.TenantClaim)?.Value;
+                    var subject = ctx.Principal?.FindFirst("sub")?.Value;
+                    if (!Guid.TryParse(tenant, out var t) || t == Guid.Empty || !Guid.TryParse(subject, out var u) || u == Guid.Empty)
+                        ctx.Fail("The token does not identify a tenant and a user.");
+                    return Task.CompletedTask;
+                },
+            };
         });
     builder.Services.AddAuthorization();
 
