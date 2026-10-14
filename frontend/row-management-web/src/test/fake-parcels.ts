@@ -90,7 +90,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
       id: id('pc'), number: '001', projectNumber: project?.number ?? '', projectName: project?.name ?? '', legalDescription: null, address: null, areaSqFt: 43560,
       propertyType: null, groupId: null, groupName: null, parentTractId: null, parentTractNumber: null, taxParcelNumbers: [], acquisitionType: 'Standard',
       state: 'Active', supersededOn: null, sourceParcelIds: [], isRemnant: false, customValues: {}, noticeIssuedOn: null, noticeMethod: null, interests: [],
-      milestones: mkMilestones(), siteVisits: [], deadlines: [], stepHistory: [], updatedAt: '2026-01-01T00:00:00Z',
+      milestones: mkMilestones(), siteVisits: [], deadlines: [], stepHistory: [], updatedAt: '2026-01-01T00:00:00Z', timeZoneId: 'UTC',
       workflow: { steps: STEPS, currentKey: 'setup', nextKey: 'title_survey', acquisitionGateOpen: false, canOverride: false },
       ...g, statusId: status.id, statusName: status.name, statusColor: status.color,
     }
@@ -103,6 +103,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     const project = base.projects.find((x) => x.id === p.projectId)
     const status = statusOf(p.statusId)
     p.statusName = status.name; p.statusColor = status.color
+    p.timeZoneId = project?.timeZoneId ?? base.agencyZone
     p.groupName = groups.find((g) => g.id === p.groupId)?.name ?? null
     const tract = tracts.find((t) => t.id === p.parentTractId)
     p.parentTractNumber = tract?.number ?? null
@@ -486,6 +487,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
 
   return {
     ...base,
+    get agencyZone() { return base.agencyZone },
     fetch: fetchImpl as typeof fetch,
     parcels, groups, tracts, statuses, customFields, deadlineRules, stepGate,
   }

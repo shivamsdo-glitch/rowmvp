@@ -40,7 +40,9 @@ public sealed record ParcelDto(
     AcquisitionType AcquisitionType, ParcelState State, DateTime? SupersededOn, IReadOnlyList<Guid> SourceParcelIds, bool IsRemnant,
     IReadOnlyDictionary<string, string> CustomValues, DateOnly? NoticeIssuedOn, NoticeMethod? NoticeMethod,
     IReadOnlyList<ParcelInterestDto> Interests, IReadOnlyList<ParcelMilestoneDto> Milestones, IReadOnlyList<ParcelSiteVisitDto> SiteVisits,
-    IReadOnlyList<DeadlineDto> Deadlines, WorkflowStateDto Workflow, IReadOnlyList<ParcelStepEventDto> StepHistory, DateTime UpdatedAt);
+    IReadOnlyList<DeadlineDto> Deadlines, WorkflowStateDto Workflow, IReadOnlyList<ParcelStepEventDto> StepHistory, DateTime UpdatedAt,
+    /// <summary>The time zone this parcel's dates are counted in: its project's, else the agency's.</summary>
+    string TimeZoneId = "UTC");
 
 public sealed record RollupBucketDto(Guid? Id, string Name, string? Color, int Count, decimal AreaSqFt, decimal Acres);
 

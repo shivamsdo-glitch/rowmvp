@@ -158,7 +158,7 @@ public sealed class AddParcelMilestoneCommandHandler : IRequestHandler<AddParcel
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Create, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var name = request.Name.Trim();
-        MilestoneDates.EnsureNotInFuture(request.CompletedOn, _parcels.Today);
+        MilestoneDates.EnsureNotInFuture(request.CompletedOn, await _parcels.TodayForProjectAsync(parcel.ProjectId, ct));
         if (parcel.Milestones.Any(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase)))
             throw new ConflictException("milestone_exists", $"This parcel already has a milestone named '{name}'.");
 
@@ -212,7 +212,7 @@ public sealed class UpdateParcelMilestoneCommandHandler : IRequestHandler<Update
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Update, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var milestone = parcel.Milestones.FirstOrDefault(m => m.Id == request.MilestoneId) ?? throw new NotFoundException("Milestone", request.MilestoneId);
-        MilestoneDates.EnsureNotInFuture(request.CompletedOn, _parcels.Today);
+        MilestoneDates.EnsureNotInFuture(request.CompletedOn, await _parcels.TodayForProjectAsync(parcel.ProjectId, ct));
 
         // The notice's date lives with its delivery method on the parcel; letting the milestone drift from it would give
         // the deadline and the synopsis two different answers.

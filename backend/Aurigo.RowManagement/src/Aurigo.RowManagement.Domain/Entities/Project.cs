@@ -14,6 +14,11 @@ public class Project : EntityBase
     public string? Region { get; set; }
     public string? District { get; set; }
 
+    /// <summary>
+    /// IANA time zone this project's dates are counted in; null follows the agency's (an agency can span several zones).
+    /// </summary>
+    public string? TimeZoneId { get; set; }
+
     public OversightType OversightType { get; set; }
     public string? FundingSource { get; set; }
     public decimal? FundingAmount { get; set; }

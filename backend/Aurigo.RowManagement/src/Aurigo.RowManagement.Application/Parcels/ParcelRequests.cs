@@ -84,6 +84,7 @@ public sealed class CreateParcelCommandHandler : IRequestHandler<CreateParcelCom
         await _parcels.EnsureGroupAsync(request.GroupId, request.ProjectId, ct);
         await _parcels.EnsureTractAsync(request.ParentTractId, request.ProjectId, ct);
         var template = await _parcels.TemplateAsync(request.AcquisitionType, ct);
+        var today = await _parcels.TodayForProjectAsync(request.ProjectId, ct);
         var customJson = await _parcels.CustomValuesJsonAsync(request.CustomValues ?? new Dictionary<string, string?>(), "{}", ct);
 
         Parcel Build(string number)
@@ -103,7 +104,7 @@ public sealed class CreateParcelCommandHandler : IRequestHandler<CreateParcelCom
                 CurrentStepKey = template.Steps.OrderBy(s => s.Order).First().Key,
                 CustomValuesJson = customJson,
             };
-            _parcels.AddStandardMilestones(parcel);
+            _parcels.AddStandardMilestones(parcel, today);
             return parcel;
         }
 
@@ -397,6 +398,7 @@ public sealed class SplitParcelCommandHandler : IRequestHandler<SplitParcelComma
         var problems = ParcelSplit.Validate(source.AreaSqFt, areas);
         if (problems.Count > 0) throw new BusinessRuleException(string.Join(" ", problems));
 
+        var today = await _parcels.TodayForProjectAsync(source.ProjectId, ct);
         var plan = ParcelSplit.Plan(source.Number, source.AreaSqFt, areas);
         foreach (var number in plan.Numbers.Concat(plan.RemnantNumber is null ? Array.Empty<string>() : new[] { plan.RemnantNumber }))
             await _parcels.EnsureNumberFreeAsync(source.ProjectId, number, null, ct);
@@ -420,7 +422,7 @@ public sealed class SplitParcelCommandHandler : IRequestHandler<SplitParcelComma
                 SourceParcelIds = new List<Guid> { source.Id },
                 IsRemnant = remnant,
             };
-            _parcels.AddStandardMilestones(piece);
+            _parcels.AddStandardMilestones(piece, today);
             return piece;
         }
 
@@ -506,6 +508,7 @@ public sealed class CombineParcelsCommandHandler : IRequestHandler<CombineParcel
 
         bool Same<T>(Func<Parcel, T> f) => sources.Select(f).Distinct().Count() == 1;
         var initial = await _parcels.InitialStatusAsync(ct);
+        var today = await _parcels.TodayForProjectAsync(projectId, ct);
 
         Parcel Build(string number)
         {
@@ -525,7 +528,7 @@ public sealed class CombineParcelsCommandHandler : IRequestHandler<CombineParcel
                 CustomValuesJson = sources[0].CustomValuesJson,
                 SourceParcelIds = ids,
             };
-            _parcels.AddStandardMilestones(combined);
+            _parcels.AddStandardMilestones(combined, today);
             foreach (var group in sources.SelectMany(p => p.Interests).GroupBy(i => i.Type))
                 combined.Interests.Add(new ParcelInterest { ParcelId = combined.Id, Type = group.Key, AreaSqFt = group.Sum(i => i.AreaSqFt) });
             return combined;

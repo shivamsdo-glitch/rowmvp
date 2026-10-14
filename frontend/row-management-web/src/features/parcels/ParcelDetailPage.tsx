@@ -15,7 +15,7 @@ import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, Pill, SelectField, TextField,
 } from '../projects/form-kit'
 import { ParcelForm } from './ParcelForm'
-import { acres, DeadlinePill, sqFtText, StateNote, StatusChip } from './parcel-kit'
+import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from './parcel-kit'
 
 const NOTICE_MILESTONE = 'Notice to owner'
 
@@ -185,6 +185,7 @@ function SummaryTab({ parcel: p }: { parcel: Parcel }) {
           <Fact label="Tax parcel numbers">{p.taxParcelNumbers.length ? p.taxParcelNumbers.join(', ') : '—'}</Fact>
           <Fact label="Workflow step">{p.workflow.steps.find((s) => s.key === p.workflow.currentKey)?.label ?? p.workflow.currentKey}</Fact>
           <Fact label="Notice to owner">{p.noticeIssuedOn ? `${dateText(p.noticeIssuedOn)}${p.noticeMethod ? ` by ${NOTICE_LABEL[p.noticeMethod].toLowerCase()}` : ''}` : 'Not issued'}</Fact>
+          <Fact label="Dates counted in">{zoneName(p.timeZoneId)}</Fact>
           <Fact label="Last updated">{dateText(p.updatedAt)}</Fact>
         </dl>
         {p.legalDescription && <p className="mt-3 whitespace-pre-wrap text-sm"><span className="text-xs text-muted-foreground">Legal description: </span>{p.legalDescription}</p>}
@@ -392,7 +393,10 @@ function MilestonesTab({ parcel: p, editable }: { parcel: Parcel; editable: bool
         </form>
       )}
       <Section title="Statutory and agency deadlines">
-        <p className="mb-2 text-xs text-muted-foreground">Periods come from the agency&apos;s rules. Placeholder periods are marked in Configuration until the agency confirms them.</p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Periods come from the agency&apos;s rules. Placeholder periods are marked in Configuration until the agency confirms them.
+          Days are counted in {zoneName(p.timeZoneId)}.
+        </p>
         <DeadlineTable parcel={p} />
       </Section>
     </>

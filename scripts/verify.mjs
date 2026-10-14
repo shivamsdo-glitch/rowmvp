@@ -33,11 +33,29 @@ const steps = [
   ...(skipE2e ? [] : [['End-to-end acceptance (real browser, API, database)', npx, ['playwright', 'test'], e2e]]),
 ]
 
+// vitest cannot always start a worker on a busy machine (a fixed 60 s start timeout). That is the test runner failing to
+// start, not a test failing, so that one error (and only that) earns a single retry.
+const INFRA_RETRY = { 'Frontend tests': /Failed to start threads worker|Timeout waiting for worker to respond|Timeout starting threads runner/ }
+
+function runStep(cmd, args, cwd, name) {
+  const retryOn = INFRA_RETRY[name]
+  if (!retryOn) return spawnSync(cmd, args, { cwd, env, stdio: 'inherit', shell: isWin })
+  for (let attempt = 1; ; attempt++) {
+    const run = spawnSync(cmd, args, { cwd, env, shell: isWin, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    process.stdout.write(run.stdout ?? '')
+    process.stderr.write(run.stderr ?? '')
+    if (run.status === 0 || attempt >= 2 || !retryOn.test(`${run.stdout}\n${run.stderr}`)) return run
+    console.log(`\n⚠ The test runner could not start a worker (a machine problem, not a failed test). Running "${name}" once more.`)
+  }
+}
+
 const results = []
 for (const [name, cmd, args, cwd] of steps) {
   const started = Date.now()
   console.log(`\n━━ ${name}\n   $ ${cmd} ${args.join(' ')}   (${cwd.replace(root, '.')})`)
-  const run = spawnSync(cmd, args, { cwd, env, stdio: 'inherit', shell: isWin })
+  // The compiler and MSBuild servers stay resident after the backend steps and hold memory the test runner's workers need.
+  if (name === 'Frontend type-check') spawnSync('dotnet', ['build-server', 'shutdown'], { cwd, env, stdio: 'ignore', shell: isWin })
+  const run = runStep(cmd, args, cwd, name)
   const seconds = Math.round((Date.now() - started) / 1000)
   results.push({ name, ok: run.status === 0, seconds })
   if (run.status !== 0) break

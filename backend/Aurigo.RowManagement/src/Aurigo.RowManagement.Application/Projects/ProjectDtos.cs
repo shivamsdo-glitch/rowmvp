@@ -15,7 +15,9 @@ public sealed record ProjectDto(
     DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate,
     NepaDecisionType? NepaDecisionType, DateOnly? NepaDecisionDate,
     AcquisitionExceptionType? ExceptionType, DateOnly? ExceptionApprovedOn, string? ExceptionReason,
-    AcquisitionGateDto AcquisitionGate, DateTime UpdatedAt);
+    AcquisitionGateDto AcquisitionGate, DateTime UpdatedAt,
+    /// <summary>The project's own time zone; null means it follows the agency's.</summary>
+    string? TimeZoneId = null);
 
 public sealed record CostEstimateDto(
     Guid Id, int Version, decimal LandCost, decimal ImprovementsCost, decimal RelocationCost, decimal IndirectCost,

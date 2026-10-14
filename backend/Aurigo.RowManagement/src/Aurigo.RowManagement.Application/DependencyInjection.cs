@@ -1,3 +1,4 @@
+using Aurigo.RowManagement.Application.Agency;
 using System.Reflection;
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Common;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IPagePermissionService, PagePermissionService>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<ProjectNumberGenerator>();
+        services.AddScoped<AgencyClock>();
         services.AddScoped<ParcelService>();
 
         // Calculations are static, stateless functions (see Calculations/README.md); nothing to register.

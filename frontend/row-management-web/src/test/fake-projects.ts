@@ -22,8 +22,17 @@ export function gateOf(p: Pick<Project, 'oversightType' | 'nepaDecisionType' | '
   return { unlocked: false, reason: 'Blocked', missing }
 }
 
+export const TIME_ZONE_OPTIONS = [
+  { id: 'UTC', label: 'UTC (Coordinated Universal Time)' },
+  { id: 'America/New_York', label: 'Eastern Time (New York)' },
+  { id: 'America/Chicago', label: 'Central Time (Chicago)' },
+  { id: 'Pacific/Guam', label: 'Chamorro Time (Guam, Northern Mariana Islands)' },
+]
+
 export interface FakeProjectsOptions {
   role: string
+  /** The agency's default time zone (default UTC). */
+  agencyZone?: string
   rows: Parameters<typeof fakeAuthFetch>[0]['rows']
   /** Seed projects (full records); the fake assigns ids and numbers where missing. */
   projects?: Partial<Project>[]
@@ -42,6 +51,8 @@ export interface FakeProjects {
   calls: { key: string; body?: any }[]
   projects: Project[]
   settings: NumberSettings
+  /** The agency's default time zone. */
+  agencyZone: string
 }
 
 /** An in-memory stand-in for the Projects API (and the auth endpoints), good enough to drive the real screens. */
@@ -57,7 +68,7 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
       description: null, region: null, district: null, oversightType: 'Federal', fundingSource: null, fundingAmount: null,
       designEstimate: null, currentEstimate: null, lettingDate: null, planTurnInDate: null, constructionStartDate: null,
       constructionEndDate: null, nepaDecisionType: null, nepaDecisionDate: null, exceptionType: null, exceptionApprovedOn: null,
-      exceptionReason: null, acquisitionGate: { unlocked: false, reason: 'Blocked', missing: [] }, updatedAt: '2026-01-01T00:00:00Z', ...p,
+      exceptionReason: null, timeZoneId: null, acquisitionGate: { unlocked: false, reason: 'Blocked', missing: [] }, updatedAt: '2026-01-01T00:00:00Z', ...p,
     }
   }
   const state = {
@@ -66,6 +77,7 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
     budgets: { ...(opts.budgets ?? {}) } as Record<string, Budget[]>,
     auths: { ...(opts.authorizations ?? {}) } as Record<string, RowAuthorization[]>,
     settings: { pattern: '{FY}-{SEQ:4}', fiscalYearStartMonth: 1, example: '2026-0001' } as NumberSettings,
+    agencyZone: opts.agencyZone ?? 'UTC',
   }
   const calls: FakeProjects['calls'] = []
   const refresh = (p: Project) => {
@@ -81,6 +93,19 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://x')
     const path = url.pathname
+    if (path === '/api/v1/agency/time-zone') {
+      const h = (init?.headers ?? {}) as Record<string, string>
+      if (h.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
+      const m = init?.method ?? 'GET'
+      const b = init?.body ? JSON.parse(String(init.body)) : undefined
+      calls.push({ key: `${m} ${path}`, body: b })
+      const shape = () => ({ timeZoneId: state.agencyZone, options: TIME_ZONE_OPTIONS, today: '2026-10-14' })
+      if (m === 'GET') return can('read') ? json(shape()) : forbidden()
+      if (!can('update', 'administration')) return forbidden()
+      if (!TIME_ZONE_OPTIONS.some((o) => o.id === b?.timeZoneId)) return problem(400, 'validation_failed', 'Validation failed.', { TimeZoneId: ['Choose one of the listed time zones.'] })
+      state.agencyZone = b.timeZoneId
+      return json(shape())
+    }
     if (!path.startsWith('/api/v1/projects')) return auth(input, init)
     const headers = (init?.headers ?? {}) as Record<string, string>
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
@@ -161,6 +186,12 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
         return json(project)
       }
     }
+    if (sub === 'time-zone' && method === 'PUT') {
+      if (!can('update')) return forbidden()
+      if (body.timeZoneId !== null && !TIME_ZONE_OPTIONS.some((o) => o.id === body.timeZoneId)) return problem(400, 'validation_failed', 'Validation failed.', { TimeZoneId: ['Choose one of the listed time zones.'] })
+      project.timeZoneId = body.timeZoneId
+      return json(project)
+    }
     if (sub === 'nepa' && method === 'PUT') {
       if (!can('update')) return forbidden()
       project.nepaDecisionType = body.decisionType; project.nepaDecisionDate = body.decisionDate
@@ -223,5 +254,5 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
     return problem(404, 'not_found', 'Unknown route.')
   }
 
-  return { fetch: fetchImpl as typeof fetch, calls, projects: state.projects, get settings() { return state.settings } }
+  return { fetch: fetchImpl as typeof fetch, calls, projects: state.projects, get settings() { return state.settings }, get agencyZone() { return state.agencyZone } }
 }

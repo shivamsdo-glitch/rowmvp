@@ -24,6 +24,7 @@ public interface IRowDbContext
     DbSet<ProjectBudget> ProjectBudgets { get; }
     DbSet<RowAuthorization> RowAuthorizations { get; }
     DbSet<ProjectNumberSettings> ProjectNumberSettings { get; }
+    DbSet<AgencySettings> AgencySettings { get; }
     DbSet<ProjectNumberCounter> ProjectNumberCounters { get; }
     DbSet<ParcelStatus> ParcelStatuses { get; }
     DbSet<ParcelGroup> ParcelGroups { get; }

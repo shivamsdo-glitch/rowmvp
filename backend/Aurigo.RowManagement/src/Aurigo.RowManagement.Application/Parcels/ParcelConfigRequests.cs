@@ -416,14 +416,15 @@ public sealed class ListRemindersQueryHandler : IRequestHandler<ListRemindersQue
 
         // Narrow to the parcels that can possibly need attention in the database, rule by rule: the trigger milestone is done
         // early enough that the target is overdue or due within the window, and the target is not done yet. Everything else
-        // (most parcels) is never loaded, so no parcel is skipped however many there are.
-        var today = _parcels.Today;
+        // (most parcels) is never loaded, so no parcel is skipped however many there are. The cut-off uses the latest day it
+        // can be anywhere, so a parcel in an early time zone is never missed; each parcel is then judged on its own calendar.
+        var generousToday = AgencyTime.LatestTodayAnywhere(_parcels.Agency.UtcNow);
         var candidateIds = new HashSet<Guid>();
         foreach (var rule in rules)
         {
             var trigger = rule.TriggerMilestone.ToLowerInvariant();
             var target = rule.TargetMilestone.ToLowerInvariant();
-            var startedBy = today.AddDays(request.WithinDays - rule.Days);
+            var startedBy = generousToday.AddDays(request.WithinDays - rule.Days);
             candidateIds.UnionWith(await _db.Parcels
                 .Where(p => p.State == ParcelState.Active
                     && p.Milestones.Any(m => m.Name.ToLower() == trigger && m.CompletedOn != null && m.CompletedOn <= startedBy)
@@ -436,13 +437,16 @@ public sealed class ListRemindersQueryHandler : IRequestHandler<ListRemindersQue
         var ids = candidateIds.ToList();
         var parcels = await _db.Parcels.Include(p => p.Milestones).Where(p => ids.Contains(p.Id)).ToListAsync(ct);
         var projectIds = parcels.Select(p => p.ProjectId).Distinct().ToList();
-        var projects = await _db.Projects.Where(p => projectIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, p => p.Number, ct);
+        var projects = await _db.Projects.Where(p => projectIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct);
+        var agencyZone = await _parcels.Agency.AgencyZoneAsync(ct);
 
         var all = parcels.SelectMany(p =>
         {
+            projects.TryGetValue(p.ProjectId, out var project);
+            var today = AgencyTime.TodayIn(AgencyTime.Resolve(project?.TimeZoneId, agencyZone), _parcels.Agency.UtcNow);
             var milestones = p.Milestones.Select(m => new MilestoneInfo(m.Name, m.DueOn, m.CompletedOn)).ToList();
             return StatutoryDeadlines.NeedingAttention(StatutoryDeadlines.Compute(rules, milestones, today, request.WithinDays))
-                .Select(d => new ReminderDto(p.Id, p.Number, p.ProjectId, projects.GetValueOrDefault(p.ProjectId, "?"), d.Rule.Name, d.Rule.TargetMilestone,
+                .Select(d => new ReminderDto(p.Id, p.Number, p.ProjectId, project?.Number ?? "?", d.Rule.Name, d.Rule.TargetMilestone,
                     d.DueOn!.Value, d.Status.ToString(), d.DaysRemaining!.Value));
         });
 

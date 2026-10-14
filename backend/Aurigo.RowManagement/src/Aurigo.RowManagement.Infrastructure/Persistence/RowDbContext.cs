@@ -37,6 +37,7 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<ProjectBudget> ProjectBudgets => Set<ProjectBudget>();
     public DbSet<RowAuthorization> RowAuthorizations => Set<RowAuthorization>();
     public DbSet<ProjectNumberSettings> ProjectNumberSettings => Set<ProjectNumberSettings>();
+    public DbSet<AgencySettings> AgencySettings => Set<AgencySettings>();
     public DbSet<ProjectNumberCounter> ProjectNumberCounters => Set<ProjectNumberCounter>();
     public DbSet<ParcelStatus> ParcelStatuses => Set<ParcelStatus>();
     public DbSet<ParcelGroup> ParcelGroups => Set<ParcelGroup>();

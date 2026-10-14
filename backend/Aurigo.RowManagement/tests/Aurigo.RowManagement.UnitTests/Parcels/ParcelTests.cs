@@ -1,6 +1,9 @@
+using Aurigo.RowManagement.Application.Agency;
 using Aurigo.RowManagement.Application.Auth;
+using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.Common;
 using Aurigo.RowManagement.Application.Parcels;
+using Aurigo.RowManagement.Application.Projects;
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
 using Aurigo.RowManagement.Domain.Enums;
@@ -31,13 +34,15 @@ public class ParcelTests
         public RowDbContext Db { get; }
         private readonly PagePermissionService _perms;
         private readonly ParcelService _parcels;
+        private readonly TimeProvider _time;
 
-        public Ctx(string store, Guid tenant, Guid user, string role)
+        public Ctx(string store, Guid tenant, Guid user, string role, DateTimeOffset? at = null)
         {
+            _time = new FixedClock(at ?? Now);
             Db = TestDb.Create(store, tenant, user);
             var who = new FakeUser(user, role);
             _perms = new PagePermissionService(Db, who);
-            _parcels = new ParcelService(Db, who, new FixedClock(Now));
+            _parcels = new ParcelService(Db, who, _time);
         }
 
         public CreateParcelCommandHandler Create => new(Db, _perms, _parcels);
@@ -72,6 +77,9 @@ public class ParcelTests
         public GetStepGateSettingsQueryHandler StepGateSettings => new(Db, _perms);
         public SetStepGateSettingsCommandHandler SetStepGateSettings => new(Db, _perms);
         public ListRemindersQueryHandler Reminders => new(Db, _perms, _parcels);
+        public GetAgencyTimeZoneQueryHandler AgencyZone => new(new AgencyClock(Db, _time), _perms);
+        public SetAgencyTimeZoneCommandHandler SetAgencyZone => new(Db, new AgencyClock(Db, _time), _perms);
+        public SetProjectTimeZoneCommandHandler SetProjectZone => new(Db, _perms);
         public ValueTask DisposeAsync() => Db.DisposeAsync();
     }
 
@@ -901,6 +909,162 @@ public class ParcelTests
         reminders.Select(r => (r.ParcelNumber, r.Status)).Should().Equal(("LATE", "Overdue"), ("JUST-LATE", "Overdue"), ("EDGE-IN", "DueSoon"));
         (await admin.Reminders.Handle(new ListRemindersQuery(8), default)).Select(r => r.ParcelNumber).Should().Equal("LATE", "JUST-LATE", "EDGE-IN", "EDGE-OUT");
         (await admin.Reminders.Handle(new ListRemindersQuery(0), default)).Select(r => r.ParcelNumber).Should().Equal("LATE", "JUST-LATE");
+    }
+
+    // ── time zones: days are counted where the project is (ROW-073) ──
+
+    /// <summary>10:30 pm on 15 March in New York (EDT), but already 16 March in UTC and Guam.</summary>
+    private static readonly DateTimeOffset LateEvening = new(2026, 3, 16, 2, 30, 0, TimeSpan.Zero);
+
+    [Fact]
+    public async Task ROW_073_The_agency_zone_defaults_to_UTC_and_only_an_administrator_can_change_it_and_never_for_another_agency()
+    {
+        var store = await Provision();
+        await using var pm = await Pm(store);
+        await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin);
+        await using var other = new Ctx(store, TestDb.TenantB, TestDb.UserB, RoleNames.Admin);
+
+        var first = await pm.AgencyZone.Handle(new GetAgencyTimeZoneQuery(), default);
+        first.TimeZoneId.Should().Be("UTC");
+        first.Today.Should().Be(Today);
+        first.Options.Select(o => o.Id).Should().Equal(AgencyTime.Supported.Select(z => z.Id));
+
+        var refused = () => pm.SetAgencyZone.Handle(new SetAgencyTimeZoneCommand("America/Chicago"), default);
+        await refused.Should().ThrowAsync<ForbiddenException>();
+
+        var set = await admin.SetAgencyZone.Handle(new SetAgencyTimeZoneCommand("Pacific/Guam"), default);
+        set.TimeZoneId.Should().Be("Pacific/Guam");
+        set.Today.Should().Be(Today, "noon UTC is 10 pm on the same day in Guam (UTC+10)");
+        (await pm.AgencyZone.Handle(new GetAgencyTimeZoneQuery(), default)).TimeZoneId.Should().Be("Pacific/Guam");
+        (await admin.SetAgencyZone.Handle(new SetAgencyTimeZoneCommand("America/Denver"), default)).TimeZoneId.Should().Be("America/Denver", "changing it again edits the one row");
+        admin.Db.AgencySettings.Count().Should().Be(1);
+
+        (await other.AgencyZone.Handle(new GetAgencyTimeZoneQuery(), default)).TimeZoneId.Should().Be("UTC", "another agency keeps its own setting");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Mars/Olympus_Mons")]
+    [InlineData("america/new_york")]
+    [InlineData("Europe/London")]
+    public void ROW_073_The_agency_zone_must_be_one_of_the_listed_zones(string id)
+    {
+        new SetAgencyTimeZoneCommandValidator().Validate(new SetAgencyTimeZoneCommand(id)).IsValid.Should().BeFalse();
+        new SetProjectTimeZoneCommandValidator().Validate(new SetProjectTimeZoneCommand(Guid.NewGuid(), id)).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ROW_073_A_project_can_have_its_own_zone_or_follow_the_agency_and_only_those_who_may_update_projects_can_set_it()
+    {
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var pm = await Pm(store);
+        await using var finance = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Finance);
+
+        (await pm.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, "America/Phoenix"), default)).TimeZoneId.Should().Be("America/Phoenix");
+        (await pm.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, null), default)).TimeZoneId.Should().BeNull("a project with no zone follows the agency");
+
+        await ((Func<Task>)(() => finance.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, "America/Phoenix"), default))).Should().ThrowAsync<ForbiddenException>();
+        await ((Func<Task>)(() => pm.SetProjectZone.Handle(new SetProjectTimeZoneCommand(Guid.NewGuid(), "America/Phoenix"), default))).Should().ThrowAsync<NotFoundException>();
+        new SetProjectTimeZoneCommandValidator().Validate(new SetProjectTimeZoneCommand(project, null)).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ROW_073_A_deadline_due_today_in_New_York_is_one_day_overdue_in_UTC_and_the_zone_follows_project_then_agency()
+    {
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin, LateEvening);
+        var parcel = await admin.Create.Handle(NewParcel(project), default);
+        parcel.Milestones.Single(m => m.Name == MilestoneNames.ParcelSetUp).CompletedOn.Should().Be(new DateOnly(2026, 3, 16), "UTC is the default and it is the 16th there");
+        // 15 Dec 2025 plus the 90 days of the offer rule is 15 March 2026.
+        Deadline(await admin.Notice.Handle(new RecordNoticeToOwnerCommand(parcel.Id, new DateOnly(2025, 12, 15), NoticeMethod.Email), default))
+            .Should().Match<DeadlineDto>(d => d.DueOn == new DateOnly(2026, 3, 15) && d.Status == "Overdue" && d.DaysRemaining == -1);
+
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, "America/New_York"), default);
+        var inNewYork = await admin.Get.Handle(new GetParcelQuery(parcel.Id), default);
+        inNewYork.TimeZoneId.Should().Be("America/New_York");
+        Deadline(inNewYork).Should().Match<DeadlineDto>(d => d.Status == "DueSoon" && d.DaysRemaining == 0, "it is still the 15th in New York");
+
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, "Pacific/Guam"), default);
+        Deadline(await admin.Get.Handle(new GetParcelQuery(parcel.Id), default)).Status.Should().Be("Overdue", "it is the 16th in Guam");
+
+        // No zone on the project: the agency's applies.
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, null), default);
+        await admin.SetAgencyZone.Handle(new SetAgencyTimeZoneCommand("America/Chicago"), default);
+        var followed = await admin.Get.Handle(new GetParcelQuery(parcel.Id), default);
+        followed.TimeZoneId.Should().Be("America/Chicago");
+        Deadline(followed).Status.Should().Be("DueSoon");
+
+        // A project's own zone still beats the agency's.
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(project, "UTC"), default);
+        (await admin.Get.Handle(new GetParcelQuery(parcel.Id), default)).TimeZoneId.Should().Be("UTC");
+
+        static DeadlineDto Deadline(ParcelDto p) => p.Deadlines.Single(d => d.TriggerMilestone == MilestoneNames.NoticeToOwner);
+    }
+
+    [Fact]
+    public async Task ROW_073_A_new_parcels_set_up_date_and_a_milestones_no_future_rule_use_the_projects_calendar()
+    {
+        var store = await Provision();
+        var utcProject = await AddProject(store, TestDb.TenantA, "P-UTC");
+        var nyProject = await AddProject(store, TestDb.TenantA, "P-NY");
+        await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin, LateEvening);
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(nyProject, "America/New_York"), default);
+        var inUtc = await admin.Create.Handle(NewParcel(utcProject), default);
+        var inNy = await admin.Create.Handle(NewParcel(nyProject), default);
+
+        inUtc.Milestones.Single(m => m.Name == MilestoneNames.ParcelSetUp).CompletedOn.Should().Be(new DateOnly(2026, 3, 16));
+        inNy.Milestones.Single(m => m.Name == MilestoneNames.ParcelSetUp).CompletedOn.Should().Be(new DateOnly(2026, 3, 15));
+
+        // "Completed on the 16th" has happened in UTC but not yet in New York.
+        (await admin.AddMilestone.Handle(new AddParcelMilestoneCommand(inUtc.Id, "Stakes set", null, new DateOnly(2026, 3, 16), null), default))
+            .Milestones.Single(m => m.Name == "Stakes set").CompletedOn.Should().Be(new DateOnly(2026, 3, 16));
+        var tooEarly = () => admin.AddMilestone.Handle(new AddParcelMilestoneCommand(inNy.Id, "Stakes set", null, new DateOnly(2026, 3, 16), null), default);
+        (await tooEarly.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "CompletedOn");
+        (await admin.AddMilestone.Handle(new AddParcelMilestoneCommand(inNy.Id, "Stakes set", null, new DateOnly(2026, 3, 15), null), default))
+            .Milestones.Should().Contain(m => m.Name == "Stakes set");
+    }
+
+    [Fact]
+    public async Task ROW_074_Reminders_judge_each_parcel_on_its_own_projects_calendar()
+    {
+        var store = await Provision();
+        var utcProject = await AddProject(store, TestDb.TenantA, "P-UTC");
+        var nyProject = await AddProject(store, TestDb.TenantA, "P-NY");
+        await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin, LateEvening);
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(nyProject, "America/New_York"), default);
+        foreach (var project in new[] { utcProject, nyProject })
+        {
+            var parcel = await admin.Create.Handle(NewParcel(project, "001"), default);
+            await admin.Notice.Handle(new RecordNoticeToOwnerCommand(parcel.Id, new DateOnly(2025, 12, 15), NoticeMethod.Email), default); // due 15 March
+        }
+
+        var reminders = await admin.Reminders.Handle(new ListRemindersQuery(), default);
+
+        reminders.Select(r => (r.ProjectNumber, r.Status, r.DaysRemaining)).Should().Equal(("P-UTC", "Overdue", -1), ("P-NY", "DueSoon", 0));
+    }
+
+    [Fact]
+    public async Task ROW_074_Reminders_include_a_parcel_in_a_zone_that_is_already_a_day_ahead_of_UTC()
+    {
+        // 8 pm UTC on the 15th is already 6 am on the 16th in Guam. A parcel due on the 16th is due today there, and a cut-off made
+        // from the UTC date would have left it out.
+        var store = await Provision();
+        var guamProject = await AddProject(store, TestDb.TenantA, "P-GUAM");
+        var utcProject = await AddProject(store, TestDb.TenantA, "P-UTC");
+        await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin, new DateTimeOffset(2026, 3, 15, 20, 0, 0, TimeSpan.Zero));
+        await admin.SetProjectZone.Handle(new SetProjectTimeZoneCommand(guamProject, "Pacific/Guam"), default);
+        foreach (var project in new[] { guamProject, utcProject })
+        {
+            var parcel = await admin.Create.Handle(NewParcel(project, "001"), default);
+            await admin.Notice.Handle(new RecordNoticeToOwnerCommand(parcel.Id, new DateOnly(2025, 12, 16), NoticeMethod.Email), default); // due 16 March
+        }
+
+        var today = await admin.Reminders.Handle(new ListRemindersQuery(0), default);
+
+        today.Select(r => (r.ProjectNumber, r.Status, r.DaysRemaining)).Should().Equal(("P-GUAM", "DueSoon", 0));
+        (await admin.Reminders.Handle(new ListRemindersQuery(1), default)).Select(r => r.ProjectNumber).Should().BeEquivalentTo("P-GUAM", "P-UTC");
     }
 
     [Fact]

@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { useAuth } from '@/auth/auth-context'
 import { CustomFieldsCard, DeadlineRulesCard, ParcelStatusesCard, StepOverrideCard, WorkflowsCard } from '@/features/parcels/ParcelRulesCards'
 import { NumberSettingsCard } from '@/features/projects/NumberSettingsCard'
+import { TimeZoneCard } from '@/features/projects/TimeZoneCard'
 
 export const Route = createFileRoute('/_app/administration')({
   beforeLoad: ({ context, location }) => requirePageAccess(context.auth, location.pathname, 'administration'),
@@ -17,6 +18,7 @@ function AdministrationPage() {
     <>
       <PageHeader title="Administration" subtitle="Configure how the agency works. Roles and page permissions will be managed here too." />
       <NumberSettingsCard />
+      <TimeZoneCard />
       {parcelRules && (
         <>
           <ParcelStatusesCard />

@@ -22,6 +22,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         b.Property(x => x.NepaDecisionType).HasConversion<string>().HasMaxLength(40);
         b.Property(x => x.ExceptionType).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.ExceptionReason).HasMaxLength(1000);
+        b.Property(x => x.TimeZoneId).HasMaxLength(64);
         // The project number is unique within a tenant (ROW-001).
         b.HasIndex(x => new { x.TenantId, x.Number }).IsUnique();
         b.HasIndex(x => new { x.TenantId, x.Region, x.District });
@@ -81,6 +82,17 @@ public class ProjectNumberSettingsConfiguration : IEntityTypeConfiguration<Proje
         b.ToTable("project_number_settings");
         b.HasKey(x => x.Id);
         b.Property(x => x.Pattern).IsRequired().HasMaxLength(100);
+        b.HasIndex(x => x.TenantId).IsUnique(); // one row per tenant
+    }
+}
+
+public class AgencySettingsConfiguration : IEntityTypeConfiguration<AgencySettings>
+{
+    public void Configure(EntityTypeBuilder<AgencySettings> b)
+    {
+        b.ToTable("agency_settings");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.TimeZoneId).IsRequired().HasMaxLength(64);
         b.HasIndex(x => x.TenantId).IsUnique(); // one row per tenant
     }
 }

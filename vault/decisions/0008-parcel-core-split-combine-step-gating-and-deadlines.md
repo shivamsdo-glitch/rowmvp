@@ -45,10 +45,19 @@ Per-agency definitions (key, label, type Text/Number/Date/Boolean/List, options,
 - Handlers add new child rows through their `DbSet`, never only through a parent's navigation list (a child with a preassigned id reached via a loaded parent is treated as already existing).
 - Enum columns hold the enum's name, so the database orders them alphabetically; handlers that need declaration order sort in memory.
 
+## Time zones (U — an agency can span more than one)
+- A deadline, "due today", "overdue" and "completed on" are **calendar days**, and the same instant is a different day in different places. Counting them in UTC made a US agency's deadlines flip up to a day early in the evening.
+- **The agency chooses a default time zone** (Configuration > Time zone; `agency_settings`, one row per agency, "UTC" until chosen), and **a project can have its own** (`projects.time_zone_id`, null = follow the agency), because one state can span several zones. A parcel counts days in its project's zone, else the agency's, else UTC. `AgencyTime.Resolve` decides; `AgencyTime.TodayIn(zone, utcNow)` is the pure day calculation; `AgencyClock` reads the settings.
+- Zones are IANA ids from a fixed list (UTC and the US zones including Arizona, Hawaii, Alaska, Puerto Rico, Guam and American Samoa). The host needs its time zone database (a test fails if a listed zone does not resolve; Alpine-style images need `tzdata`).
+- Applies to: the deadline status and days remaining, milestone overdue flags, the "Parcel set up" date given to a new parcel, the no-future-completion rule, and reminders. The reminder query picks candidates with the latest day it can be anywhere (UTC+14) and then judges each parcel on its own calendar, so a parcel in a zone ahead of UTC is never missed.
+- Timestamps (who/when audit, split/combine times) stay instants in UTC.
+- Changing a zone changes how existing parcels' days are counted from then on; nothing stored is rewritten (milestone dates are plain dates).
+- The project's zone is set on its Overview tab (a separate action like the NEPA decision), not on the create form; a new project follows the agency until changed.
+
 ## Review follow-up (slice 2)
 Fixed after review: reminders no longer stop at the first 5,000 parcels; the notice date has one source of truth; milestone dates are validated; the board says when it shows only the first 200 parcels.
 
 ## Open questions (flag, do not guess)
 - The statutory periods above, and which timelines apply to which acquisition type (vault "Yours to verify").
 - Whether non-standard acquisition paths need different step lists than the placeholders (Phase 4).
-- Deadlines count days from the UTC date. An agency in a US time zone sees a deadline flip up to a day early in the evening; this needs a per-agency time zone and a decision on how statutory days are counted.
+- **How statutory days are counted** (user decision still needed, vault "Yours to verify"): whether the day of the trigger counts as day 0 or day 1, whether a deadline on a weekend or holiday moves to the next business day, and calendar versus business days. Today every period is whole calendar days from the trigger date.

@@ -27,6 +27,7 @@
 | AT-PM-27 | Open the Dashboard to see pipeline, budget and overdue items | 5 | Numbers reconcile with the parcel lists; clicking a figure opens the matching filtered list |
 
 ## Changelog
+- Phase 1 slice 2 follow-up: a project can have its own time zone (set on its Overview tab; covered by `AT-AD-26`). Deadlines and "today" are counted in it.
 - Phase 1 slice 2 review: reminders cover every parcel (database-side filter); notice date locked to the notice; milestone dates validated; the board says when it is partial.
 - Phase 1 slice 2: AT-PM-21, 23, 24, 25 automated (parcel core). AT-PM-22 (owners) moves to slice 3.
 - Phase 1 slice 1: AT-PM-20 automated (project core). Found by the browser run: the server's empty-name message was a validator default ('Name' must not be empty); now "Name is required.".

@@ -19,6 +19,7 @@ public sealed record AuthorizationBody(
     AuthorizationType Type, decimal AuthorizedAmount, decimal? FederalSharePercent,
     DateOnly AuthorizedOn, string? ReferenceNumber, bool ProgrammingConfirmed, string? Notes);
 public sealed record NumberSettingsBody(string Pattern, int FiscalYearStartMonth);
+public sealed record TimeZoneBody(string? TimeZoneId);
 
 /// <summary>ROW projects: record, versioned estimates, annual budgets, authorizations and the acquisition gate (ROW-001..004, 012, 013, 076, 238).</summary>
 [ApiController]
@@ -75,6 +76,13 @@ public sealed class ProjectsController : ControllerBase
     [ProducesResponseType(typeof(ProjectNumberSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetNumberSettings([FromBody] NumberSettingsBody b, CancellationToken ct) =>
         Ok(await _mediator.Send(new SetProjectNumberSettingsCommand(b.Pattern, b.FiscalYearStartMonth), ct));
+
+    // ── time zone (a project can override the agency's) ──
+
+    [HttpPut("{id:guid}/time-zone")]
+    [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetTimeZone(Guid id, [FromBody] TimeZoneBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SetProjectTimeZoneCommand(id, b.TimeZoneId), ct));
 
     // ── NEPA, exception, gate ──
 

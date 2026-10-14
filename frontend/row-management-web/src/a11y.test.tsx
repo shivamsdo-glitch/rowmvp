@@ -220,6 +220,20 @@ describe('accessibility of the parcel screens', () => {
     expect(await violations(), 'with editors open').toEqual([])
   })
 
+  it('the time zone card and the project time zone section have no violations', async () => {
+    open('/administration', 'Admin')
+    await within(await screen.findByRole('region', { name: 'Time zone' })).findByRole('combobox', { name: 'Agency time zone' })
+    await settle()
+    expect(await violations(), 'configuration').toEqual([])
+  })
+
+  it('the project time zone section has no violations', async () => {
+    open('/projects/p1')
+    await within(await screen.findByRole('region', { name: 'Project time zone' })).findByRole('form', { name: 'Set the project time zone' })
+    await settle()
+    expect(await violations()).toEqual([])
+  })
+
   it('the dashboard next-actions card has no violations', async () => {
     open('/')
     await screen.findByRole('region', { name: 'Next actions' })

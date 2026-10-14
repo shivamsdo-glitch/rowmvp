@@ -253,6 +253,140 @@ public class ParcelApiTests : IClassFixture<PgApi>
         saved.Milestones.Should().NotContain(m => m.Name == "Future done");
     }
 
+    // ── time zones (ROW-073): days are counted where the project is ──
+
+    private static readonly string[] AllRoles = { "ProjectManager", "TitleExaminer", "Appraiser", "Negotiator", "Finance", "Admin" };
+
+    private static DateOnly TodayIn(string zone) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(zone)).DateTime);
+
+    private static async Task<AgencyTimeZoneDtoShape> AgencyZone(TestUser user) =>
+        await Ok<AgencyTimeZoneDtoShape>(await user.Http.GetAsync("/api/v1/agency/time-zone"));
+
+    private sealed record AgencyTimeZoneDtoShape(string TimeZoneId, List<TimeZoneOptionShape> Options, DateOnly Today);
+    private sealed record TimeZoneOptionShape(string Id, string Label);
+
+    [PgFact]
+    public async Task ROW_073_The_agency_time_zone_is_readable_by_every_role_and_changeable_only_by_the_administrator()
+    {
+        var admin = await _api.As("Admin");
+        var original = (await AgencyZone(admin)).TimeZoneId;
+        try
+        {
+            foreach (var role in AllRoles)
+            {
+                var user = await _api.As(role);
+                var read = await AgencyZone(user);
+                read.Options.Should().HaveCountGreaterThan(10);
+                read.Options.Should().Contain(o => o.Id == "America/New_York" && o.Label.Contains("Eastern"));
+                var put = await user.Http.PutAsJsonAsync("/api/v1/agency/time-zone", new { timeZoneId = "America/Chicago" }, Json);
+                put.StatusCode.Should().Be(role == "Admin" ? HttpStatusCode.OK : HttpStatusCode.Forbidden, $"{role} sets the agency zone");
+            }
+            (await AgencyZone(admin)).TimeZoneId.Should().Be("America/Chicago");
+
+            foreach (var bad in new object[] { new { timeZoneId = "Mars/Olympus_Mons" }, new { timeZoneId = "" }, new { timeZoneId = "europe/london" }, new { } })
+                (await admin.Http.PutAsJsonAsync("/api/v1/agency/time-zone", bad, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, JsonSerializer.Serialize(bad));
+            (await AgencyZone(admin)).TimeZoneId.Should().Be("America/Chicago", "refused changes leave it as it was");
+
+            (await PgTestDatabase.ScalarAsync(_api.Database, "select count(*) from agency_settings where tenant_id = @t", ("t", admin.TenantId))).Should().Be(1, "one row per agency, edited in place");
+        }
+        finally
+        {
+            await admin.Http.PutAsJsonAsync("/api/v1/agency/time-zone", new { timeZoneId = original }, Json);
+        }
+    }
+
+    [PgFact]
+    public async Task ROW_073_A_projects_own_zone_beats_the_agencys_and_the_parcel_says_which_zone_it_counts_days_in()
+    {
+        var admin = await _api.As("Admin");
+        var pm = await _api.As("ProjectManager");
+        var original = (await AgencyZone(admin)).TimeZoneId;
+        try
+        {
+            (await admin.Http.PutAsJsonAsync("/api/v1/agency/time-zone", new { timeZoneId = "America/Denver" }, Json)).EnsureSuccessStatusCode();
+            var following = await NewProject(pm);
+            var own = await NewProject(pm);
+            following.TimeZoneId.Should().BeNull("a new project follows the agency");
+
+            var set = await Ok<ProjectDto>(await pm.Http.PutAsJsonAsync($"/api/v1/projects/{own.Id}/time-zone", new { timeZoneId = "Pacific/Guam" }, Json));
+            set.TimeZoneId.Should().Be("Pacific/Guam");
+            (await NewParcel(pm, following.Id)).TimeZoneId.Should().Be("America/Denver");
+            var dayBefore = TodayIn("Pacific/Guam");
+            var guamParcel = await NewParcel(pm, own.Id);
+            var dayAfter = TodayIn("Pacific/Guam");
+            guamParcel.TimeZoneId.Should().Be("Pacific/Guam");
+
+            // The set-up date is the day in the project's own zone.
+            new[] { dayBefore, dayAfter }.Should().Contain(guamParcel.Milestones.Single(m => m.Name == "Parcel set up").CompletedOn!.Value);
+
+            var cleared = await Ok<ProjectDto>(await pm.Http.PutAsJsonAsync($"/api/v1/projects/{own.Id}/time-zone", new { timeZoneId = (string?)null }, Json));
+            cleared.TimeZoneId.Should().BeNull();
+            (await GetParcel(pm, guamParcel.Id)).TimeZoneId.Should().Be("America/Denver", "with no zone of its own the project follows the agency again");
+
+            (await pm.Http.PutAsJsonAsync($"/api/v1/projects/{own.Id}/time-zone", new { timeZoneId = "Nowhere/Land" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await pm.Http.PutAsJsonAsync($"/api/v1/projects/{Guid.NewGuid()}/time-zone", new { timeZoneId = "UTC" }, Json)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+        finally
+        {
+            await admin.Http.PutAsJsonAsync("/api/v1/agency/time-zone", new { timeZoneId = original }, Json);
+        }
+    }
+
+    [PgFact]
+    public async Task ROW_073_Only_roles_that_may_update_projects_can_set_a_projects_zone()
+    {
+        var pm = await _api.As("ProjectManager");
+        var project = await NewProject(pm);
+        foreach (var role in AllRoles)
+        {
+            var user = await _api.As(role);
+            var res = await user.Http.PutAsJsonAsync($"/api/v1/projects/{project.Id}/time-zone", new { timeZoneId = "America/Phoenix" }, Json);
+            res.StatusCode.Should().Be(role is "ProjectManager" or "Admin" ? HttpStatusCode.OK : HttpStatusCode.Forbidden, $"{role} sets a project zone");
+        }
+    }
+
+    [PgFact]
+    public async Task ROW_074_Reminders_count_days_on_each_projects_calendar_in_the_real_database()
+    {
+        var admin = await _api.As("Admin");
+        var pm = await _api.As("ProjectManager");
+        var original = (await AgencyZone(admin)).TimeZoneId;
+        try
+        {
+            (await admin.Http.PutAsJsonAsync("/api/v1/agency/time-zone", new { timeZoneId = "UTC" }, Json)).EnsureSuccessStatusCode();
+            var zones = new[] { "UTC", "America/New_York", "Pacific/Guam", "Pacific/Pago_Pago" };
+            var made = new List<(string Zone, ProjectDto Project, DateOnly Due)>();
+            var utcToday = TodayIn("UTC");
+            var rules = await Ok<List<DeadlineRuleDto>>(await pm.Http.GetAsync("/api/v1/parcel-rules/deadline-rules"));
+            var offerRule = rules.Single(r => r.Name.StartsWith("Offer within") && r.IsActive);
+            foreach (var zone in zones)
+            {
+                var project = await NewProject(pm);
+                (await pm.Http.PutAsJsonAsync($"/api/v1/projects/{project.Id}/time-zone", new { timeZoneId = zone }, Json)).EnsureSuccessStatusCode();
+                var parcel = await NewParcel(pm, project.Id, "001");
+                var due = utcToday.AddDays(2); // a couple of days away from UTC's today, so every zone sees it due soon
+                (await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notice", new { issuedOn = due.AddDays(-offerRule.Days), method = "Email" }, Json)).EnsureSuccessStatusCode();
+                made.Add((zone, project, due));
+            }
+
+            var before = zones.ToDictionary(z => z, TodayIn);
+            var reminders = await Ok<List<ReminderDto>>(await pm.Http.GetAsync("/api/v1/reminders?withinDays=7"));
+            var after = zones.ToDictionary(z => z, TodayIn);
+
+            foreach (var (zone, project, due) in made)
+            {
+                var r = reminders.Single(x => x.ProjectId == project.Id && x.RuleName == offerRule.Name);
+                r.Status.Should().Be("DueSoon");
+                new[] { before[zone], after[zone] }.Select(day => due.DayNumber - day.DayNumber).Should().Contain(r.DaysRemaining, $"days left are counted on the {zone} calendar");
+            }
+        }
+        finally
+        {
+            await admin.Http.PutAsJsonAsync("/api/v1/agency/time-zone", new { timeZoneId = original }, Json);
+        }
+    }
+
     [PgFact]
     public async Task AT_PM_24_The_step_gate_blocks_out_of_order_moves_and_an_override_needs_a_reason_and_is_audited()
     {

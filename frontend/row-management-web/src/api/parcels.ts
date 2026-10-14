@@ -160,6 +160,8 @@ export interface Parcel {
   workflow: WorkflowState
   stepHistory: ParcelStepEvent[]
   updatedAt: string
+  /** The IANA time zone this parcel's dates are counted in: its project's, else the agency's. */
+  timeZoneId: string
 }
 
 export interface ParcelInput {

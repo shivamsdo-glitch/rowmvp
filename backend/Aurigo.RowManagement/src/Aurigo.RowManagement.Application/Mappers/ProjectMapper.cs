@@ -27,7 +27,7 @@ public static class ProjectMapper
             p.Id, p.Number, p.Name, p.Description, p.Region, p.District, p.OversightType, p.FundingSource,
             p.FundingAmount, p.DesignEstimate, current, p.LettingDate, p.PlanTurnInDate, p.ConstructionStartDate,
             p.ConstructionEndDate, p.NepaDecisionType, p.NepaDecisionDate, p.ExceptionType, p.ExceptionApprovedOn,
-            p.ExceptionReason, p.EvaluateGate().ToDto(), p.UpdatedAt);
+            p.ExceptionReason, p.EvaluateGate().ToDto(), p.UpdatedAt, p.TimeZoneId);
     }
 
     public static CostEstimateDto ToDto(this ProjectCostEstimate e) => new(

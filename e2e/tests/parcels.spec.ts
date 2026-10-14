@@ -607,6 +607,63 @@ test.describe('Administrator · parcel rules', () => {
     }
     expect((await getParcel(request, negotiator, parcel.id)).workflow.canOverride).toBe(false)
   })
+
+  test('AT-AD-26 sets the agency time zone; a project in another place can have its own, and parcels say which calendar they count in', async ({ page, request }) => {
+    const admin = await adminHeaders(request)
+    const original = (await (await request.get('/api/v1/agency/time-zone', { headers: admin })).json()).timeZoneId as string
+    const project = await makeProject(request, admin)
+    const parcel = await makeParcel(request, admin, project, { address: '9 Zone Rd' })
+
+    try {
+      // The administrator chooses the agency's time zone in Configuration.
+      await signInViaUi(page, 'Admin')
+      await sidebar(page).getByRole('link', { name: 'Configuration' }).click()
+      const card = page.getByRole('region', { name: 'Time zone' })
+      await card.getByRole('combobox', { name: 'Agency time zone' }).selectOption({ label: 'Central Time (Chicago)' })
+      await card.getByRole('button', { name: 'Save time zone' }).click()
+      await expect(card.getByText('Saved.')).toBeVisible()
+      await expect(card).toContainText("Today's date there:")
+      const agency = await (await request.get('/api/v1/agency/time-zone', { headers: admin })).json()
+      expect(agency.timeZoneId).toBe('America/Chicago')
+      expect(agency.options.length).toBeGreaterThan(10)
+
+      // A Project Manager sees the project follow it, and the parcel says so.
+      await signOutViaUi(page)
+      await signInViaUi(page, 'ProjectManager')
+      await page.goto(`/projects/${project.id}`)
+      const section = page.getByRole('region', { name: 'Project time zone' })
+      await expect(section).toContainText('Central Time (Chicago)')
+      await expect(section).toContainText('follows the agency')
+      await openParcel(page, parcel.id, 'Parcel 001')
+      await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toContainText(/Central (Daylight|Standard) Time/)
+
+      // The project is somewhere else: its own zone wins over the agency's.
+      await page.goto(`/projects/${project.id}`)
+      const form = page.getByRole('form', { name: 'Set the project time zone' })
+      await expect(form.getByRole('option', { name: 'Follow the agency (Central Time (Chicago))' })).toBeAttached()
+      await form.getByLabel('Project time zone').selectOption({ label: 'Chamorro Time (Guam, Northern Mariana Islands)' })
+      await form.getByRole('button', { name: 'Save time zone' }).click()
+      await expect(page.getByText('Time zone saved.')).toBeVisible()
+      await expect(section).toContainText('set for this project')
+      await expect(section).toContainText('Chamorro Time (Guam, Northern Mariana Islands)')
+      await openParcel(page, parcel.id, 'Parcel 001')
+      await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toContainText('Chamorro Standard Time')
+      await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+      await expect(page.getByText('Days are counted in Chamorro Standard Time.')).toBeVisible()
+      expect((await getParcel(request, admin, parcel.id)).timeZoneId).toBe('Pacific/Guam')
+
+      // Back to following the agency.
+      await page.goto(`/projects/${project.id}`)
+      await form.getByLabel('Project time zone').selectOption({ label: 'Follow the agency (Central Time (Chicago))' })
+      await form.getByRole('button', { name: 'Save time zone' }).click()
+      await expect(section).toContainText('follows the agency')
+      expect((await getParcel(request, admin, parcel.id)).timeZoneId).toBe('America/Chicago')
+      const saved = await (await request.get(`/api/v1/projects/${project.id}`, { headers: admin })).json()
+      expect(saved.timeZoneId).toBeNull()
+    } finally {
+      await request.put('/api/v1/agency/time-zone', { headers: admin, data: { timeZoneId: original } })
+    }
+  })
 })
 
 // ───────────────────────────────── Everyone ─────────────────────────────────
@@ -682,6 +739,9 @@ for (const role of ROLES) {
       await page.getByRole('tab', { name: 'Parcels' }).click()
       await expect(page.getByRole('region', { name: 'Parcel roll-up' })).toBeVisible()
       await expect(page.getByRole('form', { name: 'Add a group' }), `${role} add group`).toHaveCount(canCreate(role) ? 1 : 0)
+      await page.getByRole('tab', { name: 'Overview' }).click()
+      await expect(page.getByRole('region', { name: 'Project time zone' })).toBeVisible()
+      await expect(page.getByRole('form', { name: 'Set the project time zone' }), `${role} project time zone`).toHaveCount(canCreate(role) ? 1 : 0)
 
       // Configuration: the parcel rules are shown to, and editable by, the people who may open Configuration at all.
       await page.goto('/administration')
@@ -721,6 +781,9 @@ for (const role of ROLES) {
       expect(code(await request.delete(`/api/v1/parcels/${parcel.id}/interests/${interests[0].id}`, { headers }))).toBe(canDelete(role) ? 200 : 403)
 
       // Agency rules: anyone with Parcels can read them; only the Administrator can change them.
+      expect(code(await request.get('/api/v1/agency/time-zone', { headers }))).toBe(200)
+      expect(code(await request.put(`/api/v1/projects/${project.id}/time-zone`, { headers, data: { timeZoneId: null } }))).toBe(canCreate(role) ? 200 : 403)
+      if (role !== 'Admin') expect(code(await request.put('/api/v1/agency/time-zone', { headers, data: { timeZoneId: 'America/Chicago' } }))).toBe(403)
       const first = statusList[0]
       expect(code(await request.put(`/api/v1/parcel-rules/statuses/${first.id}`, { headers, data: { name: first.name, color: first.color, sortOrder: first.sortOrder, isActive: first.isActive, isInitial: first.isInitial } })))
         .toBe(role === 'Admin' ? 200 : 403)

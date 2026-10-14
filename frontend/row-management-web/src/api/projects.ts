@@ -54,6 +54,8 @@ export interface Project {
   constructionEndDate: string | null
   nepaDecisionType: NepaDecisionType | null
   nepaDecisionDate: string | null
+  /** The project's own IANA time zone; null means it follows the agency's. */
+  timeZoneId: string | null
   exceptionType: AcquisitionExceptionType | null
   exceptionApprovedOn: string | null
   exceptionReason: string | null
@@ -141,6 +143,10 @@ export interface NumberSettings {
   example: string
 }
 
+export interface TimeZoneOption { id: string; label: string }
+/** The agency's default time zone, the zones it can choose from, and today's date there. */
+export interface AgencyTimeZone { timeZoneId: string; options: TimeZoneOption[]; today: string }
+
 export interface ImportResult {
   row: number
   outcome: 'Created' | 'Failed'
@@ -197,6 +203,9 @@ export const projectsApi = (api: ApiClient) => ({
   deleteAuthorization: (id: string, authorizationId: string) =>
     api.delete(`/api/v1/projects/${id}/authorizations/${authorizationId}`),
 
+  agencyTimeZone: () => api.get<AgencyTimeZone>('/api/v1/agency/time-zone'),
+  setAgencyTimeZone: (timeZoneId: string) => api.put<AgencyTimeZone>('/api/v1/agency/time-zone', { timeZoneId }),
+  setProjectTimeZone: (id: string, timeZoneId: string | null) => api.put<Project>(`/api/v1/projects/${id}/time-zone`, { timeZoneId }),
   numberSettings: () => api.get<NumberSettings>('/api/v1/projects/number-settings'),
   setNumberSettings: (pattern: string, fiscalYearStartMonth: number) =>
     api.put<NumberSettings>('/api/v1/projects/number-settings', { pattern, fiscalYearStartMonth }),

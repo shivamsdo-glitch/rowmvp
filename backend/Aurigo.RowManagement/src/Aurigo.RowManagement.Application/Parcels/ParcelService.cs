@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Aurigo.RowManagement.Application.Agency;
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.Mappers;
@@ -24,16 +25,22 @@ public sealed class ParcelService
     private readonly IRowDbContext _db;
     private readonly ICurrentUser _user;
     private readonly TimeProvider _clock;
+    private readonly AgencyClock _agency;
 
     public ParcelService(IRowDbContext db, ICurrentUser user, TimeProvider clock)
     {
         _db = db;
         _user = user;
         _clock = clock;
+        _agency = new AgencyClock(db, clock);
     }
 
-    public DateOnly Today => DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
+    /// <summary>The instant, for timestamps. Calendar days are counted per project with <see cref="TodayForProjectAsync"/>.</summary>
     public DateTime Now => _clock.GetUtcNow().UtcDateTime;
+    public AgencyClock Agency => _agency;
+
+    /// <summary>The calendar day it is where this project is (its time zone, else the agency's).</summary>
+    public Task<DateOnly> TodayForProjectAsync(Guid projectId, CancellationToken ct) => _agency.TodayForProjectAsync(projectId, ct);
 
     // ── loading ──────────────────────────────────────────────────────────
 
@@ -129,14 +136,14 @@ public sealed class ParcelService
     // ── creation helpers ─────────────────────────────────────────────────
 
     /// <summary>The standard milestones every parcel starts with; "Parcel set up" is complete from the day it is created.</summary>
-    public void AddStandardMilestones(Parcel parcel)
+    public void AddStandardMilestones(Parcel parcel, DateOnly today)
     {
         foreach (var name in MilestoneNames.Standard)
             parcel.Milestones.Add(new ParcelMilestone
             {
                 ParcelId = parcel.Id,
                 Name = name,
-                CompletedOn = name == MilestoneNames.ParcelSetUp ? Today : null,
+                CompletedOn = name == MilestoneNames.ParcelSetUp ? today : null,
             });
     }
 
@@ -186,7 +193,8 @@ public sealed class ParcelService
         var gateOpen = project.EvaluateGate().Unlocked;
         var workflow = new WorkflowStateDto(stepDtos, p.CurrentStepKey, StepGate.NextStepKey(steps, p.CurrentStepKey), gateOpen, await CanOverrideAsync(ct));
 
-        var today = Today;
+        var zone = await _agency.ZoneOfAsync(project, ct);
+        var today = AgencyTime.TodayIn(zone, _agency.UtcNow);
         var rules = await _db.DeadlineRules.Where(r => r.IsActive).OrderBy(r => r.Name).ToListAsync(ct);
         var milestoneInfos = p.Milestones.Select(m => new MilestoneInfo(m.Name, m.DueOn, m.CompletedOn)).ToList();
         var deadlines = StatutoryDeadlines.Compute(
@@ -213,6 +221,6 @@ public sealed class ParcelService
             p.SiteVisits.OrderByDescending(v => v.VisitedOn).Select(v => new ParcelSiteVisitDto(v.Id, v.VisitedOn, v.Notes, v.OwnerContactConfirmed)).ToList(),
             deadlines, workflow,
             p.StepEvents.OrderByDescending(e => e.CreatedAt).Select(e => new ParcelStepEventDto(e.Id, e.FromStepKey, e.ToStepKey, e.IsOverride, e.Reason, e.CreatedAt, e.CreatedBy)).ToList(),
-            p.UpdatedAt);
+            p.UpdatedAt, zone);
     }
 }

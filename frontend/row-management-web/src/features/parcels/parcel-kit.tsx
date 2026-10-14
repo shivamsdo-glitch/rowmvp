@@ -29,6 +29,15 @@ export function StateNote({ state }: { state: ParcelState }): ReactNode {
   return <Pill tone="neutral">{state === 'Split' ? 'Split — superseded' : 'Combined — superseded'}</Pill>
 }
 
+/** A zone's everyday name ("Eastern Daylight Time"), falling back to its id. */
+export function zoneName(timeZoneId: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: timeZoneId, timeZoneName: 'long' }).formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value ?? timeZoneId
+  } catch {
+    return timeZoneId
+  }
+}
+
 export const acres = (sqFt: number) => (sqFt / 43560).toLocaleString('en-US', { maximumFractionDigits: 3 })
 export const sqFtText = (sqFt: number) => `${sqFt.toLocaleString('en-US', { maximumFractionDigits: 2 })} sq ft`
 

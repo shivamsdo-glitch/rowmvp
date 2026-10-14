@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, money, numOrNull, orNull, Pill, SelectField, TextField,
 } from './form-kit'
+import { zoneName } from '../parcels/parcel-kit'
 import { ProjectParcelsTab } from '../parcels/ProjectParcelsTab'
 import { ProjectForm } from './ProjectForm'
 
@@ -149,7 +150,49 @@ function OverviewTab({ project: p }: { project: Project }) {
         ['Construction start', dateText(p.constructionStartDate)], ['Construction end', dateText(p.constructionEndDate)],
       ]} />
       {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
+      <TimeZoneSection project={p} />
       {canUpdate && <button type="button" className={buttonClassName('outline')} onClick={() => setEditing(true)}>Edit project</button>}
+    </section>
+  )
+}
+
+/** The calendar this project's deadlines are counted on: its own time zone, or the agency's (ROW-073). */
+function TimeZoneSection({ project: p }: { project: Project }) {
+  const { manager, api, refreshProject } = useProjectApi(p.id)
+  const canUpdate = manager.can('projects', 'update')
+  const agency = useQuery({ queryKey: ['agency-time-zone'], queryFn: () => api.agencyTimeZone() })
+  const [value, setValue] = useState(p.timeZoneId ?? '')
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const save = useMutation({
+    mutationFn: () => api.setProjectTimeZone(p.id, value || null),
+    onSuccess: async () => { setSaved(true); await refreshProject() },
+    onError: (e) => setError(messageOf(e)),
+  })
+  const label = (id: string) => agency.data?.options.find((o) => o.id === id)?.label ?? zoneName(id)
+  const effective = p.timeZoneId ?? agency.data?.timeZoneId
+
+  return (
+    <section aria-label="Project time zone" className="space-y-2 border-t pt-4">
+      <h2 className="text-sm font-semibold">Time zone</h2>
+      <p className="text-sm">
+        {effective ? <>Dates are counted in <strong>{label(effective)}</strong> ({p.timeZoneId ? 'set for this project' : 'follows the agency'}).</> : 'Loading…'}
+      </p>
+      {canUpdate && agency.data && (
+        <form
+          aria-label="Set the project time zone" noValidate className="flex flex-wrap items-end gap-3"
+          onSubmit={(e) => { e.preventDefault(); setSaved(false); setError(null); save.mutate() }}
+        >
+          <SelectField
+            label="Project time zone" value={value} onChange={setValue}
+            options={agency.data.options.map((o) => ({ value: o.id, label: o.label }))}
+            blankLabel={`Follow the agency (${label(agency.data.timeZoneId)})`}
+          />
+          <button type="submit" className={buttonClassName('outline')} disabled={save.isPending}>Save time zone</button>
+        </form>
+      )}
+      <FormError error={error} />
+      {saved && <p role="status" className="text-sm">Time zone saved.</p>}
     </section>
   )
 }
