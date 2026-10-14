@@ -34,6 +34,8 @@ Parcel statuses are a per-agency, administrator-managed list with a colour and o
 - A deadline is Not started → Pending → Due soon (today or within the window, default 7 days) → Overdue (delay flag) or Met / Met late. Due today is not yet late.
 - Reminders (`GET /api/v1/reminders`) are the overdue and due-soon deadlines across live parcels, computed on request. **Nothing is emailed**; outbound notification stays a stub.
 - Standard milestones (Parcel set up, Notice to owner, Offer delivered, Agreement signed, Closed) exist on every parcel and cannot be removed; custom milestones can be added and removed. Recording the Notice to Owner (date and method, ROW-237) completes its milestone.
+- **Milestone dates are facts.** A completion date cannot be in the future; dates must fall between 1990 and 2100 (a due date may be in the future). The Notice to owner milestone's completion date is set only by recording the notice, never by editing the milestone, so the deadline and the synopsis cannot disagree (its due date and notes stay editable). The Parcel set up date can be corrected but not cleared.
+- **Reminders look at every parcel.** The database narrows to parcels that can need attention, rule by rule (trigger done early enough, target not done), so no parcel is skipped however many an agency has; the final list is the 200 most urgent.
 
 ## Custom fields (ROW-011)
 Per-agency definitions (key, label, type Text/Number/Date/Boolean/List, options, required, active); values are stored on the parcel as a JSON object (`jsonb`). A field's key and type never change after creation; deactivating a field keeps existing values but stops new ones. Validation is a pure function (`CustomFieldValidation`).
@@ -43,6 +45,10 @@ Per-agency definitions (key, label, type Text/Number/Date/Boolean/List, options,
 - Handlers add new child rows through their `DbSet`, never only through a parent's navigation list (a child with a preassigned id reached via a loaded parent is treated as already existing).
 - Enum columns hold the enum's name, so the database orders them alphabetically; handlers that need declaration order sort in memory.
 
+## Review follow-up (slice 2)
+Fixed after review: reminders no longer stop at the first 5,000 parcels; the notice date has one source of truth; milestone dates are validated; the board says when it shows only the first 200 parcels.
+
 ## Open questions (flag, do not guess)
 - The statutory periods above, and which timelines apply to which acquisition type (vault "Yours to verify").
 - Whether non-standard acquisition paths need different step lists than the placeholders (Phase 4).
+- Deadlines count days from the UTC date. An agency in a US time zone sees a deadline flip up to a day early in the evening; this needs a per-agency time zone and a decision on how statutory days are counted.

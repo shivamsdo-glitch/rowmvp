@@ -357,6 +357,18 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     const parcel = parcels.find((p) => p.id === rest[0])
     if (!parcel) return problem(404, 'not_found', `Parcel with key '${rest[0]}' was not found.`)
     const sub = rest[1]
+    /** The server's rules for milestone dates (see UpdateParcelMilestoneCommand): plausible years, no future completion, notice and set-up are special. */
+    const milestoneProblem = (b: any, existing?: Parcel['milestones'][number]) => {
+      const bad = (field: string, msg: string) => problem(400, 'validation_failed', 'Validation failed.', { [field]: [msg] })
+      const year = (d?: string | null) => (d ? Number(d.slice(0, 4)) : null)
+      if (year(b.dueOn) !== null && (year(b.dueOn)! < 1990 || year(b.dueOn)! > 2100)) return bad('DueOn', 'Enter a valid due date.')
+      if (year(b.completedOn) !== null && (year(b.completedOn)! < 1990 || year(b.completedOn)! > 2100)) return bad('CompletedOn', 'Enter a valid completion date.')
+      if (b.completedOn && b.completedOn > today) return bad('CompletedOn', 'A milestone cannot be completed in the future.')
+      if (existing?.name === 'Notice to owner' && (b.completedOn ?? null) !== existing.completedOn)
+        return problem(400, 'milestone_notice_managed', 'The Notice to owner date is set by recording the notice (date and delivery method), not by editing this milestone.')
+      if (existing?.name === 'Parcel set up' && !b.completedOn) return bad('CompletedOn', 'The set-up date cannot be cleared.')
+      return null
+    }
     const frozen = () => (parcel.state !== 'Active' ? problem(409, 'parcel_not_active', `Parcel ${parcel.number} was ${parcel.state.toLowerCase()} and can no longer be changed.`) : null)
 
     if (!sub) {
@@ -408,6 +420,8 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
       if (method === 'POST') {
         if (!can('create')) return forbidden()
         if (!String(body.name ?? '').trim()) return problem(400, 'validation_failed', 'Validation failed.', { Name: ['Milestone name is required.'] })
+        const badDate = milestoneProblem(body)
+        if (badDate) return badDate
         if (parcel.milestones.some((m) => m.name.toLowerCase() === body.name.toLowerCase())) return problem(409, 'milestone_exists', `This parcel already has a milestone named '${body.name}'.`)
         parcel.milestones.push({ id: id('m'), name: body.name, dueOn: body.dueOn ?? null, completedOn: body.completedOn ?? null, notes: body.notes ?? null, isStandard: false, isOverdue: false })
         touch(parcel)
@@ -417,6 +431,8 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
       if (!m) return problem(404, 'not_found', 'Milestone was not found.')
       if (method === 'PUT') {
         if (!can('update')) return forbidden()
+        const badEdit = milestoneProblem(body, m)
+        if (badEdit) return badEdit
         Object.assign(m, { dueOn: body.dueOn ?? null, completedOn: body.completedOn ?? null, notes: body.notes ?? null }); touch(parcel)
         return json(parcel)
       }

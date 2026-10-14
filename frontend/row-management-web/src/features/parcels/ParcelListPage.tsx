@@ -125,7 +125,14 @@ export function ParcelListPage({ initialProjectId = '' }: { initialProjectId?: s
           description={filtered ? 'Try a different search or clear a filter.' : canCreate ? 'Create the first parcel to get started.' : 'Parcels will appear here once they are created.'}
         />
       ) : view === 'board' ? (
-        <Board items={items} statusOrder={(statuses.data ?? []).map((s) => ({ id: s.id, name: s.name, color: s.color }))} />
+        <>
+          {list.data.total > items.length && (
+            <p role="status" className="mb-3 text-sm">
+              Showing the first {items.length} of {list.data.total} parcels. Narrow the filters to see the rest.
+            </p>
+          )}
+          <Board items={items} statusOrder={(statuses.data ?? []).map((s) => ({ id: s.id, name: s.name, color: s.color }))} />
+        </>
       ) : (
         <>
           <DataTable caption="Parcels" headers={[...(selectable ? ['Select'] : []), 'Parcel', 'Project', 'Address', 'Area', 'Status', 'Group', 'Acquisition']}>

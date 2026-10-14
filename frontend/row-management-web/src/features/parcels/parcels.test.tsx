@@ -113,6 +113,27 @@ describe('Parcel list (ROW-005, 233, 235, 236)', () => {
     expect(within(board).queryByRole('region', { name: 'Closed column' })).not.toBeInTheDocument()
   })
 
+  it('says when the board shows only part of the parcels', async () => {
+    const many = Array.from({ length: 205 }, (_, i) => ({ id: `bulk${i}`, projectId: 'p-loc', number: String(i + 1).padStart(3, '0'), address: `${i} Bulk Rd`, statusId: 's-ident' }))
+    const { user } = open('/parcels', 'ProjectManager', { parcels: many })
+    await listTable()
+
+    await user.click(screen.getByRole('button', { name: 'Board' }))
+
+    expect(await screen.findByText('Showing the first 200 of 205 parcels. Narrow the filters to see the rest.')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Identified column' })).getAllByRole('listitem')).toHaveLength(200)
+  })
+
+  it('does not mention a limit when the board shows everything', async () => {
+    const { user } = open('/parcels')
+    await listTable()
+
+    await user.click(screen.getByRole('button', { name: 'Board' }))
+
+    await screen.findByRole('region', { name: 'Parcel board' })
+    expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument()
+  })
+
   it('says so plainly when nothing matches, when there are no parcels, and when loading fails', async () => {
     const first = open('/parcels')
     await listTable()
@@ -437,6 +458,55 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
     await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
 
     expect(within(await screen.findByRole('row', { name: /Right of entry/ })).getByText('Overdue')).toBeInTheDocument()
+  })
+
+  it('explains a refused milestone date next to the field and keeps the milestone as it was', async () => {
+    const { fake, user } = open('/parcels/pc1')
+    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(screen.getByRole('button', { name: 'Edit milestone Offer delivered' }))
+    const edit = screen.getByRole('form', { name: 'Edit milestone Offer delivered' })
+
+    setDate('Completed on', '2026-10-20', edit) // after "today" (14 Oct 2026)
+    await user.click(within(edit).getByRole('button', { name: 'Save milestone' }))
+
+    expect(await within(edit).findByText('A milestone cannot be completed in the future.')).toBeInTheDocument()
+    expect(within(edit).getByLabelText('Completed on')).toHaveAttribute('aria-invalid', 'true')
+    expect(within(edit).getByText('Please correct the highlighted fields.')).toBeInTheDocument()
+    expect(fake.parcels[0].milestones.find((m) => m.name === 'Offer delivered')!.completedOn).toBeNull()
+
+    setDate('Completed on', '2026-10-01', edit)
+    setDate('Due date', '1899-01-01', edit)
+    await user.click(within(edit).getByRole('button', { name: 'Save milestone' }))
+    expect(await within(edit).findByText('Enter a valid due date.')).toBeInTheDocument()
+  })
+
+  it('shows a refused due date on the add form, beside the field', async () => {
+    const { user } = open('/parcels/pc1')
+    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    const add = screen.getByRole('form', { name: 'Add a milestone' })
+
+    await user.type(within(add).getByLabelText(/^Milestone name/), 'Stakes set')
+    setDate('Due on', '2101-01-01', add)
+    await user.click(within(add).getByRole('button', { name: 'Add milestone' }))
+
+    expect(await within(add).findByText('Enter a valid due date.')).toBeInTheDocument()
+    expect(within(add).getByLabelText('Due on')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it("the notice milestone's completion date is locked in the editor and points to where it is set", async () => {
+    const { user } = open('/parcels/pc1', 'ProjectManager', { parcels: [{ ...SEED[0], milestones: withNotice('2026-05-01') }] })
+    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+
+    await user.click(screen.getByRole('button', { name: 'Edit milestone Notice to owner' }))
+    const edit = screen.getByRole('form', { name: 'Edit milestone Notice to owner' })
+
+    expect(within(edit).getByLabelText('Completed on')).toBeDisabled()
+    expect(within(edit).getByLabelText('Completed on')).toHaveValue('2026-05-01')
+    expect(within(edit).getByText('Set by recording the notice on the Site visits & notice tab.')).toBeInTheDocument()
+    // Its due date and notes can still be saved, with the completion date untouched.
+    setDate('Due date', '2026-08-01', edit)
+    await user.click(within(edit).getByRole('button', { name: 'Save milestone' }))
+    await waitFor(() => expect(screen.queryByRole('form', { name: 'Edit milestone Notice to owner' })).not.toBeInTheDocument())
   })
 
   it('recording the notice to owner starts the offer deadline', async () => {

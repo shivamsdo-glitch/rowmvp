@@ -27,8 +27,8 @@ export default defineConfig({
     globals: true, // lets Testing Library auto-clean the DOM between tests
     pool: 'threads',
     // Each worker loads the whole component library (~1 GB). Unbounded parallelism on a busy machine made workers
-    // time out while starting; a small cap keeps the run reliable, which matters more than shaving seconds.
-    maxWorkers: 4,
+    // time out while starting; a small cap (2) keeps the run reliable; a start timeout is a fixed 60 s, so a memory-starved machine failed whole files, which matters more than shaving seconds.
+    maxWorkers: 2,
     testTimeout: 20_000,
   },
 })

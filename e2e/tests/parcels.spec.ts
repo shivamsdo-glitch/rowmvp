@@ -139,6 +139,29 @@ test.describe('Project Manager · parcels', () => {
     await expect(page.getByRole('table', { name: 'By group' })).toContainText('North segment')
   })
 
+  test('AT-PM-21 a large project pages through every parcel, and the board says when it shows only the first 200', async ({ page, request }) => {
+    test.setTimeout(120_000)
+    const admin = await adminHeaders(request)
+    const project = await makeProject(request, admin)
+    for (let start = 0; start < 201; start += 25) {
+      await Promise.all(Array.from({ length: Math.min(25, 201 - start) }, (_, i) => makeParcel(request, admin, project, { address: `Bulk ${start + i + 1} Rd` })))
+    }
+    await signInViaUi(page, 'ProjectManager')
+    await page.goto(`/parcels?projectId=${project.id}`)
+
+    await expect(page.getByText('201 parcels')).toBeVisible()
+    await expect(page.getByText('Page 1 of 9')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Board' }).click()
+    await expect(page.getByText('Showing the first 200 of 201 parcels. Narrow the filters to see the rest.')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Identified column' }).getByRole('listitem')).toHaveCount(200)
+
+    // Narrowing the filters brings the note back to nothing, and the board shows the whole result.
+    await page.getByLabel('Search parcels').fill('Bulk 201 Rd')
+    await expect(page.getByRole('region', { name: 'Identified column' }).getByRole('listitem')).toHaveCount(1)
+    await expect(page.getByText(/Showing the first/)).toHaveCount(0)
+  })
+
   test('AT-PM-21 refuses a duplicate parcel number and an unbalanced area, and never reuses a number', async ({ page, request }) => {
     const admin = await adminHeaders(request)
     const project = await makeProject(request, admin)
@@ -239,6 +262,25 @@ test.describe('Project Manager · parcels', () => {
     await visit.getByRole('button', { name: 'Record visit' }).click()
     await expect(page.getByRole('row', { name: /Oct 1, 2026/ })).toContainText('Yes')
 
+    // Milestone dates are facts (ROW-010): the notice's date stays with the notice, and nothing completes in the future.
+    await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+    await page.getByRole('button', { name: 'Edit milestone Notice to owner' }).click()
+    const locked = page.getByRole('form', { name: 'Edit milestone Notice to owner' })
+    await expect(locked.getByLabel('Completed on')).toBeDisabled()
+    await expect(locked.getByLabel('Completed on')).toHaveValue('2026-01-05')
+    await expect(locked).toContainText('Set by recording the notice on the Site visits & notice tab.')
+    await locked.getByRole('button', { name: 'Cancel' }).click()
+    await page.getByRole('button', { name: 'Edit milestone Offer delivered' }).click()
+    const dated = page.getByRole('form', { name: 'Edit milestone Offer delivered' })
+    await dated.getByLabel('Completed on').fill(new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10))
+    await dated.getByRole('button', { name: 'Save milestone' }).click()
+    await expect(dated.getByText('A milestone cannot be completed in the future.')).toBeVisible()
+    await expect(dated.getByLabel('Completed on')).toHaveAttribute('aria-invalid', 'true')
+    await dated.getByLabel('Completed on').fill('1899-01-01')
+    await dated.getByRole('button', { name: 'Save milestone' }).click()
+    await expect(dated.getByText('Enter a valid completion date.')).toBeVisible()
+    await dated.getByRole('button', { name: 'Cancel' }).click()
+
     // Deadlines (ROW-073): 90 days after 5 Jan 2026 was 5 Apr 2026, and nothing has been offered.
     await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
     const deadline = page.getByRole('table', { name: 'Deadlines' }).getByRole('row', { name: /Offer within 90 days/ })
@@ -271,6 +313,11 @@ test.describe('Project Manager · parcels', () => {
     expect(saved).toMatchObject({ noticeIssuedOn: '2026-01-05', noticeMethod: 'CertifiedMail' })
     expect(saved.milestones.find((m: any) => m.name === 'Notice to owner').completedOn).toBe('2026-01-05')
     expect(saved.milestones.some((m: any) => m.name === 'Right of entry')).toBe(false)
+    const noticeMilestone = saved.milestones.find((m: any) => m.name === 'Notice to owner')
+    const drift = await request.put(`/api/v1/parcels/${parcel.id}/milestones/${noticeMilestone.id}`, { headers, data: { completedOn: '2026-01-06' } })
+    expect(drift.status()).toBe(400)
+    expect((await drift.json()).title).toBe('milestone_notice_managed')
+    expect((await getParcel(request, headers, parcel.id)).noticeIssuedOn).toBe('2026-01-05')
     const offer = saved.deadlines.find((d: any) => d.name.startsWith('Offer within 90 days'))
     expect(offer).toMatchObject({ dueOn: '2026-04-05', status: 'Overdue' })
     const reminders = await (await request.get('/api/v1/reminders', { headers })).json()

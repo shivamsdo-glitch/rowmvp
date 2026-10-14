@@ -674,6 +674,79 @@ public class ParcelTests
     }
 
     [Fact]
+    public async Task ROW_010_The_notice_milestone_date_is_set_by_recording_the_notice_not_by_editing_the_milestone()
+    {
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var c = await Pm(store);
+        var parcel = await c.Create.Handle(NewParcel(project), default);
+        var noticed = await c.Notice.Handle(new RecordNoticeToOwnerCommand(parcel.Id, Today.AddDays(-10), NoticeMethod.Email), default);
+        var milestone = noticed.Milestones.Single(m => m.Name == MilestoneNames.NoticeToOwner);
+
+        var drift = () => c.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(parcel.Id, milestone.Id, null, Today.AddDays(-3), null), default);
+        var clear = () => c.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(parcel.Id, milestone.Id, null, null, null), default);
+
+        (await drift.Should().ThrowAsync<InvalidRequestException>()).Which.Code.Should().Be("milestone_notice_managed");
+        (await clear.Should().ThrowAsync<InvalidRequestException>()).Which.Code.Should().Be("milestone_notice_managed");
+        // Its due date and notes are still the user's to set, with the completion date left as recorded.
+        var kept = await c.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(parcel.Id, milestone.Id, Today.AddDays(5), Today.AddDays(-10), "sent by courier"), default);
+        kept.Milestones.Single(m => m.Id == milestone.Id).Should().Match<ParcelMilestoneDto>(m => m.CompletedOn == Today.AddDays(-10) && m.DueOn == Today.AddDays(5) && m.Notes == "sent by courier");
+        kept.NoticeIssuedOn.Should().Be(Today.AddDays(-10), "the notice and its milestone never disagree");
+    }
+
+    [Fact]
+    public async Task ROW_010_The_set_up_date_can_be_corrected_but_not_cleared()
+    {
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var c = await Pm(store);
+        var parcel = await c.Create.Handle(NewParcel(project), default);
+        var setUp = parcel.Milestones.Single(m => m.Name == MilestoneNames.ParcelSetUp);
+
+        var clear = () => c.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(parcel.Id, setUp.Id, null, null, null), default);
+        var corrected = await c.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(parcel.Id, setUp.Id, null, Today.AddDays(-30), null), default);
+
+        (await clear.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "CompletedOn" && e.ErrorMessage == "The set-up date cannot be cleared.");
+        corrected.Milestones.Single(m => m.Id == setUp.Id).CompletedOn.Should().Be(Today.AddDays(-30));
+    }
+
+    [Fact]
+    public async Task ROW_010_A_milestone_cannot_be_completed_in_the_future_when_added_or_edited_but_may_be_due_then()
+    {
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var c = await Pm(store);
+        var parcel = await c.Create.Handle(NewParcel(project), default);
+
+        var addFuture = () => c.AddMilestone.Handle(new AddParcelMilestoneCommand(parcel.Id, "Survey stakes", null, Today.AddDays(1), null), default);
+        (await addFuture.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "CompletedOn" && e.ErrorMessage.Contains("future"));
+
+        var added = await c.AddMilestone.Handle(new AddParcelMilestoneCommand(parcel.Id, "Survey stakes", Today.AddDays(30), Today, null), default);
+        var m = added.Milestones.Single(x => x.Name == "Survey stakes");
+        m.CompletedOn.Should().Be(Today, "completing today is fine");
+        m.DueOn.Should().Be(Today.AddDays(30), "a due date can be in the future");
+
+        var editFuture = () => c.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(parcel.Id, m.Id, null, Today.AddDays(2), null), default);
+        (await editFuture.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "CompletedOn");
+        (await c.Get.Handle(new GetParcelQuery(parcel.Id), default)).Milestones.Single(x => x.Id == m.Id).CompletedOn.Should().Be(Today, "the refused edit changed nothing");
+    }
+
+    [Theory]
+    [InlineData(1900, 1, 1)]
+    [InlineData(1989, 12, 31)]
+    [InlineData(2101, 1, 1)]
+    [InlineData(1, 1, 1)]
+    public void ROW_010_Implausible_milestone_dates_are_refused_and_ordinary_ones_accepted(int year, int month, int day)
+    {
+        var odd = new DateOnly(year, month, day);
+
+        new AddParcelMilestoneCommandValidator().Validate(new AddParcelMilestoneCommand(Guid.NewGuid(), "X", odd, null, null)).Errors.Should().ContainSingle(e => e.PropertyName == "DueOn");
+        new AddParcelMilestoneCommandValidator().Validate(new AddParcelMilestoneCommand(Guid.NewGuid(), "X", null, odd, null)).Errors.Should().ContainSingle(e => e.PropertyName == "CompletedOn");
+        new UpdateParcelMilestoneCommandValidator().Validate(new UpdateParcelMilestoneCommand(Guid.NewGuid(), Guid.NewGuid(), odd, odd, null)).Errors.Should().HaveCount(2);
+        new AddParcelMilestoneCommandValidator().Validate(new AddParcelMilestoneCommand(Guid.NewGuid(), "X", new DateOnly(1990, 1, 1), new DateOnly(2100, 12, 31), null)).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ROW_236_Site_visits_are_recorded_newest_first_and_can_be_removed()
     {
         var store = await Provision();
@@ -770,6 +843,64 @@ public class ParcelTests
         var rules = await admin.Rules.Handle(new ListDeadlineRulesQuery(), default);
         foreach (var r in rules) await admin.SaveRule.Handle(new SaveDeadlineRuleCommand(r.Id, r.Name, r.TriggerMilestone, r.TargetMilestone, r.Days, false), default);
         (await admin.Reminders.Handle(new ListRemindersQuery(), default)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ROW_074_Reminders_find_a_late_parcel_however_many_parcels_the_agency_has()
+    {
+        // A cap on how many parcels were looked at used to drop whatever sorted after the first 5,000 parcel numbers.
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var c = await Pm(store);
+        var parcels = Enumerable.Range(0, 5_200).Select(i => new Parcel
+        {
+            ProjectId = project, Number = $"N{i:D5}", StatusId = Guid.NewGuid(), CurrentStepKey = "setup",
+            Milestones =
+            {
+                new ParcelMilestone { Name = MilestoneNames.ParcelSetUp, CompletedOn = Today },
+                new ParcelMilestone { Name = MilestoneNames.NoticeToOwner, CompletedOn = Today.AddDays(-5) }, // 85 days left: nothing to do
+            },
+        }).ToList();
+        parcels.Add(new Parcel
+        {
+            ProjectId = project, Number = "ZZ-LAST", StatusId = Guid.NewGuid(), CurrentStepKey = "setup",
+            Milestones = { new ParcelMilestone { Name = MilestoneNames.NoticeToOwner, CompletedOn = Today.AddDays(-150) } },
+        });
+        c.Db.Parcels.AddRange(parcels);
+        await c.Db.SaveChangesAsync();
+
+        var reminders = await c.Reminders.Handle(new ListRemindersQuery(), default);
+
+        reminders.Select(r => r.ParcelNumber).Should().Equal("ZZ-LAST");
+        reminders[0].Status.Should().Be("Overdue");
+    }
+
+    [Fact]
+    public async Task ROW_074_Reminders_match_rule_milestones_ignoring_case_and_leave_out_met_deadlines_and_the_window_edge_is_exact()
+    {
+        var store = await Provision();
+        var project = await AddProject(store, TestDb.TenantA);
+        await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin);
+        // Only this rule is active, written in different letters from the milestone names.
+        foreach (var r in await admin.Rules.Handle(new ListDeadlineRulesQuery(), default))
+            await admin.SaveRule.Handle(new SaveDeadlineRuleCommand(r.Id, r.Name, r.TriggerMilestone, r.TargetMilestone, r.Days, false), default);
+        await admin.SaveRule.Handle(new SaveDeadlineRuleCommand(null, "Agreement in 30", "NOTICE TO owner", "agreement SIGNED", 30, true), default);
+
+        async Task<ParcelDto> ParcelNoticed(string number, int daysAgo) =>
+            await admin.Notice.Handle(new RecordNoticeToOwnerCommand((await admin.Create.Handle(NewParcel(project, number), default)).Id, Today.AddDays(-daysAgo), NoticeMethod.Email), default);
+
+        await ParcelNoticed("LATE", 40);        // due 10 days ago
+        await ParcelNoticed("EDGE-IN", 23);     // due in exactly 7 days: inside the window
+        await ParcelNoticed("EDGE-OUT", 22);    // due in 8 days: outside it
+        await ParcelNoticed("JUST-LATE", 31);   // due yesterday
+        var signed = await ParcelNoticed("SIGNED", 40);
+        await admin.UpdateMilestone.Handle(new UpdateParcelMilestoneCommand(signed.Id, signed.Milestones.Single(m => m.Name == MilestoneNames.AgreementSigned).Id, null, Today.AddDays(-12), null), default);
+
+        var reminders = await admin.Reminders.Handle(new ListRemindersQuery(7), default);
+
+        reminders.Select(r => (r.ParcelNumber, r.Status)).Should().Equal(("LATE", "Overdue"), ("JUST-LATE", "Overdue"), ("EDGE-IN", "DueSoon"));
+        (await admin.Reminders.Handle(new ListRemindersQuery(8), default)).Select(r => r.ParcelNumber).Should().Equal("LATE", "JUST-LATE", "EDGE-IN", "EDGE-OUT");
+        (await admin.Reminders.Handle(new ListRemindersQuery(0), default)).Select(r => r.ParcelNumber).Should().Equal("LATE", "JUST-LATE");
     }
 
     [Fact]

@@ -394,7 +394,6 @@ public sealed class ListRemindersQueryValidator : AbstractValidator<ListReminder
 
 public sealed class ListRemindersQueryHandler : IRequestHandler<ListRemindersQuery, IReadOnlyList<ReminderDto>>
 {
-    private const int MaxParcels = 5000;
     private const int MaxReminders = 200;
 
     private readonly IRowDbContext _db;
@@ -415,11 +414,30 @@ public sealed class ListRemindersQueryHandler : IRequestHandler<ListRemindersQue
             .Select(r => new DeadlineRuleInfo(r.Id, r.Name, r.TriggerMilestone, r.TargetMilestone, r.Days)).ToList();
         if (rules.Count == 0) return Array.Empty<ReminderDto>();
 
-        var parcels = await _db.Parcels.Include(p => p.Milestones).Where(p => p.State == ParcelState.Active).OrderBy(p => p.Number).Take(MaxParcels).ToListAsync(ct);
+        // Narrow to the parcels that can possibly need attention in the database, rule by rule: the trigger milestone is done
+        // early enough that the target is overdue or due within the window, and the target is not done yet. Everything else
+        // (most parcels) is never loaded, so no parcel is skipped however many there are.
+        var today = _parcels.Today;
+        var candidateIds = new HashSet<Guid>();
+        foreach (var rule in rules)
+        {
+            var trigger = rule.TriggerMilestone.ToLowerInvariant();
+            var target = rule.TargetMilestone.ToLowerInvariant();
+            var startedBy = today.AddDays(request.WithinDays - rule.Days);
+            candidateIds.UnionWith(await _db.Parcels
+                .Where(p => p.State == ParcelState.Active
+                    && p.Milestones.Any(m => m.Name.ToLower() == trigger && m.CompletedOn != null && m.CompletedOn <= startedBy)
+                    && !p.Milestones.Any(m => m.Name.ToLower() == target && m.CompletedOn != null))
+                .Select(p => p.Id)
+                .ToListAsync(ct));
+        }
+        if (candidateIds.Count == 0) return Array.Empty<ReminderDto>();
+
+        var ids = candidateIds.ToList();
+        var parcels = await _db.Parcels.Include(p => p.Milestones).Where(p => ids.Contains(p.Id)).ToListAsync(ct);
         var projectIds = parcels.Select(p => p.ProjectId).Distinct().ToList();
         var projects = await _db.Projects.Where(p => projectIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, p => p.Number, ct);
 
-        var today = _parcels.Today;
         var all = parcels.SelectMany(p =>
         {
             var milestones = p.Milestones.Select(m => new MilestoneInfo(m.Name, m.DueOn, m.CompletedOn)).ToList();

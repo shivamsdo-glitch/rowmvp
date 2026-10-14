@@ -170,6 +170,90 @@ public class ParcelApiTests : IClassFixture<PgApi>
     }
 
     [PgFact]
+    public async Task ROW_074_Reminders_are_found_by_the_database_by_rule_ignoring_case_and_skip_met_deadlines_with_an_exact_window_edge()
+    {
+        var pm = await _api.As("ProjectManager");
+        var admin = await _api.As("Admin");
+        var project = await NewProject(pm);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var stamp = Guid.NewGuid().ToString("N")[..8];
+        var rule = await Ok<DeadlineRuleDto>(await admin.Http.PostAsJsonAsync("/api/v1/parcel-rules/deadline-rules",
+            new { name = $"Reminder probe {stamp}", triggerMilestone = "NOTICE to OWNER", targetMilestone = "agreement SIGNED", days = 30, isActive = true }, Json), HttpStatusCode.Created);
+        try
+        {
+            async Task<ParcelDto> Noticed(string number, int daysAgo)
+            {
+                var parcel = await NewParcel(pm, project.Id, number);
+                return await Ok<ParcelDto>(await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notice", new { issuedOn = today.AddDays(-daysAgo), method = "Email" }, Json));
+            }
+            await Noticed("LATE", 40);       // due 10 days ago
+            await Noticed("JUST-LATE", 31);  // due yesterday
+            await Noticed("EDGE-IN", 23);    // due in exactly 7 days
+            await Noticed("EDGE-OUT", 22);   // due in 8 days
+            var signed = await Noticed("SIGNED", 40);
+            (await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{signed.Id}/milestones/{signed.Milestones.Single(m => m.Name == "Agreement signed").Id}",
+                new { completedOn = today.AddDays(-12) }, Json)).EnsureSuccessStatusCode();
+            await NewParcel(pm, project.Id, "NO-NOTICE");
+
+            async Task<List<string>> Probe(int within) =>
+                (await Ok<List<ReminderDto>>(await pm.Http.GetAsync($"/api/v1/reminders?withinDays={within}")))
+                    .Where(r => r.ProjectId == project.Id && r.RuleName == rule.Name).Select(r => r.ParcelNumber).ToList();
+
+            (await Probe(7)).Should().Equal("LATE", "JUST-LATE", "EDGE-IN");
+            (await Probe(8)).Should().Equal("LATE", "JUST-LATE", "EDGE-IN", "EDGE-OUT");
+            (await Probe(0)).Should().Equal("LATE", "JUST-LATE");
+        }
+        finally
+        {
+            await admin.Http.PutAsJsonAsync($"/api/v1/parcel-rules/deadline-rules/{rule.Id}",
+                new { rule.Name, rule.TriggerMilestone, rule.TargetMilestone, rule.Days, isActive = false }, Json);
+        }
+    }
+
+    [PgFact]
+    public async Task ROW_010_Milestone_rules_hold_through_the_api_the_notice_date_stays_with_the_notice_and_dates_must_be_real()
+    {
+        var pm = await _api.As("ProjectManager");
+        var project = await NewProject(pm);
+        var parcel = await NewParcel(pm, project.Id, "MS-1");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var noticed = await Ok<ParcelDto>(await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notice", new { issuedOn = today.AddDays(-10), method = "Email" }, Json));
+        var notice = noticed.Milestones.Single(m => m.Name == "Notice to owner");
+        var setUp = noticed.Milestones.Single(m => m.Name == "Parcel set up");
+        var custom = (await Ok<ParcelDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/milestones", new { name = "Stakes set" }, Json), HttpStatusCode.Created))
+            .Milestones.Single(m => m.Name == "Stakes set");
+        string Url(Guid id) => $"/api/v1/parcels/{parcel.Id}/milestones/{id}";
+
+        // The notice's own milestone date cannot drift from the notice.
+        var drift = await pm.Http.PutAsJsonAsync(Url(notice.Id), new { completedOn = today.AddDays(-2) }, Json);
+        drift.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await drift.Content.ReadAsStringAsync()).Should().Contain("milestone_notice_managed");
+        (await pm.Http.PutAsJsonAsync(Url(notice.Id), new { completedOn = (DateOnly?)null }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await pm.Http.PutAsJsonAsync(Url(notice.Id), new { dueOn = today.AddDays(3), completedOn = today.AddDays(-10), notes = "courier" }, Json)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // The set-up date can be corrected but not cleared.
+        var clear = await pm.Http.PutAsJsonAsync(Url(setUp.Id), new { completedOn = (DateOnly?)null }, Json);
+        clear.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await clear.Content.ReadAsStringAsync()).Should().Contain("The set-up date cannot be cleared.");
+        (await pm.Http.PutAsJsonAsync(Url(setUp.Id), new { completedOn = today.AddDays(-1) }, Json)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Dates must be real: no completion in the future, nothing before 1990 or after 2100.
+        foreach (var body in new object[] { new { completedOn = today.AddDays(1) }, new { completedOn = "1899-05-01" }, new { dueOn = "2101-01-01" }, new { dueOn = "0001-01-01" } })
+        {
+            var res = await pm.Http.PutAsJsonAsync(Url(custom.Id), body, Json);
+            res.StatusCode.Should().Be(HttpStatusCode.BadRequest, JsonSerializer.Serialize(body));
+            (await res.Content.ReadAsStringAsync()).Should().Contain("errors");
+        }
+        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/milestones", new { name = "Future done", completedOn = today.AddDays(5) }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await pm.Http.PutAsJsonAsync(Url(custom.Id), new { dueOn = today.AddDays(40), completedOn = today }, Json)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var saved = await GetParcel(pm, parcel.Id);
+        saved.NoticeIssuedOn.Should().Be(today.AddDays(-10));
+        saved.Milestones.Single(m => m.Name == "Notice to owner").CompletedOn.Should().Be(today.AddDays(-10));
+        saved.Milestones.Should().NotContain(m => m.Name == "Future done");
+    }
+
+    [PgFact]
     public async Task AT_PM_24_The_step_gate_blocks_out_of_order_moves_and_an_override_needs_a_reason_and_is_audited()
     {
         var pm = await _api.As("ProjectManager", user: Guid.NewGuid());

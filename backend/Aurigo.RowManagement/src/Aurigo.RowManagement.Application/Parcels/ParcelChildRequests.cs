@@ -119,7 +119,24 @@ public sealed class AddParcelMilestoneCommandValidator : AbstractValidator<AddPa
     {
         RuleFor(x => x.ParcelId).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.").MaximumLength(100);
+        RuleFor(x => x.DueOn).Must(MilestoneDates.IsPlausible).WithMessage("Enter a valid due date.");
+        RuleFor(x => x.CompletedOn).Must(MilestoneDates.IsPlausible).WithMessage("Enter a valid completion date.");
         RuleFor(x => x.Notes).MaximumLength(500);
+    }
+}
+
+/// <summary>Date rules shared by the milestone commands. A completion date is a fact, so it cannot be in the future.</summary>
+internal static class MilestoneDates
+{
+    public const int FirstYear = 1990;
+    public const int LastYear = 2100;
+
+    public static bool IsPlausible(DateOnly? date) => date is null || (date.Value.Year >= FirstYear && date.Value.Year <= LastYear);
+
+    public static void EnsureNotInFuture(DateOnly? completedOn, DateOnly today)
+    {
+        if (completedOn is { } d && d > today)
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("CompletedOn", "A milestone cannot be completed in the future.") });
     }
 }
 
@@ -141,6 +158,7 @@ public sealed class AddParcelMilestoneCommandHandler : IRequestHandler<AddParcel
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Create, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var name = request.Name.Trim();
+        MilestoneDates.EnsureNotInFuture(request.CompletedOn, _parcels.Today);
         if (parcel.Milestones.Any(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase)))
             throw new ConflictException("milestone_exists", $"This parcel already has a milestone named '{name}'.");
 
@@ -170,6 +188,8 @@ public sealed class UpdateParcelMilestoneCommandValidator : AbstractValidator<Up
     {
         RuleFor(x => x.ParcelId).NotEmpty();
         RuleFor(x => x.MilestoneId).NotEmpty();
+        RuleFor(x => x.DueOn).Must(MilestoneDates.IsPlausible).WithMessage("Enter a valid due date.");
+        RuleFor(x => x.CompletedOn).Must(MilestoneDates.IsPlausible).WithMessage("Enter a valid completion date.");
         RuleFor(x => x.Notes).MaximumLength(500);
     }
 }
@@ -192,6 +212,17 @@ public sealed class UpdateParcelMilestoneCommandHandler : IRequestHandler<Update
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Update, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var milestone = parcel.Milestones.FirstOrDefault(m => m.Id == request.MilestoneId) ?? throw new NotFoundException("Milestone", request.MilestoneId);
+        MilestoneDates.EnsureNotInFuture(request.CompletedOn, _parcels.Today);
+
+        // The notice's date lives with its delivery method on the parcel; letting the milestone drift from it would give
+        // the deadline and the synopsis two different answers.
+        if (string.Equals(milestone.Name, MilestoneNames.NoticeToOwner, StringComparison.OrdinalIgnoreCase) && request.CompletedOn != milestone.CompletedOn)
+            throw new InvalidRequestException("milestone_notice_managed",
+                "The Notice to owner date is set by recording the notice (date and delivery method), not by editing this milestone.");
+        // A parcel exists because it was set up; correcting that date is fine, clearing it is not.
+        if (string.Equals(milestone.Name, MilestoneNames.ParcelSetUp, StringComparison.OrdinalIgnoreCase) && request.CompletedOn is null)
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("CompletedOn", "The set-up date cannot be cleared.") });
+
         milestone.DueOn = request.DueOn;
         milestone.CompletedOn = request.CompletedOn;
         milestone.Notes = ParcelRules.Clean(request.Notes);

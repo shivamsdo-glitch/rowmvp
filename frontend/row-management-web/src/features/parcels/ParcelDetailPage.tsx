@@ -12,10 +12,12 @@ import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  CheckboxField, DataTable, dateText, FormError, messageOf, orNull, Pill, SelectField, TextField,
+  CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, Pill, SelectField, TextField,
 } from '../projects/form-kit'
 import { ParcelForm } from './ParcelForm'
 import { acres, DeadlinePill, sqFtText, StateNote, StatusChip } from './parcel-kit'
+
+const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
   ['summary', 'Summary'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
@@ -27,16 +29,20 @@ function useParcelActions(parcelId: string) {
   const { manager } = useAuth()
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const [fields, setFields] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   return {
     api: parcelsApi(manager.api),
     manager,
     error,
+    /** The server's complaints about single fields, by form-field name (for example `completedOn`). */
+    fields,
     busy,
     clearError: () => setError(null),
     /** Resolves true when the action succeeded. */
     run: async (action: () => Promise<unknown>): Promise<boolean> => {
       setError(null)
+      setFields({})
       setBusy(true)
       try {
         await action()
@@ -47,7 +53,9 @@ function useParcelActions(parcelId: string) {
         ])
         return true
       } catch (e) {
-        setError(messageOf(e))
+        const fe = fieldErrorsOf(e)
+        setFields(fe)
+        setError(Object.keys(fe).length ? 'Please correct the highlighted fields.' : messageOf(e))
         return false
       } finally {
         setBusy(false)
@@ -331,11 +339,16 @@ function MilestonesTab({ parcel: p, editable }: { parcel: Parcel; editable: bool
                 <td colSpan={5} className="px-3 py-2">
                   <form onSubmit={(e) => void saveEdit(e, m.id)} noValidate aria-label={`Edit milestone ${m.name}`} className="flex flex-wrap items-end gap-3">
                     <span className="min-w-32 text-sm font-medium">{m.name}</span>
-                    <TextField label="Due date" type="date" value={due} onChange={setDue} />
-                    <TextField label="Completed on" type="date" value={done} onChange={setDone} />
+                    <TextField label="Due date" type="date" value={due} onChange={setDue} error={a.fields.dueOn} />
+                    <TextField
+                      label="Completed on" type="date" value={done} onChange={setDone} error={a.fields.completedOn}
+                      disabled={m.name === NOTICE_MILESTONE}
+                      hint={m.name === NOTICE_MILESTONE ? 'Set by recording the notice on the Site visits & notice tab.' : undefined}
+                    />
                     <TextField label="Milestone notes" value={mNotes} onChange={setMNotes} maxLength={500} />
                     <button type="submit" disabled={a.busy} className={buttonClassName('default', 'sm')}>Save milestone</button>
                     <button type="button" className={buttonClassName('outline', 'sm')} onClick={() => setEditing(null)}>Cancel</button>
+                    <div className="basis-full"><FormError error={a.error} /></div>
                   </form>
                 </td>
               ) : (
@@ -371,10 +384,10 @@ function MilestonesTab({ parcel: p, editable }: { parcel: Parcel; editable: bool
         <form onSubmit={addMilestone} noValidate aria-label="Add a milestone" className="mb-6 max-w-2xl space-y-3 rounded-lg border bg-card p-4">
           <h3 className="text-sm font-semibold">Add a milestone</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <TextField label="Milestone name" required value={name} onChange={setName} maxLength={100} />
-            <TextField label="Due on" type="date" value={newDue} onChange={setNewDue} />
+            <TextField label="Milestone name" required value={name} onChange={setName} maxLength={100} error={a.fields.name} />
+            <TextField label="Due on" type="date" value={newDue} onChange={setNewDue} error={a.fields.dueOn} />
           </div>
-          <FormError error={fieldError ?? a.error} />
+          <FormError error={fieldError ?? (editing === null ? a.error : null)} />
           <button type="submit" disabled={a.busy} className={buttonClassName('default')}>Add milestone</button>
         </form>
       )}
