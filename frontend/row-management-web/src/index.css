@@ -1,0 +1,975 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ----- AURIGO MASTERWORKS MAINTAIN — DESIGN TOKENS ------------------------
+       Masterworks brand identity: a corporate steel-blue primary over a dark
+       charcoal sidebar with a blue active state, matching Aurigo Masterworks
+       Plan. Status palette (ok/warn/alert/danger) stays semantic across all
+       Aurigo tiers — only brand hues differ from Primus (which is emerald green).
+       If any hue below drifts back toward hue 152 (Primus green), the brand
+       has silently leaked from a straight primus→masterworks copy. */
+
+    /* Surfaces */
+    --background:        220 25% 98%;     /* page bg — barely-blue paper */
+    --foreground:        220 30% 11%;     /* near-black ink */
+    --card:                0  0% 100%;    /* card / topbar */
+    --card-foreground:   220 30% 11%;
+    --muted:             220 18% 96%;
+    --muted-foreground:  220 12% 42%;
+    --subtle:            220 22% 94%;     /* below-muted — section dividers */
+
+    /* Primary — Masterworks corporate blue (~#1e5c9c) */
+    --primary:           212 68% 36%;
+    --primary-foreground: 0  0% 100%;
+    --primary-soft:      212 45% 94%;     /* subtle blue tint for backgrounds */
+
+    /* Secondary — kept as alias of muted (shadcn primitives expect it) */
+    --secondary:         220 18% 95%;
+    --secondary-foreground: 212 55% 26%;
+
+    /* Accent — blue-tinted (kept subtle). */
+    --accent:            212 60% 42%;
+    --accent-foreground:  0  0% 100%;
+    --accent-soft:       212 55% 94%;
+
+    /* Status palette — single source of truth for condition/RUL/risk colors.
+       `--ok` stays semantic-green (healthy/excellent/approved) even though the
+       brand primary is blue — status ≠ brand. */
+    --ok:        152 60% 38%;     /* healthy / excellent / approved */
+    --warn:       38 92% 50%;     /* monitor / fair */
+    --alert:      22 92% 52%;     /* approaching EOL / poor */
+    --danger:    354 75% 49%;     /* critical / failed */
+    --info:      215 80% 50%;     /* information / draft */
+
+    /* Lines, inputs, focus */
+    --border:            220 16% 89%;
+    --border-strong:     220 18% 80%;
+    --input:             220 16% 89%;
+    --ring:              212 62% 42%;
+    --destructive:       354 75% 49%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Sidebar — deep charcoal gray with a blue active pill (Masterworks Plan) */
+    --sidebar:           216 12% 13%;
+    --sidebar-foreground: 216 10% 84%;
+    --sidebar-hover:     216 10% 19%;
+    --sidebar-active:    212 62% 40%;
+    --sidebar-border:    216 10% 19%;
+
+    /* AI panel accent — follows the brand primary (AIPanel.css references these) */
+    --ai-accent:         212 68% 34%;
+    --ai-accent-dark:    212 68% 24%;
+    --ai-accent-soft:    212 45% 66%;
+    --ai-accent-tint:    212 60% 95%;
+
+    /* Geometry */
+    --radius:            0.5rem;
+    --radius-sm:         0.375rem;
+    --radius-lg:         0.75rem;
+
+    /* Font stacks — matching Aurigo Essentials (Roboto throughout) */
+    --font-sans:  'Roboto', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-serif: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+    --font-mono:  'Roboto Mono', 'source-code-pro', Menlo, Monaco, Consolas, 'Courier New', monospace;
+  }
+
+  /* Defaults */
+  * { @apply border-border; }
+  html, body, #root {
+    /* Chain the viewport height down to the shell's parent so the app shell
+       (`h-screen` in __root) is bounded by the viewport and `<main>` is the only scroller. */
+    height: 100%;
+  }
+  html {
+    /* Fluid base: scales linearly from 13px at 1024px-wide viewport to 16px at 1920px. */
+    font-size: clamp(13px, 0.347vw + 9.45px, 16px);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    /* The shell owns scrolling; the body must never gain its own scrollbar. */
+    overflow: hidden;
+  }
+
+  /* Headings — Roboto throughout (matching Aurigo Essentials; no serif distinction) */
+  h1, h2, h3 {
+    @apply text-foreground;
+    font-family: var(--font-sans);
+  }
+  h1 { font-weight: 500; }
+  h2 { font-weight: 500; }
+  h3 { font-weight: 500; }
+  h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; }
+
+  /* Numerical figures — tabular nums everywhere so dashboards line up */
+  table, .tabular-nums, [class*="tabular"], code, pre { font-variant-numeric: tabular-nums; }
+
+  /* Codes (asset codes, IDs) — Roboto Mono */
+  code, kbd, samp, pre { font-family: var(--font-mono); }
+
+  /* Selection */
+  ::selection { background: hsl(var(--primary) / 0.18); color: hsl(var(--primary)); }
+
+  /* One consistent focus ring across the app. */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+}
+
+@layer components {
+  /* Page-level heading rhythm — paired title + subtitle. */
+  .page-title    { @apply font-sans text-[1.65rem] font-medium leading-tight tracking-tight; }
+  .page-subtitle { @apply text-sm text-muted-foreground mt-1; }
+
+  /* Section eyebrow — small uppercase tracking-wider label used above sections. */
+  .eyebrow { @apply text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground; }
+
+  /* Big figure — for KPI cards. Tight tracking, tabular nums. */
+  .figure {
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum";
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  /* Subtle inline divider */
+  .hairline { @apply border-t border-border/60; }
+
+  /* Surface elevation tokens — use these instead of arbitrary shadow- classes. */
+  .surface-1 { @apply bg-card border border-border; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); }
+  .surface-2 { @apply bg-card border border-border; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 6px 16px -10px rgb(15 23 42 / 0.10); }
+  .surface-3 { @apply bg-card border border-border; box-shadow: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 32px -16px rgb(15 23 42 / 0.18); }
+
+  /* Legacy `.inp` from earlier code — kept so refactors don't break. */
+  .inp { @apply w-full h-9 px-2.5 rounded-md border border-input bg-background text-sm; }
+  textarea.inp { @apply h-auto py-2; }
+  select.inp   { @apply h-auto; }
+}
+
+/* ------ Toast anchor styles — CSP-safe replacement for inline `style=` -----
+   Wave-2 blocker UX-B1: JobOrderPushStatusTab.tsx composes a Syncfusion Toast
+   from an HTML string that used to include `style="text-decoration:underline;
+   font-weight:600;"` on an inline anchor. Under the planned CSP header of
+   `style-src 'self'` that inline style is stripped and the anchor loses its
+   affordance silently. Moving the styles into this class keeps the anchor
+   discoverable without loosening CSP. Any new toast-content anchor should use
+   this class rather than an inline `style=` attribute. */
+/* W9-FE #5 — element-scoped to <a> so a stray `<span class="toast-charter-link">`
+   won't accidentally inherit anchor styles (underline + weight). */
+a.toast-charter-link {
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+/* ------ RC* form field label — Essentials "label above input" style ------- */
+.rc-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: hsl(var(--primary));
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+.rc-mandatory {
+  color: hsl(var(--destructive));
+  margin-left: 2px;
+}
+
+/* ------ RC form inputs (components/aurigo/RCFormInputs.tsx) ---------------
+   RCTextBox / RCNumericTextBox / RCBasicDropdown each render an intrinsic-
+   width Syncfusion input by default (~220-420px depending on control),
+   leaving a visible gap when used inside FormField's full-width layout.
+   Stretch every nesting level down to the actual input/dropdown element. */
+.textbox, .textbox .text-box-styles,
+.numeric-textbox-component, .numeric-textbox-component .numeric-textbox-wrapper,
+.basic-dropdown, .basic-dropdown .e-input-group, .basic-dropdown .e-ddl {
+  width: 100% !important;
+}
+
+/* ------ RC Tabs — Aurigo Essentials tab strip component -------------------- */
+.rc-tabs {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid hsl(var(--border));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rc-tabs::-webkit-scrollbar { display: none; }
+
+.rc-tabs__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+  margin-bottom: -1px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.rc-tabs__item:hover:not(:disabled) {
+  color: hsl(var(--primary));
+}
+.rc-tabs__item--active {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+  font-weight: 700;
+}
+.rc-tabs__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Small variant — matches Essentials "small" tab height */
+.rc-tabs--small .rc-tabs__item {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+/* Large variant — matches Essentials SecondLevelNavigation "large" tabs */
+.rc-tabs--large {
+  background: hsl(var(--card));
+}
+.rc-tabs--large .rc-tabs__item {
+  height: 3.75rem;
+  padding: 1.25rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+/* ------ Existing module-specific styles preserved ------------------------- */
+.app-switcher-item:hover { background-color: #ebf2fd; }
+
+/* ── Aurigo Essentials component CSS — from @aurigo/react-core-component-dev ── */
+/* These classes match RCTextBox and RCViewModeComponent exactly                  */
+
+/* TextBox wrapper (edit mode) */
+.textbox { box-sizing: border-box; height: auto; }
+.textbox .top-section {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0;
+}
+.textbox .top-section label {
+  font-family: Roboto, sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  letter-spacing: 0.03rem;
+  color: #51596c;
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+.textbox .top-section .label-enabled::after {
+  content: "*";
+  color: #f05f53;
+  font-size: 1.25rem;
+  padding-left: 0.3rem;
+  line-height: 0;
+  vertical-align: middle;
+  display: inline-block;
+  position: relative;
+  top: -0.125rem;
+}
+.textbox .top-section .label-default::after { content: ""; }
+.textbox .text-box-styles { width: 100%; }
+
+/* ViewMode (read-only) — outlined box matching Syncfusion e-outline style */
+.component-viewmodeContainer {
+  width: 100%;
+  padding: 0.25rem 0;
+}
+.component-viewmodeContainer .component-labelContainer {
+  margin-bottom: 0.25rem;
+}
+.component-viewmodeContainer .component-labelContainer .label-viewmode-component {
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.viewmodeContent-component {
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  word-break: break-word;
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  padding: 0.4375rem 0.75rem;
+  min-height: 2.375rem;
+  background-color: transparent;
+}
+
+/* Three-dot loader (RCThreeDotLoader) — structure/animation from the real
+   component; dot colors use --primary (not Essentials' hardcoded teal) so it
+   stays correct across Primus/Masterworks brand tokens. Size variants (sm/md)
+   have no RC prop equivalent — added locally to match PageLoader/SectionLoader. */
+.dotloader { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; }
+.dotloader .loading {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.dotloader .dots { display: flex; align-items: flex-end; gap: 1.25rem; }
+.dotloader .dot1, .dotloader .dot2, .dotloader .dot3 {
+  display: inline-block;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  animation: rc-dot-wave 1.3s linear infinite;
+}
+.dotloader .dot2 { background: hsl(var(--primary) / 0.7); animation-delay: -1.1s; }
+.dotloader .dot3 { background: hsl(var(--primary) / 0.45); animation-delay: -0.9s; }
+.dotloader-sm .dot1, .dotloader-sm .dot2, .dotloader-sm .dot3 {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.dotloader-sm .dots { gap: 1rem; }
+@keyframes rc-dot-wave {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-30px); }
+}
+
+/* Badge (RCBadge) — no installed @syncfusion/* package ships .e-badge CSS in
+   this app, so every rule below is hand-authored from the real component's
+   compiled output (dist/themes/essentials/css/main.css, .rc-badge.e-badge*
+   selectors), not imported verbatim — that lets us use this app's CSS
+   variable tokens instead of the library's hardcoded hex, and means we don't
+   inherit the real stylesheet's !important/specificity fights.
+
+   Structure: RCBadge itself only gives one fixed look per `bg` value (7
+   options) — the `.e-badge-{bg}` rules below reproduce that default "solid"
+   look. This app's Badge facade needs 8 tones × 3 variants, so the actual
+   color always comes from `.badge-tone-*` + `.badge-{soft,solid,outline}`
+   modifier classes the facade adds via RCBadge's `className` prop. Those
+   compound selectors are 4 classes deep (.rc-badge.e-badge.badge-{variant}
+   .badge-tone-{tone}) vs. the base `.e-badge-{bg}` rule's 3 classes
+   (.rc-badge.e-badge.e-badge-{bg}), so they always win on specificity alone
+   — no !important needed, and it doesn't depend on source order. */
+.rc-badge.e-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.rc-badge.e-badge.e-text-badge-custom {
+  padding: 0.125rem 0.5rem;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1.25rem;
+  letter-spacing: 0.025em;
+  border-radius: 0.375rem;
+}
+
+/* RCBadge's own default per-bg look (3-class specificity) — always
+   overridden below by the tone/variant layer, kept here for structural
+   fidelity with the real component. */
+.rc-badge.e-badge.e-badge-primary { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.rc-badge.e-badge.e-badge-success { background-color: hsl(var(--ok)); color: #fff; }
+.rc-badge.e-badge.e-badge-danger  { background-color: hsl(var(--danger)); color: #fff; }
+.rc-badge.e-badge.e-badge-warning { background-color: hsl(var(--warn)); color: hsl(38 92% 15%); }
+.rc-badge.e-badge.e-badge-info    { background-color: hsl(var(--info)); color: #fff; }
+.rc-badge.e-badge.e-badge-light   { background-color: hsl(var(--muted)); color: hsl(var(--foreground) / 0.8); }
+.rc-badge.e-badge.e-badge-dark    { background-color: hsl(var(--foreground)); color: hsl(var(--card)); }
+
+/* soft — pale bg + saturated text (default variant) */
+.rc-badge.e-badge.badge-soft.badge-tone-neutral { background-color: hsl(var(--muted)); color: hsl(var(--foreground) / 0.8); }
+.rc-badge.e-badge.badge-soft.badge-tone-primary { background-color: hsl(var(--primary-soft)); color: hsl(var(--primary)); }
+.rc-badge.e-badge.badge-soft.badge-tone-ok      { background-color: hsl(var(--ok) / 0.1); color: hsl(var(--ok)); }
+.rc-badge.e-badge.badge-soft.badge-tone-warn    { background-color: hsl(var(--warn) / 0.15); color: hsl(38 92% 30%); }
+.rc-badge.e-badge.badge-soft.badge-tone-alert   { background-color: hsl(var(--alert) / 0.15); color: hsl(22 92% 32%); }
+.rc-badge.e-badge.badge-soft.badge-tone-danger  { background-color: hsl(var(--danger) / 0.2); color: hsl(var(--danger)); }
+.rc-badge.e-badge.badge-soft.badge-tone-info    { background-color: hsl(var(--info) / 0.12); color: hsl(var(--info)); }
+.rc-badge.e-badge.badge-soft.badge-tone-accent  { background-color: hsl(var(--accent-soft)); color: hsl(40 70% 30%); }
+
+/* solid — saturated bg + white/contrast text (high-emphasis) */
+.rc-badge.e-badge.badge-solid.badge-tone-neutral { background-color: hsl(var(--foreground)); color: hsl(var(--card)); }
+.rc-badge.e-badge.badge-solid.badge-tone-primary { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.rc-badge.e-badge.badge-solid.badge-tone-ok      { background-color: hsl(var(--ok)); color: #fff; }
+.rc-badge.e-badge.badge-solid.badge-tone-warn    { background-color: hsl(var(--warn)); color: hsl(38 92% 15%); }
+.rc-badge.e-badge.badge-solid.badge-tone-alert   { background-color: hsl(var(--alert)); color: #fff; }
+.rc-badge.e-badge.badge-solid.badge-tone-danger  { background-color: hsl(var(--danger)); color: #fff; }
+.rc-badge.e-badge.badge-solid.badge-tone-info    { background-color: hsl(var(--info)); color: #fff; }
+.rc-badge.e-badge.badge-solid.badge-tone-accent  { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+
+/* outline — bordered, transparent bg (read-only / inactive) */
+.rc-badge.e-badge.badge-outline.badge-tone-neutral { background-color: transparent; border: 1px solid hsl(var(--border)); color: hsl(var(--foreground) / 0.8); }
+.rc-badge.e-badge.badge-outline.badge-tone-primary { background-color: transparent; border: 1px solid hsl(var(--primary) / 0.4); color: hsl(var(--primary)); }
+.rc-badge.e-badge.badge-outline.badge-tone-ok      { background-color: transparent; border: 1px solid hsl(var(--ok) / 0.4); color: hsl(var(--ok)); }
+.rc-badge.e-badge.badge-outline.badge-tone-warn    { background-color: transparent; border: 1px solid hsl(var(--warn) / 0.5); color: hsl(38 92% 30%); }
+.rc-badge.e-badge.badge-outline.badge-tone-alert   { background-color: transparent; border: 1px solid hsl(var(--alert) / 0.5); color: hsl(22 92% 32%); }
+.rc-badge.e-badge.badge-outline.badge-tone-danger  { background-color: transparent; border: 1px solid hsl(var(--danger) / 0.4); color: hsl(var(--danger)); }
+.rc-badge.e-badge.badge-outline.badge-tone-info    { background-color: transparent; border: 1px solid hsl(var(--info) / 0.4); color: hsl(var(--info)); }
+.rc-badge.e-badge.badge-outline.badge-tone-accent  { background-color: transparent; border: 1px solid hsl(var(--accent) / 0.5); color: hsl(40 70% 30%); }
+
+/* Tooltip (components/ui/tooltip.tsx) — real RCTooltip (Syncfusion EJ2
+   TooltipComponent). Base chrome (arrow, popup radius/padding) comes from
+   @syncfusion/ej2-popups/styles/material3.css, already imported globally in
+   src/syncfusion.css. These rules only replace Syncfusion's own theme
+   variables (--color-sf-inverse-surface, etc.) with this app's tokens so the
+   tooltip surface matches the rest of the UI instead of Syncfusion's raw
+   Material3 palette. `.rc-tooltip-content` is the `customCssClassName`
+   Tooltip always passes, so these rules never leak onto other e-tooltip-wrap
+   instances a future RCTooltip usage might render (e.g. a grid cell tip). */
+.e-tooltip-wrap.rc-tooltip-content.e-popup {
+  background-color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--foreground));
+}
+.e-tooltip-wrap.rc-tooltip-content .e-tip-content {
+  color: hsl(var(--card));
+  background-color: inherit;
+}
+.e-tooltip-wrap.rc-tooltip-content .e-arrow-tip-outer.e-tip-bottom { border-top: 8px solid hsl(var(--foreground)); }
+.e-tooltip-wrap.rc-tooltip-content .e-arrow-tip-outer.e-tip-top    { border-bottom: 8px solid hsl(var(--foreground)); }
+.e-tooltip-wrap.rc-tooltip-content .e-arrow-tip-outer.e-tip-left   { border-right: 8px solid hsl(var(--foreground)); }
+.e-tooltip-wrap.rc-tooltip-content .e-arrow-tip-outer.e-tip-right  { border-left: 8px solid hsl(var(--foreground)); }
+.e-tooltip-wrap.rc-tooltip-content .tip-content { margin: 0; font-size: inherit; }
+
+/* Modal (components/ui/modal.tsx) — real RCModal (Syncfusion DialogComponent)
+   backing a plain centered modal. `header` is a plain string (Syncfusion's
+   `header`/`footerTemplate` JSX-template mechanism throws "Element type is
+   invalid" under this app's React 19 + Syncfusion version — verified by
+   rendering a JSX element through both props; same underlying issue as
+   RCGrid's ColumnsDirective — so it can't carry our own styled title node).
+   The footer therefore renders as an ordinary child (`.modal-plain-footer`)
+   inside Syncfusion's single scrolling `.e-dlg-content`, not the native
+   `footerTemplate` slot — the rules below turn that one region back into a
+   header(fixed)/body(scroll)/footer(fixed) stack matching the pre-migration
+   hand-rolled layout (bg-white rounded-xl shadow-2xl border, slate-50
+   header, white footer), using this app's tokens instead of Syncfusion's
+   Bootstrap/Material defaults. */
+.e-dialog.modal-plain {
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.35);
+  outline: none;
+  max-height: 90vh;
+}
+.e-dialog.modal-plain .e-dlg-header-content {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+.e-dialog.modal-plain .e-dlg-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  width: auto;
+}
+.e-dialog.modal-plain .e-dlg-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.e-dialog.modal-plain .modal-plain-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+.e-dialog.modal-plain .modal-plain-footer {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Dialog (components/ui/dialog.tsx) — real RCModal backing the shadcn-style
+   compound Dialog. Same JSX-template constraint as Modal above means
+   <DialogHeader>/<DialogBody>/<DialogFooter> all render as ordinary children
+   inside Syncfusion's single `.e-dlg-content` (not the native header/footer
+   slots) — matching the *exact* pre-migration Radix behavior, where the
+   whole header+body+footer block scrolled together as one unit once a
+   caller's `max-h-[90vh] overflow-y-auto` className kicked in. Each of
+   those already carries its own Tailwind padding/border/classes, so the
+   only reset needed here is Syncfusion's own `.e-dlg-content` padding, plus
+   the outer chrome that replaces Radix's fixed + translate centering
+   (Syncfusion centers the dialog itself). */
+.e-dialog.dialog-shadcn {
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  outline: none;
+  width: 520px;
+  max-width: 95vw;
+}
+.e-dialog.dialog-shadcn .e-dlg-content {
+  padding: 0;
+}
+
+/* Card (components/ui/card.tsx) — real RCCard backing the shadcn-style
+   compound Card. RCCard always renders its own wrapper chain:
+   `.card-control > .e-card > .card > .image-header > .card-content >
+   (.e-card-header > .e-card-header-caption > .e-card-header-title) +
+   .e-card-content + .upload-status`. None of those wrapper divs carry any
+   of this app's design — <CardHeader>/<CardTitle>/<CardDescription>/
+   <CardContent> are passed through unchanged and still carry their own
+   original Tailwind classes (padding, font, color) — so every wrapper div
+   in RCCard's chain is reset to `display: contents` below: it renders (so
+   the real RCCard component is genuinely used) but owns no box or paint of
+   its own, which makes <CardHeader>/<CardContent> lay out as if they were
+   *direct* flex/grid children of `.card-control`, exactly like the
+   pre-migration plain `<div>` Card — this is what keeps existing
+   grid-equal-height-card-with-pinned-footer layouts (e.g. IntegrationCard's
+   `flex flex-col` + CardContent's `flex-1` pushing its footer row to the
+   bottom) working unchanged.
+   `.card-control` is therefore the one real painted box — Card (the
+   component) passes the exact pre-migration Tailwind expression
+   (`rounded-lg bg-card ... border-border` [+ `shadow-aurigo-card` unless
+   `flat`]) through RCCard's `cssClass` prop, so every call-site className
+   (`rounded-none`, `border-red-500`, `md:col-span-2`, ...) keeps landing on
+   that same real box and keeps working exactly as before.
+   Trade-off: this flattening assumes a text/content-only card — RCCard's
+   `leftIcon`/`rightIcon`/`uploadStatus` image-flanking layout (`.card-with-
+   icons`) is not reproducible through it. No call site uses those props
+   today (verified via grep), so this is a documented gap, not a regression. */
+.card-control .e-card,
+.card-control .e-card .card,
+.card-control .e-card .image-header,
+.card-control .e-card .image-header > .card-content,
+.card-control .e-card-header,
+.card-control .e-card-header-caption,
+.card-control .e-card-header-title,
+.card-control .e-card-content {
+  display: contents;
+}
+
+/* Button (components/ui/button.tsx) — real RCButton (Syncfusion EJ2
+   ButtonComponent). Base structural classes below are hand-copied verbatim
+   from the compiled bundle (node_modules/@aurigo/react-core-component-dev/
+   dist/themes/masterworks/css/bundles/rc-buttons.css) so `.button-btn` /
+   `.button-{size}-default` / `.background-color-{state}` render exactly as
+   RCButton's own `generateClassName` would have produced (button.tsx passes
+   these back in manually — see "mismatch #4" in that file's header comment,
+   RCButton's own className prop fully replaces rather than merges).
+   RCButton has no destructive/ghost/link *tone*, only default/secondary
+   button *states* (mismatch #6) — the `button-tone-*` rules below are
+   defined after the copied base rules so they win the cascade (same
+   "compound class always wins" trick as badge.tsx's `badge-tone-*`) and
+   repaint using this app's actual design tokens instead of RCButton's
+   hardcoded palette. */
+.button .button-btn {
+  box-sizing: border-box;
+  cursor: pointer;
+  align-items: center;
+  display: flex !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  border-radius: 0.25rem;
+  min-width: 3.125rem;
+  white-space: normal !important;
+  text-transform: initial !important;
+  box-shadow: none;
+  /* Syncfusion's Material 3 theme (@syncfusion/ej2-buttons/styles/material3.css)
+     paints `.e-btn` with `background: linear-gradient(... rgba(var(--color-sf-surface)))`
+     — an opaque white gradient IMAGE layer, separate from `background-color`.
+     Our `.button-tone-*` rules below only override `background-color`, which
+     wins the cascade for that one property (confirmed via getComputedStyle),
+     but Syncfusion's gradient `background-image` is never touched by them and
+     paints on top regardless, visually hiding the correct color underneath —
+     the button looks blank/white even though its computed background-color
+     is correct. Must neutralize it once, here, for every tone. */
+  background-image: none !important;
+}
+.button .button-small-default  { line-height: 1.25rem !important; font-size: 0.875rem !important; padding: 0.25rem 0.75rem !important; }
+.button .button-medium-default { line-height: 1.25rem !important; font-size: 1rem     !important; padding: 0.5rem 1rem !important; }
+.button .button-large-default  { line-height: 1.25rem !important; font-size: 1.25rem  !important; padding: 0.75rem 1.25rem !important; }
+.button .background-color-default          { background-color: #0069AF !important; }
+.button .background-color-secondary-default { background-color: #FFFFFF !important; color: #0069AF !important; border: 1px solid #12636A !important; }
+.button .background-color-disabled:disabled,
+.button .e-btn:disabled {
+  background-color: #e1e2e8 !important;
+  color: #8791ab !important;
+  border: 1px solid #e1e2e8 !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* button-tone-* — repaint with this app's own tokens, always after the base
+   rules above so it wins ties (equal specificity + !important, later source
+   order wins). Every tone keeps RCButton's real structural classes
+   (padding/radius/line-height/icon layout) — only color/border/background
+   are overridden. */
+.button .button-tone-default {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border: none !important;
+}
+.button .button-tone-default:hover { background-color: hsl(var(--primary) / 0.9) !important; }
+
+.button .button-tone-destructive {
+  background-color: hsl(var(--destructive)) !important;
+  color: hsl(var(--destructive-foreground)) !important;
+  border: none !important;
+}
+.button .button-tone-destructive:hover { background-color: hsl(var(--destructive) / 0.9) !important; }
+
+.button .button-tone-outline {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border-strong) / 0.7) !important;
+}
+.button .button-tone-outline:hover { background-color: hsl(var(--muted)) !important; border-color: hsl(var(--border-strong)) !important; }
+
+.button .button-tone-secondary {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+}
+.button .button-tone-secondary:hover { background-color: hsl(var(--subtle)) !important; }
+
+.button .button-tone-ghost {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.button .button-tone-ghost:hover { background-color: hsl(var(--muted)) !important; }
+
+.button .button-tone-link {
+  background-color: transparent !important;
+  color: hsl(var(--primary)) !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-width: 0;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+.button .button-tone-link:hover { text-decoration-color: hsl(var(--primary)); }
+
+/* Icon-only buttons — RCButton always renders `.button-text` (falling back
+   to a literal single space when `text` is empty), so hide it and collapse
+   the button to a square instead of leaving a padded gap next to the icon. */
+.button .button-icon-only { min-width: 0; width: 2.25rem; height: 2.25rem; padding: 0 !important; justify-content: center; }
+.button .button-icon-only .button-text { display: none; }
+
+/* Lucide-overlay icons (mismatch #7) — icons with no real RC icon-font match
+   (most importantly loading spinners, which need to keep spinning) render as
+   the original Lucide element, absolutely positioned over RCButton's own
+   chrome. `.rc-button-wrap` is the positioning context added by button.tsx
+   only when an overlay is present. */
+.rc-button-icon-overlay {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+}
+.rc-button-icon-overlay-left  { left: 0.75rem; }
+.rc-button-icon-overlay-right { right: 0.75rem; }
+.button .has-left-overlay .button-text  { padding-left: 1.25rem; }
+.button .has-right-overlay .button-text { padding-right: 1.25rem; }
+
+/* DropdownMenu triggers (components/aurigo/RCDropdownButton.tsx) — real
+   Syncfusion DropDownButtonComponent (@syncfusion/ej2-react-splitbuttons).
+   Its own material3 theme (ej2-splitbuttons/styles/material3.css) paints
+   `.e-dropdown-btn.e-btn` (compound selector, specificity 0,2,0) with its
+   own border/padding/box-shadow/border-radius and NO !important — a plain
+   single-class Tailwind utility (0,1,0) can never win that tie regardless
+   of stylesheet import order, so every rule below repeats all three classes
+   together (0,3,0) to win outright, same "compound class always wins" trick
+   as `.button-tone-*` above. `cssClass` itself is additive, not
+   replace-not-merge like RCButton's className (mismatch #4 doesn't apply
+   here) — see RCDropdownButton.tsx's header for the full source citation. */
+.rc-dropdown-trigger.e-dropdown-btn.e-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+  cursor: pointer;
+}
+/* Every trigger renders its own JSX children as content, never Syncfusion's
+   built-in caret glyph — hide it unconditionally rather than relying on a
+   call site remembering an `e-caret-hide` marker class (none of the 4 sites
+   here had it — the caret's codepoint resolves against the wrong package's
+   font per RCDropdownButton.tsx's header, so it doesn't just look redundant
+   next to a chevron, it renders as a stray unrelated glyph). */
+.rc-dropdown-trigger.e-dropdown-btn .e-caret {
+  display: none !important;
+}
+.rc-dropdown-trigger.e-dropdown-btn.e-btn:focus,
+.rc-dropdown-trigger.e-dropdown-btn.e-btn:focus-visible,
+.rc-dropdown-trigger.e-dropdown-btn.e-btn:active {
+  box-shadow: none !important;
+}
+.rc-dropdown-trigger.e-dropdown-btn.e-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Plain — ScopeStatusChip's badge-wrapping trigger. No button chrome at
+   all; the visible content is the <Badge> passed as children. */
+.rc-dropdown-trigger-plain.e-dropdown-btn.e-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0.375rem !important;
+}
+.rc-dropdown-trigger-plain.e-dropdown-btn.e-btn:focus-visible {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px;
+}
+
+/* Default (filled) — HandoffSplitButton's chevron half, welded to the right
+   edge of the primary <Button> it follows. */
+.rc-dropdown-trigger-default.e-dropdown-btn.e-btn {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border: none !important;
+  border-radius: 0 0.375rem 0.375rem 0 !important;
+  padding: 0 0.5rem !important;
+  height: 2.25rem !important;
+}
+.rc-dropdown-trigger-default.e-dropdown-btn.e-btn:hover {
+  background-color: hsl(var(--primary) / 0.9) !important;
+}
+
+/* Outline — OverflowMenu's kebab. */
+.rc-dropdown-trigger-outline.e-dropdown-btn.e-btn {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border-strong) / 0.7) !important;
+  border-radius: 0.375rem !important;
+  padding: 0 0.5rem !important;
+  height: 2.25rem !important;
+}
+.rc-dropdown-trigger-outline.e-dropdown-btn.e-btn:hover {
+  background-color: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border-strong)) !important;
+}
+
+/* Ghost icon — LayerPanel's kebab. Small, chromeless until hover. */
+.rc-dropdown-trigger-ghost.e-dropdown-btn.e-btn {
+  background: transparent !important;
+  border: none !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-radius: 0.25rem !important;
+  padding: 0 !important;
+  height: 1.5rem !important;
+  width: 1.5rem !important;
+  min-width: 0 !important;
+}
+.rc-dropdown-trigger-ghost.e-dropdown-btn.e-btn:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+/* Syncfusion adds `.e-active` while the popup is open (ej2-buttons'
+   `.e-btn.e-active` sets a solid brand-color background) — override so the
+   kebab reads as "open" via the same subtle hover tint, not solid brand fill. */
+.rc-dropdown-trigger-ghost.e-dropdown-btn.e-btn.e-active {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Destructive dropdown item (OverflowMenu's "Cancel job order") — ItemModel
+   has no per-item className/cssClass field, so JobOrderDetail.tsx's
+   `onBeforeItemRender` tags the real `<li class="e-item">` with this marker
+   class directly (Syncfusion hands back the DOM node via
+   `args.element` — see RCDropdownButton.tsx). `!important` needed for the
+   same specificity-tie reason as the trigger rules above:
+   `.e-dropdown-popup ul .e-item:hover` from material3.css is already a
+   2-class + pseudo-class selector with no !important. */
+.e-dropdown-popup .rc-dropdown-item-danger {
+  color: hsl(var(--danger)) !important;
+}
+.e-dropdown-popup .rc-dropdown-item-danger .e-menu-icon {
+  color: hsl(var(--danger)) !important;
+}
+.e-dropdown-popup .rc-dropdown-item-danger:hover,
+.e-dropdown-popup .rc-dropdown-item-danger.e-focused {
+  background: hsl(var(--danger) / 0.1) !important;
+  color: hsl(var(--danger)) !important;
+}
+
+/* Dark mode — no extra overrides needed (all values use CSS vars already) */
+@media (prefers-color-scheme: dark) {
+  .textbox .top-section label { color: hsl(var(--muted-foreground)); }
+}
+:root[data-theme="dark"] .textbox .top-section label { color: hsl(var(--muted-foreground)); }
+
+.e-btn.e-primary {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+.e-btn.e-primary:hover {
+  background: hsl(var(--primary) / 0.92);
+  border-color: hsl(var(--primary) / 0.92);
+}
+
+/* ==========================================================================
+   Sprint 19 — TAMP report print styles
+   ==========================================================================
+   Two print modes, driven by a body class:
+
+   1. Default `window.print()` — prints the entire TAMP report. Hides the app
+      shell (sidebar, topbar, notifications, AI panel, filters). Each numbered
+      Section becomes its own page. A print-only running header on each page
+      carries the agency name + fiscal year + version tag.
+
+   2. `document.body.classList.add('print-only-letter')` (set momentarily by
+      ConsistencyLetterModal.printLetter) — hides EVERYTHING except the
+      Consistency Determination Letter body so the browser Print dialog outputs
+      only the letter, not the report + letter stacked.
+
+   All rules are scoped to `@media print` so they never affect the on-screen
+   layout. Class hooks are TAMP-specific (`.tamp-*`, `.print-*`, `.print-only-letter`)
+   so this rule set can never leak into other pages. */
+
+@media print {
+  /* Nuke the app chrome — the shell uses `overflow: hidden` on body so we
+     unstick it here and let the browser handle pagination. */
+  html, body, #root {
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+    font-size: 11pt !important;
+    color: #000 !important;
+  }
+
+  /* Hide the shell: topbar, sidebar, notification/AI overlays, impersonation
+     banner, and anything explicitly marked `print:hidden` (Tailwind arbitrary
+     variant compiles this class). */
+  header, aside, nav, .app-switcher-item,
+  [role="dialog"]:not(.tamp-consistency-letter):not(.tamp-consistency-letter *):not(.tamp-letter-body):not(.tamp-letter-body *),
+  .print\:hidden {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  /* TAMP page root — single column, no shadows, tight margins. */
+  .tamp-report-root {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .tamp-report-root * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  .tamp-report-root .rounded-lg,
+  .tamp-report-root .rounded-md,
+  .tamp-report-root .rounded-xl {
+    border-radius: 0 !important;
+  }
+
+  /* Every numbered section starts on its own page. `break-after` is the
+     modern spec name; `page-break-after` is the compat alias browsers still
+     honor. Both included for maximum browser coverage. */
+  .tamp-sections > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .tamp-section {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+  .tamp-section:last-of-type {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+  /* Force the summary/details to expand on print — `details` collapses by
+     default when its `open` attribute isn't set, and window.print() can strip
+     the attribute in some browsers. */
+  details.tamp-section > summary { list-style: none; }
+  details.tamp-section[open] > div,
+  details.tamp-section > div { display: block !important; }
+
+  /* Print-only running page header — position: fixed makes it repeat on every
+     page. Hidden on-screen via `hidden print:block` on the DOM node. */
+  .print-page-header {
+    position: fixed;
+    top: 0.25in;
+    left: 0.5in;
+    right: 0.5in;
+    padding-bottom: 4pt;
+    border-bottom: 0.5pt solid #666 !important;
+    background: #ffffff;
+  }
+
+  /* Give every page a top margin equal to the running header height so the
+     content never overlaps the header text. */
+  @page { margin: 0.9in 0.5in 0.6in 0.5in; }
+
+  /* Tables — visible borders on print, keep rows together where feasible. */
+  .tamp-report-root table {
+    width: 100% !important;
+    border-collapse: collapse;
+  }
+  .tamp-report-root th, .tamp-report-root td {
+    border: 0.5pt solid #999 !important;
+    padding: 4pt 6pt !important;
+  }
+  .tamp-report-root thead { display: table-header-group; }
+  .tamp-report-root tr    { page-break-inside: avoid; }
+
+  /* Recharts sparklines print as SVG — force them to render at 100% width
+     of the containing cell so the trajectory is legible on paper. */
+  .tamp-report-root .recharts-responsive-container { width: 96px !important; height: 32px !important; }
+}
+
+/* Print-only body class — Consistency Determination Letter mode. When the
+   Consistency Letter modal calls printLetter(), it adds this class to <body>
+   just before window.print(), then removes it after. Hides EVERYTHING except
+   the letter body so the letter is the only thing on the printout. */
+@media print {
+  body.print-only-letter * { visibility: hidden !important; }
+  body.print-only-letter .tamp-letter-body,
+  body.print-only-letter .tamp-letter-body * { visibility: visible !important; }
+  body.print-only-letter .tamp-letter-body {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0.5in !important;
+    border: none !important;
+    background: #ffffff !important;
+  }
+}
