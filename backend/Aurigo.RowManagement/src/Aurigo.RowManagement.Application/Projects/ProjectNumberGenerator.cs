@@ -58,7 +58,12 @@ public sealed class ProjectNumberGenerator
         }
     }
 
-    /// <summary>A sample of the first number the format would produce, for the settings screen. Changes nothing.</summary>
-    public string Example(ProjectNumberFormat format) =>
-        ProjectNumbering.Render(format.Pattern, CurrentFiscalYear(format), 1);
+    /// <summary>The number the next project would get under this format. Changes nothing.</summary>
+    public async Task<string> PeekNextAsync(ProjectNumberFormat format, CancellationToken ct)
+    {
+        var fy = CurrentFiscalYear(format);
+        var scope = ProjectNumbering.ScopeKey(format.Pattern, fy);
+        var last = await _db.ProjectNumberCounters.Where(c => c.ScopeKey == scope).Select(c => (int?)c.LastValue).FirstOrDefaultAsync(ct) ?? 0;
+        return ProjectNumbering.Render(format.Pattern, fy, last + 1);
+    }
 }

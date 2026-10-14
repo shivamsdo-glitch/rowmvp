@@ -28,15 +28,17 @@ public class ProjectTests
         public RowDbContext Db { get; }
         private readonly PagePermissionService _perms;
         private readonly ProjectNumberGenerator _numbers;
+        private readonly FakeTenant _tenant;
 
         public Ctx(string store, Guid tenant, Guid user, string role, DateTimeOffset? now = null)
         {
             Db = TestDb.Create(store, tenant, user);
+            _tenant = new FakeTenant(tenant);
             _perms = new PagePermissionService(Db, new FakeUser(user, role));
             _numbers = new ProjectNumberGenerator(Db, new FixedClock(now ?? Now));
         }
 
-        public CreateProjectCommandHandler Create => new(Db, _perms, _numbers);
+        public CreateProjectCommandHandler Create => new(Db, _perms, _numbers, _tenant);
         public UpdateProjectCommandHandler Update => new(Db, _perms);
         public GetProjectQueryHandler Get => new(Db, _perms);
         public ListProjectsQueryHandler List => new(Db, _perms);

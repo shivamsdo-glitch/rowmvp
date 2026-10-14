@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Aurigo.RowManagement.Application.Projects;
 
-/// <summary>The tenant's project-number format and fiscal-year start, with an example of the first number it produces.</summary>
+/// <summary>The tenant's project-number format and fiscal-year start, with the number the next project would receive.</summary>
 public sealed record GetProjectNumberSettingsQuery : IRequest<ProjectNumberSettingsDto>;
 
 public sealed class GetProjectNumberSettingsQueryHandler : IRequestHandler<GetProjectNumberSettingsQuery, ProjectNumberSettingsDto>
@@ -28,7 +28,7 @@ public sealed class GetProjectNumberSettingsQueryHandler : IRequestHandler<GetPr
     {
         await _permissions.EnsureAsync(PageKeys.Projects, PermissionAction.Read, ct);
         var f = await _numbers.GetFormatAsync(ct);
-        return new ProjectNumberSettingsDto(f.Pattern, f.FiscalYearStartMonth, _numbers.Example(f));
+        return new ProjectNumberSettingsDto(f.Pattern, f.FiscalYearStartMonth, await _numbers.PeekNextAsync(f, ct));
     }
 }
 
@@ -76,6 +76,6 @@ public sealed class SetProjectNumberSettingsCommandHandler : IRequestHandler<Set
         await _db.SaveChangesAsync(ct);
 
         var f = new ProjectNumberFormat(settings.Pattern, settings.FiscalYearStartMonth);
-        return new ProjectNumberSettingsDto(f.Pattern, f.FiscalYearStartMonth, _numbers.Example(f));
+        return new ProjectNumberSettingsDto(f.Pattern, f.FiscalYearStartMonth, await _numbers.PeekNextAsync(f, ct));
     }
 }

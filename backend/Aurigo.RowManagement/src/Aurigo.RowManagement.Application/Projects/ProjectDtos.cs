@@ -28,6 +28,7 @@ public sealed record RowAuthorizationDto(
     DateOnly AuthorizedOn, string? ReferenceNumber, bool ProgrammingConfirmed, string? Notes);
 
 public sealed record ProjectNumberSettingsDto(string Pattern, int FiscalYearStartMonth, string Example);
+// Example is the number the next project would receive under the format.
 
 public sealed record ProjectImportResultDto(int Row, string Outcome, Guid? ProjectId, string? Number, string? Error);
 public sealed record ProjectImportSummaryDto(int Created, int Failed, IReadOnlyList<ProjectImportResultDto> Results);

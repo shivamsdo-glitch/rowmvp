@@ -102,43 +102,74 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
     private readonly ProjectNumberGenerator _numbers;
+    private readonly ICurrentTenant _tenant;
 
-    public CreateProjectCommandHandler(IRowDbContext db, IPagePermissionService permissions, ProjectNumberGenerator numbers)
+    /// <summary>
+    /// One issuer at a time per agency within this server, so simultaneous creates queue instead of fighting over the
+    /// counter row. The counter's concurrency token and the retry below still protect against several servers.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, SemaphoreSlim> IssueLocks = new();
+
+    public CreateProjectCommandHandler(
+        IRowDbContext db, IPagePermissionService permissions, ProjectNumberGenerator numbers, ICurrentTenant tenant)
     {
         _db = db;
         _permissions = permissions;
         _numbers = numbers;
+        _tenant = tenant;
     }
 
     public async Task<ProjectDto> Handle(CreateProjectCommand request, CancellationToken ct)
     {
         await _permissions.EnsureAsync(PageKeys.Projects, PermissionAction.Create, ct);
 
-        string number;
-        var generated = string.IsNullOrWhiteSpace(request.Number);
-        if (generated) number = await _numbers.NextAsync(ct);
-        else
+        if (!string.IsNullOrWhiteSpace(request.Number))
         {
-            number = request.Number!.Trim();
-            await ProjectLoading.EnsureNumberFreeAsync(_db, number, null, ct);
+            var typed = request.Number.Trim();
+            await ProjectLoading.EnsureNumberFreeAsync(_db, typed, null, ct);
+            var project = await TrySaveAsync(typed, request, ct)
+                          ?? throw new ConflictException("project_number_exists", $"A project numbered '{typed}' already exists.");
+            return project.ToDto();
         }
 
-        var project = new Project { Number = number };
-        ProjectLoading.Apply(project, request);
-        _db.Projects.Add(project);
+        // A generated number can lose a race with another create (same counter value). Nothing was saved, so
+        // start again from fresh state; the winner's counter is then visible and the next number is free.
+        var gate = IssueLocks.GetOrAdd(_tenant.IsAvailable ? _tenant.Value : Guid.Empty, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            for (var attempt = 1; attempt <= MaxGenerateAttempts; attempt++)
+            {
+                var saved = await TrySaveAsync(await _numbers.NextAsync(ct), request, ct);
+                if (saved is not null) return saved.ToDto();
+                await Task.Delay(Random.Shared.Next(5, 25 * attempt), ct);
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+        throw new ConflictException("project_number_conflict", "The system is busy issuing project numbers. Please try again.");
+    }
 
+    private const int MaxGenerateAttempts = 8;
+
+    /// <summary>Saves the project, or returns null (with the unsaved changes discarded) when the number or counter was taken concurrently.</summary>
+    private async Task<Project?> TrySaveAsync(string number, IProjectFields fields, CancellationToken ct)
+    {
+        var project = new Project { Number = number };
+        ProjectLoading.Apply(project, fields);
+        _db.Projects.Add(project);
         try
         {
             await _db.SaveChangesAsync(ct);
+            return project;
         }
-        catch (DbUpdateException) // includes concurrency: another create took the same number or counter value
+        catch (DbUpdateException) // includes DbUpdateConcurrencyException
         {
             _db.ChangeTracker.Clear();
-            throw new ConflictException("project_number_conflict",
-                generated ? "Another project was created at the same moment. Please try again."
-                          : $"A project numbered '{number}' already exists.");
+            return null;
         }
-        return project.ToDto();
     }
 }
 
