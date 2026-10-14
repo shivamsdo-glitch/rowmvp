@@ -1,0 +1,22 @@
+# Local development database only. The API and web app run on the host.
+# Credentials are development-only and match backend appsettings.Development.json.
+services:
+  postgres:
+    image: postgres:16
+    container_name: row-mvp-postgres
+    environment:
+      POSTGRES_USER: row
+      POSTGRES_PASSWORD: row_dev_only
+      POSTGRES_DB: row_management
+    ports:
+      - "5434:5432"
+    volumes:
+      - row-mvp-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U row -d row_management"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  row-mvp-pgdata:

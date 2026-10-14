@@ -1,0 +1,29 @@
+using System.Reflection;
+using Aurigo.RowManagement.Application.Auth;
+using Aurigo.RowManagement.Application.Common;
+using FluentValidation;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Aurigo.RowManagement.Application;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        var asm = Assembly.GetExecutingAssembly();
+
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssembly(asm);
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        });
+        services.AddValidatorsFromAssembly(asm, includeInternalTypes: true);
+
+        services.AddScoped<TokenPasswordFlow>();
+        services.AddScoped<IPagePermissionService, PagePermissionService>();
+
+        // Calculations are static, stateless functions (see Calculations/README.md); nothing to register.
+        return services;
+    }
+}

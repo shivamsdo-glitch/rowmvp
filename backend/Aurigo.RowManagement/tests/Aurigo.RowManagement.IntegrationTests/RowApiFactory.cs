@@ -1,0 +1,102 @@
+using System.Collections.Concurrent;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.RegularExpressions;
+using Aurigo.RowManagement.Application.Auth;
+using Aurigo.RowManagement.Application.Email;
+using Aurigo.RowManagement.Infrastructure.Persistence;
+using Aurigo.RowManagement.Infrastructure.Persistence.Interceptors;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace Aurigo.RowManagement.IntegrationTests;
+
+/// <summary>Records every email instead of sending it, so tests can follow activation and reset links.</summary>
+public sealed class CapturingEmailSender : IEmailSender
+{
+    private readonly ConcurrentQueue<EmailMessage> _sent = new();
+    public IReadOnlyList<EmailMessage> Sent => _sent.ToArray();
+
+    public Task SendAsync(EmailMessage message, CancellationToken ct = default)
+    {
+        _sent.Enqueue(message);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The raw single-use token from the most recent email to the address.</summary>
+    public string LastTokenFor(string address)
+    {
+        var mail = _sent.Last(m => m.ToAddress == address);
+        return Regex.Match(mail.TextBody, @"token=([A-Za-z0-9_-]+)").Groups[1].Value;
+    }
+}
+
+/// <summary>
+/// Hosts the real API (real middleware, auth, rate limiting, MediatR, audit interceptor) over an
+/// in-memory database, so no Postgres is needed. One fresh database per factory instance.
+/// </summary>
+public sealed class RowApiFactory : WebApplicationFactory<Program>
+{
+    private readonly string _environment;
+    private readonly Dictionary<string, string?> _settings;
+    private readonly string _dbName = Guid.NewGuid().ToString("N");
+
+    public CapturingEmailSender Emails { get; } = new();
+
+    /// <summary>Required by xUnit class fixtures.</summary>
+    public RowApiFactory() : this("Development", null) { }
+
+    /// <summary>A Development factory with extra configuration, e.g. tight rate limits.</summary>
+    public static RowApiFactory WithSettings(Dictionary<string, string?> settings) => new("Development", settings);
+
+    internal RowApiFactory(string environment, Dictionary<string, string?>? settings = null)
+    {
+        _environment = environment;
+        _settings = new Dictionary<string, string?>
+        {
+            // Generous by default so unrelated tests never trip the limiters; rate-limit tests override.
+            ["RateLimiting:AuthPermitLimit"] = "1000",
+            ["RateLimiting:WritePermitLimit"] = "1000",
+        };
+        if (settings is not null)
+            foreach (var kv in settings) _settings[kv.Key] = kv.Value;
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment(_environment);
+        builder.ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(_settings));
+        builder.ConfigureServices(services =>
+        {
+            services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<RowDbContext>)));
+            services.AddDbContext<RowDbContext>((sp, opts) => opts
+                .UseInMemoryDatabase(_dbName)
+                .AddInterceptors(sp.GetRequiredService<AuditingSaveChangesInterceptor>()));
+
+            services.Remove(services.Single(d => d.ServiceType == typeof(IEmailSender)));
+            services.AddSingleton<IEmailSender>(Emails);
+        });
+    }
+
+    public async Task<string> DevTokenAsync(HttpClient client, string role, Guid? tenant = null, Guid? user = null)
+    {
+        var url = $"/api/v1/auth/dev-token?role={role}";
+        if (tenant is not null) url += $"&tenant={tenant}";
+        if (user is not null) url += $"&user={user}";
+        var response = await client.GetFromJsonAsync<DevTokenResponse>(url, JsonOptions);
+        return response!.Token;
+    }
+
+    public HttpClient ClientWithToken(string token)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    public static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new(System.Text.Json.JsonSerializerDefaults.Web);
+}

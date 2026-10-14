@@ -49,6 +49,19 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - Locked-in design decisions → ADR in `vault/decisions/NNNN-title.md`.
 - Every feature references its ROW-IDs in commit messages and test names so traceability to the vault holds.
 
+## Backend platform (built in Phase 0; see ADRs 0001–0004 in `vault/decisions/`)
+- **Run:** `docker compose up -d` (Postgres 16 on host port 5434), then `dotnet run --project backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api` → http://localhost:5100/swagger. In Development it migrates and seeds the demo tenant, six roles and one inactive user per role.
+- **Test:** `dotnet test backend/Aurigo.RowManagement` (unit tests use EF InMemory; integration tests host the real API with `WebApplicationFactory`; neither needs Docker).
+- **Migrations:** `dotnet tool restore`, then `dotnet ef migrations add <Name> --project src/Aurigo.RowManagement.Infrastructure --startup-project src/Aurigo.RowManagement.Api --output-dir Persistence/Migrations` from `backend/Aurigo.RowManagement`.
+- **Tenancy/audit are automatic.** New entities derive `EntityBase`; never write tenant or audit code in handlers. Only anonymous auth flows use `IgnoreQueryFilters()`.
+- **Auth:** own JWTs (claims `sub`, `email`, `tenant_id`, `role`). `GET /api/v1/auth/dev-token?role=Admin` is Development-only (404 elsewhere). Set `Jwt__SigningKey` in any other environment or the app refuses to start.
+- **Routes** are `/api/v1/...`; errors are ProblemDetails with a stable `title` code.
+- **External systems are stubbed** (`Application/ExternalServices` interface + `Infrastructure/ExternalClients/Stub*`). Never add a real HTTP client to an outside system without a decision from the user.
+- **Page-level RBAC:** `RolePagePermission` rows per (role, page key); defaults in `Domain/Common/DefaultRolePermissions`, provisioned per tenant by `TenantProvisioner` (add-only, never overwrites admin edits). Check access with `IPagePermissionService`; the UI reads `GET /api/v1/auth/permissions`. New page = add to `PageKeys` + the matrix.
+- **Seeding:** `SeedRunner` runs ordered `ISeedStep`s after migrations (`Database:SeedOnStartup`). Demo tenant/users/data are Development-only; default roles run everywhere. Phase 1 fills `DemoDataSeedStep`.
+- **Documents:** any module attaches files via `/api/v1/documents` (multipart; register the entity type in `Application/Documents/AttachmentTargets` with its page key). Soft delete; bytes go to the stub doc store. **Saved filters:** `/api/v1/saved-filters`, per user per page.
+- **File names:** an environment permission rule blocks creating files whose names start with `Token` or `Password`. Use a different name (e.g. `OneTimeTokenService`) rather than fighting it.
+
 ## Working agreements
 - Work one phase at a time, in order; each phase doc has an exit checklist. Don't start a phase before the user confirms the prior one.
 - Backend: `dotnet test` green + `dotnet build` warning-free before a phase is done. Frontend: `npm run build`, `vitest`, and type-check green.

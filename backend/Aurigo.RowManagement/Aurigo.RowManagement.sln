@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1801CDEE-6048-4613-827C-3411015D9362}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurigo.RowManagement.Api", "src\Aurigo.RowManagement.Api\Aurigo.RowManagement.Api.csproj", "{EAE4C3D3-2873-46AE-8B9C-EA235949B641}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurigo.RowManagement.Application", "src\Aurigo.RowManagement.Application\Aurigo.RowManagement.Application.csproj", "{B84F7EFE-2D65-44A2-ACEB-E2F3198CE50D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurigo.RowManagement.Domain", "src\Aurigo.RowManagement.Domain\Aurigo.RowManagement.Domain.csproj", "{7A461909-DF90-421C-9DFF-BFC85FF1BAD3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurigo.RowManagement.Infrastructure", "src\Aurigo.RowManagement.Infrastructure\Aurigo.RowManagement.Infrastructure.csproj", "{B8A4B0B6-F801-4F82-8306-7B50246CEA79}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3799945E-BA23-4BEA-9F59-41EED22E220C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurigo.RowManagement.IntegrationTests", "tests\Aurigo.RowManagement.IntegrationTests\Aurigo.RowManagement.IntegrationTests.csproj", "{70E35267-4D3D-4D83-B9C1-F95D79636AD6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurigo.RowManagement.UnitTests", "tests\Aurigo.RowManagement.UnitTests\Aurigo.RowManagement.UnitTests.csproj", "{A80A2DED-4004-4E8D-BF29-970C4D79F4EF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EAE4C3D3-2873-46AE-8B9C-EA235949B641}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EAE4C3D3-2873-46AE-8B9C-EA235949B641}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EAE4C3D3-2873-46AE-8B9C-EA235949B641}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EAE4C3D3-2873-46AE-8B9C-EA235949B641}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B84F7EFE-2D65-44A2-ACEB-E2F3198CE50D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B84F7EFE-2D65-44A2-ACEB-E2F3198CE50D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B84F7EFE-2D65-44A2-ACEB-E2F3198CE50D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B84F7EFE-2D65-44A2-ACEB-E2F3198CE50D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A461909-DF90-421C-9DFF-BFC85FF1BAD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A461909-DF90-421C-9DFF-BFC85FF1BAD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A461909-DF90-421C-9DFF-BFC85FF1BAD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A461909-DF90-421C-9DFF-BFC85FF1BAD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8A4B0B6-F801-4F82-8306-7B50246CEA79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8A4B0B6-F801-4F82-8306-7B50246CEA79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8A4B0B6-F801-4F82-8306-7B50246CEA79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8A4B0B6-F801-4F82-8306-7B50246CEA79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70E35267-4D3D-4D83-B9C1-F95D79636AD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70E35267-4D3D-4D83-B9C1-F95D79636AD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70E35267-4D3D-4D83-B9C1-F95D79636AD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70E35267-4D3D-4D83-B9C1-F95D79636AD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A80A2DED-4004-4E8D-BF29-970C4D79F4EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A80A2DED-4004-4E8D-BF29-970C4D79F4EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A80A2DED-4004-4E8D-BF29-970C4D79F4EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A80A2DED-4004-4E8D-BF29-970C4D79F4EF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EAE4C3D3-2873-46AE-8B9C-EA235949B641} = {1801CDEE-6048-4613-827C-3411015D9362}
+		{B84F7EFE-2D65-44A2-ACEB-E2F3198CE50D} = {1801CDEE-6048-4613-827C-3411015D9362}
+		{7A461909-DF90-421C-9DFF-BFC85FF1BAD3} = {1801CDEE-6048-4613-827C-3411015D9362}
+		{B8A4B0B6-F801-4F82-8306-7B50246CEA79} = {1801CDEE-6048-4613-827C-3411015D9362}
+		{70E35267-4D3D-4D83-B9C1-F95D79636AD6} = {3799945E-BA23-4BEA-9F59-41EED22E220C}
+		{A80A2DED-4004-4E8D-BF29-970C4D79F4EF} = {3799945E-BA23-4BEA-9F59-41EED22E220C}
+	EndGlobalSection
+EndGlobal
