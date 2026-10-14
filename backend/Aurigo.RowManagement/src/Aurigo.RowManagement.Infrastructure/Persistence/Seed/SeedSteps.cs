@@ -1,5 +1,6 @@
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
+using Aurigo.RowManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -98,21 +99,79 @@ public sealed class DemoUsersSeedStep : ISeedStep
 }
 
 /// <summary>
-/// Placeholder for the sample projects and parcels used in demos. The entities arrive in Phase 1, so
-/// this only logs for now; when they exist, add the (idempotent) inserts here and nothing else changes.
+/// Sample projects for demos: one federal project still held at the acquisition gate, one federal project
+/// cleared to acquire (NEPA + acquisition authorization, two estimate versions, two budget years) and one
+/// locally funded project. Idempotent: skipped when the first demo project already exists. Parcels join in slice 2.
 /// </summary>
 public sealed class DemoDataSeedStep : ISeedStep
 {
+    private readonly RowDbContext _db;
     private readonly ILogger<DemoDataSeedStep> _log;
-    public DemoDataSeedStep(ILogger<DemoDataSeedStep> log) => _log = log;
+
+    public DemoDataSeedStep(RowDbContext db, ILogger<DemoDataSeedStep> log)
+    {
+        _db = db;
+        _log = log;
+    }
 
     public string Name => "Demo projects and parcels";
     public int Order => 40;
     public bool DevelopmentOnly => true;
 
-    public Task RunAsync(CancellationToken ct)
+    public async Task RunAsync(CancellationToken ct)
     {
-        _log.LogInformation("Demo projects and parcels: nothing to seed yet (project and parcel entities arrive in Phase 1).");
-        return Task.CompletedTask;
+        _db.CurrentTenantId = WellKnownIds.DevTenant;
+        if (await _db.Projects.AnyAsync(p => p.Number == "DEMO-001", ct)) return;
+
+        var held = new Project
+        {
+            Number = "DEMO-001", Name = "SR-20 Corridor Widening", Region = "North", District = "District 1",
+            Description = "Federal-aid widening; NEPA decision and acquisition authorization still pending.",
+            OversightType = OversightType.Federal, FundingSource = "FHWA STBG", FundingAmount = 12_000_000m, DesignEstimate = 9_500_000m,
+            LettingDate = new DateOnly(2027, 6, 1), ConstructionStartDate = new DateOnly(2027, 9, 1), ConstructionEndDate = new DateOnly(2029, 3, 31),
+        };
+        held.Authorizations.Add(new RowAuthorization
+        {
+            Type = AuthorizationType.Preliminary, AuthorizedAmount = 400_000m, FederalSharePercent = 80m,
+            AuthorizedOn = new DateOnly(2026, 1, 20), ReferenceNumber = "PRE-0001", ProgrammingConfirmed = true,
+            Notes = "Appraisal and title only.",
+        });
+
+        var cleared = new Project
+        {
+            Number = "DEMO-002", Name = "Harbor Bridge Replacement", Region = "South", District = "District 3",
+            Description = "Federal-aid bridge replacement cleared to acquire.",
+            OversightType = OversightType.Federal, FundingSource = "FHWA Bridge Program", FundingAmount = 30_000_000m, DesignEstimate = 24_000_000m,
+            LettingDate = new DateOnly(2027, 3, 1), NepaDecisionType = NepaDecisionType.CategoricalExclusion, NepaDecisionDate = new DateOnly(2025, 11, 12),
+        };
+        cleared.Authorizations.Add(new RowAuthorization
+        {
+            Type = AuthorizationType.Acquisition, AuthorizedAmount = 6_500_000m, FederalSharePercent = 80m,
+            AuthorizedOn = new DateOnly(2026, 2, 10), ReferenceNumber = "ACQ-0007", ProgrammingConfirmed = true,
+        });
+        cleared.Estimates.Add(new ProjectCostEstimate
+        {
+            Version = 1, LandCost = 4_000_000m, ImprovementsCost = 900_000m, RelocationCost = 600_000m, IndirectCost = 350_000m,
+            Notes = "Preliminary quantity-based estimate.",
+        });
+        cleared.Estimates.Add(new ProjectCostEstimate
+        {
+            Version = 2, LandCost = 4_400_000m, ImprovementsCost = 950_000m, RelocationCost = 650_000m, IndirectCost = 400_000m,
+            Notes = "Revised after parcel list update.",
+        });
+        foreach (var e in cleared.Estimates) e.RecalculateTotal();
+        cleared.Budgets.Add(new ProjectBudget { FiscalYear = 2026, Amount = 2_500_000m });
+        cleared.Budgets.Add(new ProjectBudget { FiscalYear = 2027, Amount = 4_000_000m, Notes = "Peak acquisition year." });
+
+        var local = new Project
+        {
+            Number = "DEMO-003", Name = "Maple Avenue Sidewalk Extension", Region = "Central", District = "District 2",
+            Description = "Locally funded; agency rules apply, so the acquisition gate does not hold it.",
+            OversightType = OversightType.Local, FundingSource = "City capital fund", FundingAmount = 850_000m, DesignEstimate = 700_000m,
+        };
+
+        _db.Projects.AddRange(held, cleared, local);
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Seeded 3 demo projects.");
     }
 }

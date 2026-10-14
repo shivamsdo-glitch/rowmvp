@@ -1,5 +1,6 @@
 using Aurigo.RowManagement.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Aurigo.RowManagement.Application.Persistence;
 
@@ -18,6 +19,15 @@ public interface IRowDbContext
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<Document> Documents { get; }
     DbSet<SavedFilterProfile> SavedFilterProfiles { get; }
+    DbSet<Project> Projects { get; }
+    DbSet<ProjectCostEstimate> ProjectCostEstimates { get; }
+    DbSet<ProjectBudget> ProjectBudgets { get; }
+    DbSet<RowAuthorization> RowAuthorizations { get; }
+    DbSet<ProjectNumberSettings> ProjectNumberSettings { get; }
+    DbSet<ProjectNumberCounter> ProjectNumberCounters { get; }
+
+    /// <summary>Exposed so a handler that recovers from a failed save can discard the unsaved changes.</summary>
+    ChangeTracker ChangeTracker { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

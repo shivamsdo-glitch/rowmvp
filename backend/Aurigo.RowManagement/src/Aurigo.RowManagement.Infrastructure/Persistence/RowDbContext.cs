@@ -32,6 +32,12 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<SavedFilterProfile> SavedFilterProfiles => Set<SavedFilterProfile>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectCostEstimate> ProjectCostEstimates => Set<ProjectCostEstimate>();
+    public DbSet<ProjectBudget> ProjectBudgets => Set<ProjectBudget>();
+    public DbSet<RowAuthorization> RowAuthorizations => Set<RowAuthorization>();
+    public DbSet<ProjectNumberSettings> ProjectNumberSettings => Set<ProjectNumberSettings>();
+    public DbSet<ProjectNumberCounter> ProjectNumberCounters => Set<ProjectNumberCounter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

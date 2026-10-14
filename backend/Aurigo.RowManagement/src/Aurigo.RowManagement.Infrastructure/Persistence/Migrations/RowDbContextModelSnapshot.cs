@@ -252,6 +252,363 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("documents", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly?>("ConstructionEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("construction_end_date");
+
+                    b.Property<DateOnly?>("ConstructionStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("construction_start_date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<decimal?>("DesignEstimate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("design_estimate");
+
+                    b.Property<string>("District")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("district");
+
+                    b.Property<DateOnly?>("ExceptionApprovedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("exception_approved_on");
+
+                    b.Property<string>("ExceptionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("exception_reason");
+
+                    b.Property<string>("ExceptionType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("exception_type");
+
+                    b.Property<decimal?>("FundingAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("funding_amount");
+
+                    b.Property<string>("FundingSource")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("funding_source");
+
+                    b.Property<DateOnly?>("LettingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("letting_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateOnly?>("NepaDecisionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("nepa_decision_date");
+
+                    b.Property<string>("NepaDecisionType")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("nepa_decision_type");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("number");
+
+                    b.Property<string>("OversightType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("oversight_type");
+
+                    b.Property<DateOnly?>("PlanTurnInDate")
+                        .HasColumnType("date")
+                        .HasColumnName("plan_turn_in_date");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("region");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_projects");
+
+                    b.HasIndex("TenantId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_projects_tenant_id_number");
+
+                    b.HasIndex("TenantId", "Region", "District")
+                        .HasDatabaseName("ix_projects_tenant_id_region_district");
+
+                    b.ToTable("projects", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProjectBudget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("fiscal_year");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_budgets");
+
+                    b.HasIndex("ProjectId", "FiscalYear")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_budgets_project_id_fiscal_year");
+
+                    b.ToTable("project_budgets", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProjectCostEstimate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal>("ImprovementsCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("improvements_cost");
+
+                    b.Property<decimal>("IndirectCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("indirect_cost");
+
+                    b.Property<decimal>("LandCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("land_cost");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<decimal>("RelocationCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("relocation_cost");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_cost_estimates");
+
+                    b.HasIndex("ProjectId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_cost_estimates_project_id_version");
+
+                    b.ToTable("project_cost_estimates", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProjectNumberCounter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_value");
+
+                    b.Property<string>("ScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("scope_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_number_counters");
+
+                    b.HasIndex("TenantId", "ScopeKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_number_counters_tenant_id_scope_key");
+
+                    b.ToTable("project_number_counters", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProjectNumberSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("FiscalYearStartMonth")
+                        .HasColumnType("integer")
+                        .HasColumnName("fiscal_year_start_month");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pattern");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_number_settings");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_number_settings_tenant_id");
+
+                    b.ToTable("project_number_settings", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -370,6 +727,80 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_role_page_permissions_role_id_page_key");
 
                     b.ToTable("role_page_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RowAuthorization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AuthorizedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("authorized_amount");
+
+                    b.Property<DateOnly>("AuthorizedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("authorized_on");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal?>("FederalSharePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("federal_share_percent");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<bool>("ProgrammingConfirmed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("programming_confirmed");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference_number");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_row_authorizations");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_row_authorizations_project_id");
+
+                    b.ToTable("row_authorizations", (string)null);
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.SavedFilterProfile", b =>
@@ -579,6 +1010,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProjectBudget", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Project", null)
+                        .WithMany("Budgets")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_budgets_projects_project_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProjectCostEstimate", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Project", null)
+                        .WithMany("Estimates")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_cost_estimates_projects_project_id");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RolePagePermission", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Role", "Role")
@@ -589,6 +1040,16 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_role_page_permissions_roles_role_id");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RowAuthorization", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Project", null)
+                        .WithMany("Authorizations")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_row_authorizations_projects_project_id");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.UserRole", b =>
@@ -615,6 +1076,15 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.AppUser", b =>
                 {
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Project", b =>
+                {
+                    b.Navigation("Authorizations");
+
+                    b.Navigation("Budgets");
+
+                    b.Navigation("Estimates");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Role", b =>

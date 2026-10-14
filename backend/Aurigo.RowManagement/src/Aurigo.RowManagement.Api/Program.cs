@@ -83,7 +83,8 @@ try
 
     builder.Services.AddRowRateLimiting();
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
     // ── Document attachments: size limit from configuration (Documents:MaxBytes, default 25 MB) ──
     // Kestrel's own request-body cap (about 28 MB) still applies; raise it too if MaxBytes goes above that.

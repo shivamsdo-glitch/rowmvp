@@ -99,7 +99,7 @@ public class SeedRunnerTests
             new DemoTenantSeedStep(db),
             new DefaultRbacSeedStep(db, new TenantProvisioner(db), logger),
             new DemoUsersSeedStep(db),
-            new DemoDataSeedStep(NullLogger<DemoDataSeedStep>.Instance),
+            new DemoDataSeedStep(db, NullLogger<DemoDataSeedStep>.Instance),
         };
 
         steps.Select(s => s.Order).Should().BeInAscendingOrder().And.OnlyHaveUniqueItems();
@@ -119,7 +119,7 @@ public class SeedRunnerTests
                 new DemoTenantSeedStep(db),
                 new DefaultRbacSeedStep(db, new TenantProvisioner(db), NullLogger<DefaultRbacSeedStep>.Instance),
                 new DemoUsersSeedStep(db),
-                new DemoDataSeedStep(NullLogger<DemoDataSeedStep>.Instance),
+                new DemoDataSeedStep(db, NullLogger<DemoDataSeedStep>.Instance),
             }).RunAsync();
         }
 
@@ -133,6 +133,9 @@ public class SeedRunnerTests
         (await read.AppUsers.IgnoreQueryFilters().CountAsync()).Should().Be(RoleNames.All.Count);
         (await read.UserRoles.IgnoreQueryFilters().CountAsync()).Should().Be(RoleNames.All.Count);
         (await read.Tenants.SingleAsync()).Id.Should().Be(WellKnownIds.DevTenant);
+        (await read.Projects.IgnoreQueryFilters().CountAsync()).Should().Be(3, "demo projects are seeded once");
+        (await read.Projects.IgnoreQueryFilters().AllAsync(p => p.TenantId == WellKnownIds.DevTenant)).Should().BeTrue();
+        (await read.ProjectCostEstimates.IgnoreQueryFilters().CountAsync()).Should().Be(2);
     }
 
     [Fact]
