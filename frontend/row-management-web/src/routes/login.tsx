@@ -3,6 +3,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { ROLES, type Role } from '@/api/auth'
 import { ApiError } from '@/api/client'
 import { useAuthManager } from '@/auth/auth-context'
+import { BRAND } from '@/brand/brand'
 import { buttonClassName } from '@/components/ui/button'
 
 export const Route = createFileRoute('/login')({
@@ -44,8 +45,9 @@ function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-md rounded-lg border bg-card p-6 shadow-sm">
-        <h1 className="page-title m-0">ROW Management</h1>
-        <p className="page-subtitle">Development sign-in. Pick a role to continue.</p>
+        <h1 className="page-title m-0">{BRAND.productName}</h1>
+        <p className="page-subtitle">{BRAND.tagline}</p>
+        <p className="mt-2 text-xs text-muted-foreground">Development sign-in. Pick a role to continue.</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
           {ROLES.map((role) => (
             <button

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEventModule from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { AuthProvider } from '@/auth/auth-context'
 import { AuthManager } from '@/auth/auth-manager'
@@ -9,13 +10,15 @@ import { createAppRouter } from '@/router'
 
 beforeEach(() => sessionStorage.clear())
 
-function mount(path: string, readable: string[], role = 'Admin') {
+export function mount(path: string, readable: string[], role = 'Admin') {
   const auth = new AuthManager({ fetchImpl: fakeAuthFetch({ readable, role }) as typeof fetch })
   const router = createAppRouter(auth, createMemoryHistory({ initialEntries: [path] }))
   render(
-    <AuthProvider auth={auth}>
-      <RouterProvider router={router} />
-    </AuthProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <AuthProvider auth={auth}>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>,
   )
   return { auth, router }
 }
@@ -36,9 +39,8 @@ describe('route guards', () => {
     await user.click(await screen.findByRole('button', { name: 'Finance' }))
 
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /Administration/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Dev User')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Home/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Configuration/ })).not.toBeInTheDocument()
   })
 
   it('shows the forbidden screen, not a blank page, when the role cannot read the page', async () => {
@@ -48,20 +50,22 @@ describe('route guards', () => {
     expect(await screen.findByText(/don't have access/i)).toBeInTheDocument()
   })
 
-  it('lets a role with access open the page and shows the nav link', async () => {
+  it('lets a role with access open the page and shows the nav link as active', async () => {
     sessionStorage.setItem('row.auth.token', 'good-token')
     mount('/administration', ['dashboard', 'administration'])
 
     expect(await screen.findByRole('heading', { name: 'Administration' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Administration/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Configuration/ })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('signing out returns to the login page and blocks protected pages again', async () => {
+  it('signing out from the account menu returns to login and blocks protected pages again', async () => {
     const user = userEventModule.setup()
     sessionStorage.setItem('row.auth.token', 'good-token')
     const { router } = mount('/', ['dashboard'])
 
-    await user.click(await screen.findByRole('button', { name: /Sign out/ }))
+    await user.click(await screen.findByRole('button', { name: 'Account' }))
+    expect(screen.getByText('Dev User')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Log Out' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
     await router.navigate({ to: '/' })

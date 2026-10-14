@@ -1,68 +1,32 @@
-import { createFileRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, LogOut, Shield } from 'lucide-react'
-import type { PageKey } from '@/api/auth'
-import { useAuth } from '@/auth/auth-context'
+import { useState } from 'react'
+import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { requireSignedIn } from '@/auth/guards'
-import { buttonClassName } from '@/components/ui/button'
+import { Sidebar } from '@/components/shell/Sidebar'
+import { TopBar } from '@/components/shell/TopBar'
 
+// The auth gate: anyone without a valid session is sent to /login (remembering where they were going).
 export const Route = createFileRoute('/_app')({
   beforeLoad: ({ context, location }) => requireSignedIn(context.auth, location.pathname),
   component: AppShell,
 })
 
-/** Pages that have a screen today. Later phases add their entries here; visibility follows page permissions. */
-const NAV: { to: '/' | '/administration'; label: string; page: PageKey; icon: typeof Shield }[] = [
-  { to: '/', label: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
-  { to: '/administration', label: 'Administration', page: 'administration', icon: Shield },
-]
-
 function AppShell() {
-  const { user, manager } = useAuth()
-  const navigate = useNavigate()
-  const items = NAV.filter((n) => manager.can(n.page, 'read'))
+  const [collapsed, setCollapsed] = useState(false)
+  const path = useRouterState({ select: (s) => s.location.pathname })
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="hidden w-60 shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex" aria-label="Primary">
-        <div className="mb-6 text-sm font-semibold tracking-wide">ROW Management</div>
-        <nav className="flex flex-col gap-1">
-          {items.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-white/10"
-              activeProps={{ className: 'bg-white/15' }}
-              activeOptions={{ exact: true }}
-            >
-              <Icon size={16} /> {label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b bg-card px-6 py-3">
-          <div className="text-sm text-muted-foreground">{user?.tenantName ?? 'Agency'}</div>
-          <div className="flex items-center gap-3">
-            <div className="text-right text-sm leading-tight">
-              <div className="font-medium">{user?.fullName}</div>
-              <div className="text-xs text-muted-foreground">{user?.roles.join(', ')}</div>
+    // h-screen (not min-h-screen) pins the shell to the viewport so the sidebar stays put and only <main> scrolls.
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
+      <TopBar />
+      <div className="flex flex-1 min-h-0 overflow-hidden bg-card">
+        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} currentPath={path} />
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-background">
+          <main className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-auto">
+            <div className="px-6 py-6 max-w-[1720px] mx-auto w-full">
+              <Outlet />
             </div>
-            <button
-              type="button"
-              className={buttonClassName('outline', 'sm')}
-              onClick={async () => {
-                manager.signOut()
-                await navigate({ to: '/login', search: {} })
-              }}
-            >
-              <LogOut size={14} /> Sign out
-            </button>
-          </div>
-        </header>
-        <main className="flex-1 p-6">
-          <Outlet />
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   )
