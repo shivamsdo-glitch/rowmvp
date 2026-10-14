@@ -60,6 +60,8 @@ public static class DependencyInjection
         // Nothing outside this process is called in the MVP. To integrate a real system, add a real
         // client next to the stub and swap the registration; callers depend only on the interface
         // in Application/ExternalServices.
+        services.AddOptions<FileStorageOptions>().Configure<IConfiguration>((o, c) => c.GetSection(FileStorageOptions.Section).Bind(o));
+        services.AddSingleton<Aurigo.RowManagement.Application.Storage.IFileStorage, LocalDiskFileStorage>();
         services.AddSingleton<IDocMgmtClient, StubDocMgmtClient>();
         services.AddSingleton<INotificationClient, StubNotificationClient>();
 

@@ -45,11 +45,11 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - **Pure calculations** (offer/compensation thresholds, approval-chain gating, statutory deadlines, settlement variance) go in `Application/Calculations/` as stateless static functions with dedicated unit tests. No DB, clock, or DI inside them (pass `now` in).
 - **Approval chains** are configurable data (threshold bands → required roles), evaluated by a Calculations function; never hard-coded dollar amounts.
 - **Parcel status and agreement/interest status** are manually-set lists at both levels (user decision, README); ordered step-gating (ROW-072) is a separate, configurable check.
-- **Documents:** MVP stores attachments via an `IFileStorage` abstraction (local disk) with metadata + versioning; no full document platform.
+- **Documents:** attachments are metadata rows + bytes behind a doc-store interface (stub today); `IFileStorage` (local disk, `Storage:RootPath`) is the byte-storage abstraction for a real store. No full document platform.
 - Locked-in design decisions → ADR in `vault/decisions/NNNN-title.md`.
 - Every feature references its ROW-IDs in commit messages and test names so traceability to the vault holds.
 
-## Backend platform (built in Phase 0; see ADRs 0001–0004 in `vault/decisions/`)
+## Backend platform (built in Phase 0; see ADRs 0001–0005 in `vault/decisions/`)
 - **Run:** `docker compose up -d` (Postgres 16 on host port 5434), then `dotnet run --project backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api` → http://localhost:5100/swagger. In Development it migrates and seeds the demo tenant, six roles and one inactive user per role.
 - **Test:** `dotnet test backend/Aurigo.RowManagement` (unit tests use EF InMemory; integration tests host the real API with `WebApplicationFactory`; neither needs Docker).
 - **Migrations:** `dotnet tool restore`, then `dotnet ef migrations add <Name> --project src/Aurigo.RowManagement.Infrastructure --startup-project src/Aurigo.RowManagement.Api --output-dir Persistence/Migrations` from `backend/Aurigo.RowManagement`.
@@ -61,6 +61,9 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - **Seeding:** `SeedRunner` runs ordered `ISeedStep`s after migrations (`Database:SeedOnStartup`). Demo tenant/users/data are Development-only; default roles run everywhere. Phase 1 fills `DemoDataSeedStep`.
 - **Documents:** any module attaches files via `/api/v1/documents` (multipart; register the entity type in `Application/Documents/AttachmentTargets` with its page key). Soft delete; bytes go to the stub doc store. **Saved filters:** `/api/v1/saved-filters`, per user per page.
 - **File names:** an environment permission rule blocks creating files whose names start with `Token` or `Password`. Use a different name (e.g. `OneTimeTokenService`) rather than fighting it.
+
+## Frontend (ADR 0005)
+`frontend/row-management-web`: file-based TanStack Router (`src/routes`, generated `routeTree.gen.ts` is committed), `AuthManager` session + guards in `src/auth`, fetch wrapper in `src/api`. `npm run dev` proxies `/api` to http://localhost:5100. Recipes for common jobs are in `SKILLS.md`.
 
 ## Working agreements
 - Work one phase at a time, in order; each phase doc has an exit checklist. Don't start a phase before the user confirms the prior one.
