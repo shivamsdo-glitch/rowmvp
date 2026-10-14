@@ -6,6 +6,7 @@
 // Needs: Docker Desktop running (Postgres), .NET 8 SDK, Node, and Microsoft Edge for the E2E layer.
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -28,6 +29,7 @@ const steps = [
   ['Frontend type-check', npx, ['tsc', '--noEmit'], web],
   ['Frontend tests', npx, ['vitest', 'run'], web],
   ['Frontend production build', npm, ['run', 'build'], web],
+  ...(skipE2e || existsSync(resolve(e2e, 'node_modules')) ? [] : [['Install end-to-end dependencies (first run only)', npm, ['ci'], e2e]]),
   ...(skipE2e ? [] : [['End-to-end acceptance (real browser, API, database)', npx, ['playwright', 'test'], e2e]]),
 ]
 

@@ -27,13 +27,25 @@ public class SecurityTests : IClassFixture<RowApiFactory>
         var ops = new List<(string, string)>();
         foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())
             foreach (var op in path.Value.EnumerateObject())
+            {
                 ops.Add((op.Name.ToUpperInvariant(), path.Name));
+                // Route parameters are typed ({fiscalYear:int}); a wrong-typed sample would 404 in routing before auth runs.
+                if (op.Value.ValueKind == JsonValueKind.Object && op.Value.TryGetProperty("parameters", out var ps))
+                    foreach (var prm in ps.EnumerateArray())
+                        if (prm.TryGetProperty("in", out var where) && where.GetString() == "path"
+                            && prm.TryGetProperty("schema", out var schema) && schema.TryGetProperty("type", out var type)
+                            && type.GetString() is "integer" or "number")
+                            NumericRouteParameters.Add(prm.GetProperty("name").GetString()!);
+            }
         return ops;
     }
 
+    private static readonly HashSet<string> NumericRouteParameters = new();
+
     private static HttpRequestMessage Request(string method, string path, string? token = null)
     {
-        var concrete = System.Text.RegularExpressions.Regex.Replace(path, @"\{[^}]+\}", Guid.NewGuid().ToString());
+        var concrete = System.Text.RegularExpressions.Regex.Replace(path, @"\{([^}]+)\}",
+            m => NumericRouteParameters.Contains(m.Groups[1].Value) ? "2026" : Guid.NewGuid().ToString());
         var req = new HttpRequestMessage(new HttpMethod(method), concrete);
         if (method is "POST" or "PUT")
             req.Content = path.EndsWith("/documents")
