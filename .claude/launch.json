@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "row-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api", "--launch-profile", "http"],
+      "port": 5100
+    },
+    {
+      "name": "row-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend/row-management-web"],
+      "port": 5173
+    }
+  ]
+}
