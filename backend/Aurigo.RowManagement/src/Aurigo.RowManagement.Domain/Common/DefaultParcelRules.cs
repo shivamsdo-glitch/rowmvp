@@ -25,17 +25,18 @@ public sealed record DefaultDeadlineRule(string Name, string Trigger, string Tar
 /// </summary>
 public static class DefaultParcelRules
 {
-    public static readonly IReadOnlyList<DefaultStatus> Statuses = new DefaultStatus[]
+    /// <summary>
+    /// The parcel status list a new agency starts with (the agency's own list: users add, rename and switch values off in the
+    /// Library). There are no colours: every status takes one neutral colour. New parcels start as Inactive.
+    /// </summary>
+    public const string NeutralColor = "#64748b";
+
+    public static readonly IReadOnlyList<DefaultStatus> Statuses = new[]
     {
-        new("Identified", "#64748b", true),
-        new("Title & survey", "#2563eb", false),
-        new("Appraisal", "#7c3aed", false),
-        new("Negotiation", "#d97706", false),
-        new("Agreement signed", "#0d9488", false),
-        new("Closed", "#16a34a", false),
-        // A hand-off to the deferred condemnation module is recorded as a status only.
-        new("Impasse", "#dc2626", false),
-    };
+        "Inactive", "In Design", "Pre-Acquisition", "Appraisal", "Initial Offer", "Final Offer", "In Possession - PUA", "In Possession - CLOSED",
+        "In Possession - NOD", "Pending Condemnation", "Petition Filed", "Hearing Scheduled", "Objections Filed", "Deleted",
+        "Disposition In Progress", "Disposition Complete",
+    }.Select(n => new DefaultStatus(n, NeutralColor, n == "Inactive")).ToArray();
 
     private static readonly DefaultStep Setup = new("setup", "Parcel set up", false);
     private static readonly DefaultStep TitleSurvey = new("title_survey", "Title & survey", false);

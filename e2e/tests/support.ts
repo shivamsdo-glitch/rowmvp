@@ -22,7 +22,7 @@ export const NAV = [
   { label: 'Negotiation & Closing', page: 'negotiations', built: false },
   { label: 'Configuration', page: 'administration', built: true },
   { label: 'User Management', page: 'administration', built: false },
-  { label: 'Library', page: 'administration', built: false },
+  { label: 'Library', page: 'administration', built: true },
 ]
 
 /** Signs in through the real login screen, exactly as a person would. */

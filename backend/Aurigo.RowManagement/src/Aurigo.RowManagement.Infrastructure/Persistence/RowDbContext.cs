@@ -53,6 +53,8 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<DeadlineRule> DeadlineRules => Set<DeadlineRule>();
     public DbSet<StepGateSettings> StepGateSettings => Set<StepGateSettings>();
     public DbSet<Party> Parties => Set<Party>();
+    public DbSet<LibraryField> LibraryFields => Set<LibraryField>();
+    public DbSet<LibraryValue> LibraryValues => Set<LibraryValue>();
     public DbSet<PartyLink> PartyLinks => Set<PartyLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

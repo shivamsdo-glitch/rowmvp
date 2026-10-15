@@ -166,7 +166,7 @@ public class ParcelApiTests : IClassFixture<PgApi>
 
         var rollup = await Ok<ParcelRollupDto>(await pm.Http.GetAsync($"/api/v1/projects/{project.Id}/parcel-rollup"));
         rollup.TotalCount.Should().Be(2);
-        rollup.ByStatus.Single(b => b.Name == "Identified").Count.Should().Be(2);
+        rollup.ByStatus.Single(b => b.Name == "Inactive").Count.Should().Be(2);
     }
 
     [PgFact]
@@ -457,12 +457,12 @@ public class ParcelApiTests : IClassFixture<PgApi>
             new { parcelIds = chosen, statusId = appraisal.Id, groupId = group.Id }, Json));
         result.Updated.Should().Be(3);
         foreach (var id in chosen) (await GetParcel(pm, id)).Should().Match<ParcelDto>(p => p.StatusName == "Appraisal" && p.GroupId == group.Id);
-        (await GetParcel(pm, parcels[3].Id)).StatusName.Should().Be("Identified");
+        (await GetParcel(pm, parcels[3].Id)).StatusName.Should().Be("Inactive");
 
         var bad = await pm.Http.PostAsJsonAsync("/api/v1/parcels/batch-update",
             new { parcelIds = new[] { parcels[3].Id, Guid.NewGuid() }, statusId = appraisal.Id }, Json);
         bad.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await GetParcel(pm, parcels[3].Id)).StatusName.Should().Be("Identified");
+        (await GetParcel(pm, parcels[3].Id)).StatusName.Should().Be("Inactive");
 
         (await PgTestDatabase.ScalarAsync(_api.Database,
             "select count(*) from audit_log where entity_type = 'Parcel' and field = 'StatusId' and entity_id = any(@ids)", ("ids", chosen))).Should().BeGreaterThanOrEqualTo(3);
@@ -573,7 +573,7 @@ public class ParcelApiTests : IClassFixture<PgApi>
 
         var workflows = await Ok<List<WorkflowDto>>(await pm.Http.GetAsync("/api/v1/parcel-rules/workflows"));
         workflows.Select(w => w.AcquisitionType.ToString()).Should().Equal("Standard", "Donation", "DeveloperConveyance", "Early");
-        (await Statuses(pm)).Select(s => s.Name).Should().Contain(new[] { "Identified", "Negotiation", "Closed", "Impasse" });
+        (await Statuses(pm)).Select(s => s.Name).Should().Contain(new[] { "Inactive", "Initial Offer", "In Possession - CLOSED", "Deleted" });
         (await Statuses(pm)).Where(s => s.IsInitial).Should().ContainSingle();
 
         var project = await NewProject(pm);
@@ -667,7 +667,7 @@ public class ParcelApiTests : IClassFixture<PgApi>
             .Should().Be(Expect(canAdmin, HttpStatusCode.Created), $"{role} add status");
         (await Status(user.Http.PostAsJsonAsync("/api/v1/parcel-rules/custom-fields", new { key = $"f_{role.ToLowerInvariant()}_{stamp}", label = "F", fieldType = "Text", isRequired = false, isActive = true, sortOrder = 9 }, Json)))
             .Should().Be(Expect(canAdmin, HttpStatusCode.Created), $"{role} add custom field");
-        (await Status(user.Http.PostAsJsonAsync("/api/v1/parcel-rules/deadline-rules", new { name = $"R {role} {stamp}", triggerMilestone = "Parcel set up", targetMilestone = "Closed", days = 400, isActive = true }, Json)))
+        (await Status(user.Http.PostAsJsonAsync("/api/v1/parcel-rules/deadline-rules", new { name = $"R {role} {stamp}", triggerMilestone = "Parcel set up", targetMilestone = "In Possession - CLOSED", days = 400, isActive = true }, Json)))
             .Should().Be(Expect(canAdmin, HttpStatusCode.Created), $"{role} add deadline rule");
         (await Status(user.Http.PutAsJsonAsync("/api/v1/parcel-rules/step-gate", new { extraOverrideRoles = Array.Empty<string>() }, Json)))
             .Should().Be(Expect(canAdmin, HttpStatusCode.OK), $"{role} set override roles");

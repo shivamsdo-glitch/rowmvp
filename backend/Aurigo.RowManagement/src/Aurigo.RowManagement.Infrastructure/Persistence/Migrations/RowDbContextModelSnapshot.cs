@@ -440,6 +440,130 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("documents", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.LibraryField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("FieldType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("field_type");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_library_fields");
+
+                    b.HasIndex("TenantId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_library_fields_tenant_id_key");
+
+                    b.ToTable("library_fields", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.LibraryValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<Guid>("LibraryFieldId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("library_field_id");
+
+                    b.Property<string>("NormalizedValue")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("normalized_value");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_library_values");
+
+                    b.HasIndex("LibraryFieldId", "NormalizedValue")
+                        .IsUnique()
+                        .HasDatabaseName("ix_library_values_library_field_id_normalized_value");
+
+                    b.ToTable("library_values", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Parcel", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2103,6 +2227,16 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("workflow_templates", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.LibraryValue", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.LibraryField", null)
+                        .WithMany("Values")
+                        .HasForeignKey("LibraryFieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_library_values_library_fields_library_field_id");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Parcel", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelGroup", null)
@@ -2290,6 +2424,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.AppUser", b =>
                 {
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.LibraryField", b =>
+                {
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Parcel", b =>

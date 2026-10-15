@@ -133,7 +133,9 @@ public class TenantProvisionerTests
         // Roles and permissions, plus the default parcel rules (statuses, workflow templates and their steps, deadline rules, step-gate settings).
         var parcelRuleRows = DefaultParcelRules.Statuses.Count + DefaultParcelRules.Workflows.Count + DefaultParcelRules.Workflows.Values.Sum(s => s.Count)
                              + DefaultParcelRules.DeadlineRules.Count + 1;
-        audit.Should().HaveCount(ExpectedRows + parcelRuleRows).And.OnlyContain(a => a.TenantId == TestDb.TenantA);
+        // And the default Library: each field and each of its own values (parcel statuses are counted above).
+        var libraryRows = DefaultLibrary.Fields.Count + DefaultLibrary.Fields.Sum(f => f.Values.Count);
+        audit.Should().HaveCount(ExpectedRows + parcelRuleRows + libraryRows).And.OnlyContain(a => a.TenantId == TestDb.TenantA);
     }
 
     [Fact]
@@ -146,7 +148,7 @@ public class TenantProvisionerTests
         // An administrator renames a status, retires a rule and removes a workflow template.
         await using (var db = TestDb.Create(store, tenant: null))
         {
-            (await db.ParcelStatuses.IgnoreQueryFilters().SingleAsync(s => s.TenantId == TestDb.TenantA && s.Name == "Identified")).Name = "Staked";
+            (await db.ParcelStatuses.IgnoreQueryFilters().SingleAsync(s => s.TenantId == TestDb.TenantA && s.Name == "Inactive")).Name = "Staked";
             (await db.DeadlineRules.IgnoreQueryFilters().FirstAsync(r => r.TenantId == TestDb.TenantA)).IsActive = false;
             db.WorkflowTemplates.Remove(await db.WorkflowTemplates.IgnoreQueryFilters().SingleAsync(t => t.TenantId == TestDb.TenantA && t.AcquisitionType == AcquisitionType.Donation));
             await db.SaveChangesAsync();
@@ -157,7 +159,7 @@ public class TenantProvisionerTests
 
         await using var read = TestDb.Create(store, tenant: null);
         var statuses = await read.ParcelStatuses.IgnoreQueryFilters().Where(s => s.TenantId == TestDb.TenantA).Select(s => s.Name).ToListAsync();
-        statuses.Should().HaveCount(DefaultParcelRules.Statuses.Count).And.Contain("Staked").And.NotContain("Identified", "an edited list is left alone");
+        statuses.Should().HaveCount(DefaultParcelRules.Statuses.Count).And.Contain("Staked").And.NotContain("Inactive", "an edited list is left alone");
         (await read.DeadlineRules.IgnoreQueryFilters().CountAsync(r => r.TenantId == TestDb.TenantA && !r.IsActive)).Should().Be(1);
         (await read.WorkflowTemplates.IgnoreQueryFilters().AnyAsync(t => t.TenantId == TestDb.TenantA && t.AcquisitionType == AcquisitionType.Donation))
             .Should().BeTrue("a missing workflow template is added back");

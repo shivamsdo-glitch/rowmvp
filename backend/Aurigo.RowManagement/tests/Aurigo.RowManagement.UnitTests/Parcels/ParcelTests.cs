@@ -132,7 +132,7 @@ public class ParcelTests
 
         first.Number.Should().Be("001");
         second.Number.Should().Be("002");
-        first.StatusName.Should().Be("Identified");
+        first.StatusName.Should().Be("Inactive");
         first.State.Should().Be(ParcelState.Active);
         first.Workflow.CurrentKey.Should().Be("setup");
         first.Workflow.NextKey.Should().Be("title_survey");
@@ -192,8 +192,8 @@ public class ParcelTests
         var project = await AddProject(store, TestDb.TenantA);
         await using var admin = new Ctx(store, TestDb.TenantA, TestDb.UserA, RoleNames.Admin);
         var statuses = await admin.Statuses.Handle(new ListParcelStatusesQuery(), default);
-        var impasse = statuses.Single(s => s.Name == "Impasse");
-        await admin.SaveStatus.Handle(new SaveParcelStatusCommand(impasse.Id, "Impasse", impasse.Color, impasse.SortOrder, false, false), default);
+        var impasse = statuses.Single(s => s.Name == "Deleted");
+        await admin.SaveStatus.Handle(new SaveParcelStatusCommand(impasse.Id, "Deleted", impasse.Color, impasse.SortOrder, false, false), default);
 
         var act = () => admin.Create.Handle(NewParcel(project, status: impasse.Id), default);
 
@@ -350,7 +350,7 @@ public class ParcelTests
         result.Remnant!.Number.Should().Be("012-R");
         result.Remnant.AreaSqFt.Should().Be(4_500m);
         result.Remnant.IsRemnant.Should().BeTrue();
-        result.Parts.Concat(new[] { result.Remnant }).Should().OnlyContain(p => p.GroupId == group && p.ParentTractId == tract && p.StatusName == "Identified" && p.CurrentStepKey == "title_survey");
+        result.Parts.Concat(new[] { result.Remnant }).Should().OnlyContain(p => p.GroupId == group && p.ParentTractId == tract && p.StatusName == "Inactive" && p.CurrentStepKey == "title_survey");
 
         var detail = await c.Get.Handle(new GetParcelQuery(result.Parts[0].Id), default);
         detail.SourceParcelIds.Should().Equal(original.Id);
@@ -436,13 +436,13 @@ public class ParcelTests
         await using var c = await Pm(store);
         var statuses = await c.Create.Handle(NewParcel(project), default); // to learn ids via the list below
         var all = await new ListParcelStatusesQueryHandler(c.Db, new PagePermissionService(c.Db, new FakeUser(TestDb.UserA, RoleNames.ProjectManager))).Handle(new ListParcelStatusesQuery(), default);
-        var negotiation = all.Single(s => s.Name == "Negotiation").Id;
+        var negotiation = all.Single(s => s.Name == "Initial Offer").Id;
         var a = await c.Create.Handle(NewParcel(project, status: negotiation), default);
         var b = await c.Create.Handle(NewParcel(project, status: negotiation), default);
         var d = await c.Create.Handle(NewParcel(project), default);
 
-        (await c.Combine.Handle(new CombineParcelsCommand(new[] { a.Id, b.Id }, "NEG-1"), default)).StatusName.Should().Be("Negotiation");
-        (await c.Combine.Handle(new CombineParcelsCommand(new[] { statuses.Id, d.Id }, null), default)).StatusName.Should().Be("Identified");
+        (await c.Combine.Handle(new CombineParcelsCommand(new[] { a.Id, b.Id }, "NEG-1"), default)).StatusName.Should().Be("Initial Offer");
+        (await c.Combine.Handle(new CombineParcelsCommand(new[] { statuses.Id, d.Id }, null), default)).StatusName.Should().Be("Inactive");
     }
 
     [Fact]
@@ -495,7 +495,7 @@ public class ParcelTests
         result.Updated.Should().Be(2);
         (await c.Get.Handle(new GetParcelQuery(a.Id), default)).Should().Match<ParcelDto>(p => p.StatusName == "Appraisal" && p.GroupId == group);
         (await c.Get.Handle(new GetParcelQuery(b.Id), default)).StatusName.Should().Be("Appraisal");
-        (await c.Get.Handle(new GetParcelQuery(untouched.Id), default)).Should().Match<ParcelDto>(p => p.StatusName == "Identified" && p.GroupId == null);
+        (await c.Get.Handle(new GetParcelQuery(untouched.Id), default)).Should().Match<ParcelDto>(p => p.StatusName == "Inactive" && p.GroupId == null);
 
         await c.Batch.Handle(new BatchUpdateParcelsCommand(new[] { a.Id }, null, null, true), default);
         (await c.Get.Handle(new GetParcelQuery(a.Id), default)).GroupId.Should().BeNull();
@@ -513,7 +513,7 @@ public class ParcelTests
         var act = () => c.Batch.Handle(new BatchUpdateParcelsCommand(new[] { a.Id, Guid.NewGuid() }, appraisal, null, false), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
-        (await c.Get.Handle(new GetParcelQuery(a.Id), default)).StatusName.Should().Be("Identified");
+        (await c.Get.Handle(new GetParcelQuery(a.Id), default)).StatusName.Should().Be("Inactive");
     }
 
     [Fact]
@@ -614,7 +614,7 @@ public class ParcelTests
 
         all.TotalCount.Should().Be(4, "two live parcels plus the split's part and remnant");
         all.ByStatus.Single(b => b.Name == "Appraisal").Should().Match<RollupBucketDto>(b => b.Count == 1 && b.AreaSqFt == 21_780m && b.Acres == 0.5m);
-        all.ByStatus.Select(b => b.Name).Should().Contain("Identified").And.Contain("Closed", "empty statuses still appear");
+        all.ByStatus.Select(b => b.Name).Should().Contain("Inactive").And.Contain("In Possession - CLOSED", "empty statuses still appear");
         all.ByGroup.Single(b => b.Name == "North").Count.Should().Be(1);
         all.ByGroup.Single(b => b.Name == "No group").Count.Should().Be(3);
         north.TotalCount.Should().Be(1);

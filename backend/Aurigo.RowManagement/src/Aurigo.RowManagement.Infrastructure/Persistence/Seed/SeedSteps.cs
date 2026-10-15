@@ -215,7 +215,7 @@ public sealed class DemoDataSeedStep : ISeedStep
         }
         void Done(Parcel p, string milestone, DateOnly on) => p.Milestones.Single(m => m.Name == milestone).CompletedOn = on;
 
-        var atOffer = Make(bridge, "001", "Negotiation", "offer", 12_500m, "100 Harbor Rd", span, tract);
+        var atOffer = Make(bridge, "001", "Initial Offer", "offer", 12_500m, "100 Harbor Rd", span, tract);
         Done(atOffer, MilestoneNames.NoticeToOwner, today.AddDays(-30));
         atOffer.NoticeIssuedOn = today.AddDays(-30);
         atOffer.NoticeMethod = NoticeMethod.CertifiedMail;
@@ -223,27 +223,27 @@ public sealed class DemoDataSeedStep : ISeedStep
         atOffer.Interests.Add(new ParcelInterest { ParcelId = atOffer.Id, Type = InterestType.TemporaryEasement, AreaSqFt = 2_000m, Notes = "Staging area, 18 months" });
         atOffer.SiteVisits.Add(new ParcelSiteVisit { ParcelId = atOffer.Id, VisitedOn = today.AddDays(-45), Notes = "Walked the frontage with the owner's representative.", OwnerContactConfirmed = true });
 
-        var late = Make(bridge, "002", "Negotiation", "negotiation", 6_200m, "112 Harbor Rd", span, tract);
+        var late = Make(bridge, "002", "Initial Offer", "negotiation", 6_200m, "112 Harbor Rd", span, tract);
         Done(late, MilestoneNames.NoticeToOwner, today.AddDays(-120)); // the 90-day offer deadline has passed
         late.NoticeIssuedOn = today.AddDays(-120);
         late.NoticeMethod = NoticeMethod.HandDelivery;
 
-        var closed = Make(bridge, "003", "Closed", "closing", 3_000m, "9 Pier Ln", span);
+        var closed = Make(bridge, "003", "In Possession - CLOSED", "closing", 3_000m, "9 Pier Ln", span);
         Done(closed, MilestoneNames.NoticeToOwner, today.AddDays(-190));
         Done(closed, MilestoneNames.OfferDelivered, today.AddDays(-150));
         Done(closed, MilestoneNames.AgreementSigned, today.AddDays(-100));
         Done(closed, MilestoneNames.Closed, today.AddDays(-60));
 
-        var original = Make(bridge, "004", "Identified", "setup", 20_000m, "Vacant lot, Pier Ln");
+        var original = Make(bridge, "004", "Pre-Acquisition", "setup", 20_000m, "Vacant lot, Pier Ln");
         original.State = ParcelState.Split;
         original.SupersededOn = DateTime.UtcNow;
-        var partA = Make(bridge, "004-A", "Identified", "setup", 12_000m, "Vacant lot, Pier Ln");
-        var remnant = Make(bridge, "004-R", "Identified", "setup", 8_000m, "Vacant lot, Pier Ln", remnant: true);
+        var partA = Make(bridge, "004-A", "Pre-Acquisition", "setup", 12_000m, "Vacant lot, Pier Ln");
+        var remnant = Make(bridge, "004-R", "Pre-Acquisition", "setup", 8_000m, "Vacant lot, Pier Ln", remnant: true);
         partA.SourceParcelIds = new List<Guid> { original.Id };
         remnant.SourceParcelIds = new List<Guid> { original.Id };
 
-        var held1 = Make(corridorProject, "001", "Identified", "setup", 15_000m, "2 State Route 20");
-        var held2 = Make(corridorProject, "002", "Title & survey", "title_survey", 9_800m, "8 State Route 20");
+        var held1 = Make(corridorProject, "001", "Pre-Acquisition", "setup", 15_000m, "2 State Route 20");
+        var held2 = Make(corridorProject, "002", "In Design", "title_survey", 9_800m, "8 State Route 20");
 
         _db.Parcels.AddRange(atOffer, late, closed, original, partA, remnant, held1, held2);
         await _db.SaveChangesAsync(ct);

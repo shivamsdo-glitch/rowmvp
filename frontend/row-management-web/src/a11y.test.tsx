@@ -6,6 +6,7 @@ import { ROLES } from '@/api/auth'
 import { permissionRowsFor } from '@/test/contract'
 import { fakeAuthFetch } from '@/test/fake-api'
 import { fakeParcelsApi } from '@/test/fake-parcels'
+import { fakeLibraryApi } from '@/test/fake-library'
 import { fakePeopleApi } from '@/test/fake-people'
 import { fakeProjectsApi } from '@/test/fake-projects'
 import { renderApp } from '@/test/render-app'
@@ -311,5 +312,33 @@ describe('accessibility of the parties screens (ROW-014..018)', () => {
     await screen.findByRole('region', { name: 'Owners and interests' })
     await settle()
     expect(await violations()).toEqual([])
+  })
+})
+
+describe('accessibility of the Library', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 50))
+
+  it('the Library has no violations for a list, a text field and with every form open', async () => {
+    const user = userEventModule.setup()
+    const fake = fakeLibraryApi({ role: 'Admin', rows: permissionRowsFor('Admin') })
+    renderApp({ path: '/library', fetchImpl: fake.fetch, signedIn: true })
+    await screen.findByRole('table', { name: 'Parcel status values' })
+    await settle()
+    expect(await violations(), 'parcel status list').toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'New' }))
+    await user.click(screen.getByRole('button', { name: 'Edit field' }))
+    await user.click(within(screen.getByRole('table', { name: 'Parcel status values' })).getByRole('button', { name: 'Rename In Design' }))
+    await settle()
+    expect(await violations(), 'with the add, edit and rename forms open').toEqual([])
+
+    await user.click(screen.getByRole('button', { name: /CAD number/ }))
+    await screen.findByText(/people type it in on forms/)
+    await settle()
+    expect(await violations(), 'text field').toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'New field' }))
+    await settle()
+    expect(await violations(), 'new field form').toEqual([])
   })
 })

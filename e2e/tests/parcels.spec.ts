@@ -154,11 +154,11 @@ test.describe('Project Manager · parcels', () => {
 
     await page.getByRole('button', { name: 'Board' }).click()
     await expect(page.getByText('Showing the first 200 of 201 parcels. Narrow the filters to see the rest.')).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Identified column' }).getByRole('listitem')).toHaveCount(200)
+    await expect(page.getByRole('region', { name: 'Inactive column' }).getByRole('listitem')).toHaveCount(200)
 
     // Narrowing the filters brings the note back to nothing, and the board shows the whole result.
     await page.getByLabel('Search parcels').fill('Bulk 201 Rd')
-    await expect(page.getByRole('region', { name: 'Identified column' }).getByRole('listitem')).toHaveCount(1)
+    await expect(page.getByRole('region', { name: 'Inactive column' }).getByRole('listitem')).toHaveCount(1)
     await expect(page.getByText(/Showing the first/)).toHaveCount(0)
   })
 
@@ -403,7 +403,7 @@ test.describe('Project Manager · parcels', () => {
     await page.goto(`/parcels?projectId=${project.id}`)
     const table = page.getByRole('table', { name: 'Parcels' })
     await expect(table.getByRole('row')).toHaveCount(4)
-    await expect(table.getByRole('row', { name: /1 Batch Rd/ })).toContainText('Identified')
+    await expect(table.getByRole('row', { name: /1 Batch Rd/ })).toContainText('Inactive')
 
     // Nothing chosen to apply is explained, not silently ignored.
     await page.getByRole('button', { name: 'Select all on this page' }).click()
@@ -411,20 +411,20 @@ test.describe('Project Manager · parcels', () => {
     await page.getByRole('button', { name: 'Apply to selected' }).click()
     await expect(page.getByText('Choose a status or a group to apply.')).toBeVisible()
 
-    await page.getByLabel('Set status').selectOption({ label: 'Negotiation' })
+    await page.getByLabel('Set status').selectOption({ label: 'Initial Offer' })
     await page.getByLabel('Set group').selectOption({ label: 'Segment A' })
     await page.getByRole('button', { name: 'Apply to selected' }).click()
     await expect(page.getByText('Updated 3 parcels.')).toBeVisible()
     for (const a of ['1 Batch Rd', '2 Batch Rd', '3 Batch Rd']) {
-      await expect(table.getByRole('row', { name: new RegExp(a) })).toContainText('Negotiation')
+      await expect(table.getByRole('row', { name: new RegExp(a) })).toContainText('Initial Offer')
       await expect(table.getByRole('row', { name: new RegExp(a) })).toContainText('Segment A')
     }
 
     // The board groups them in the status column, coloured from the agency's status list.
     await page.getByRole('button', { name: 'Board' }).click()
-    const column = page.getByRole('region', { name: 'Negotiation column' })
+    const column = page.getByRole('region', { name: 'Initial Offer column' })
     await expect(column.getByRole('listitem')).toHaveCount(3)
-    await expect(page.getByRole('region', { name: 'Identified column' })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Inactive column' })).toHaveCount(0)
     await page.getByRole('button', { name: 'Table' }).click()
 
     // Combine two: a new parcel with the summed area; the originals are retired and leave the list.
@@ -440,7 +440,7 @@ test.describe('Project Manager · parcels', () => {
     const byNumber = Object.fromEntries(all.items.map((p: any) => [p.number, p]))
     expect(byNumber['001'].state).toBe('Combined')
     expect(byNumber['002'].state).toBe('Combined')
-    expect(byNumber['004']).toMatchObject({ state: 'Active', areaSqFt: 3000, statusName: 'Negotiation', groupName: 'Segment A' })
+    expect(byNumber['004']).toMatchObject({ state: 'Active', areaSqFt: 3000, statusName: 'Initial Offer', groupName: 'Segment A' })
     const live = await (await request.get(`/api/v1/parcels?projectId=${project.id}`, { headers })).json()
     expect(live.items.map((p: any) => p.number).sort()).toEqual(['003', '004'])
     const rollup = await (await request.get(`/api/v1/projects/${project.id}/parcel-rollup`, { headers })).json()
@@ -529,9 +529,9 @@ test.describe('Administrator · parcel rules', () => {
       const statuses = page.getByRole('region', { name: 'Parcel statuses' })
       await statuses.getByRole('button', { name: 'Add status' }).click()
       const status = statuses.getByRole('form', { name: 'Add a status' })
-      await status.getByLabel(/^Status name/).fill('NEGOTIATION')
+      await status.getByLabel(/^Status name/).fill('INITIAL OFFER')
       await status.getByRole('button', { name: 'Save status' }).click()
-      await expect(status.getByRole('alert')).toContainText("There is already a status named 'NEGOTIATION'.")
+      await expect(status.getByRole('alert')).toContainText("There is already a status named 'INITIAL OFFER'.")
       await status.getByLabel(/^Status name/).fill(statusName)
       await status.getByLabel(/^Status colour/).fill('#123456')
       await status.getByRole('button', { name: 'Save status' }).click()
@@ -678,8 +678,8 @@ test.describe('Everyone · parcels', () => {
     const table = page.getByRole('table', { name: 'Parcels' })
     for (const number of ['001', '002', '003', '004-A', '004-R']) await expect(table.getByRole('link', { name: number, exact: true })).toBeVisible()
     await expect(table.getByRole('link', { name: '004', exact: true })).toHaveCount(0) // the split-away original is kept on record, not listed
-    await expect(table.getByRole('row', { name: /112 Harbor Rd/ })).toContainText('Negotiation')
-    await expect(table.getByRole('row', { name: /9 Pier Ln/ })).toContainText('Closed')
+    await expect(table.getByRole('row', { name: /112 Harbor Rd/ })).toContainText('Initial Offer')
+    await expect(table.getByRole('row', { name: /9 Pier Ln/ })).toContainText('In Possession - CLOSED')
 
     // The overdue one is among the Next actions.
     await sidebar(page).getByRole('link', { name: 'Home' }).click()

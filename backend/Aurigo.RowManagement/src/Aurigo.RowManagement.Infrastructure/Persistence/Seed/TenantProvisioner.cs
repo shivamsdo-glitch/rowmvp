@@ -67,7 +67,31 @@ public sealed class TenantProvisioner
         if (added > 0) await _db.SaveChangesAsync(ct);
 
         await EnsureParcelRulesAsync(tenantId, ct);
+        await EnsureLibraryAsync(tenantId, ct);
         return added;
+    }
+
+    /// <summary>
+    /// Adds the default Library fields and their values an agency is missing. Add-only: a field or value an administrator has
+    /// edited, switched off or added is never touched, and a value they removed from use is not brought back.
+    /// </summary>
+    public async Task EnsureLibraryAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        var have = await _db.LibraryFields.IgnoreQueryFilters().Where(f => f.TenantId == tenantId).Select(f => f.Key).ToListAsync(ct);
+        var order = 0;
+        var changed = false;
+        foreach (var d in DefaultLibrary.Fields)
+        {
+            order++;
+            if (have.Contains(d.Key)) continue;
+            var field = new LibraryField { TenantId = tenantId, Key = d.Key, Label = d.Label, FieldType = d.Type, IsSystem = true, SortOrder = order };
+            var sort = 0;
+            foreach (var v in d.Values)
+                field.Values.Add(new LibraryValue { TenantId = tenantId, LibraryFieldId = field.Id, Value = v, NormalizedValue = v.ToUpperInvariant(), SortOrder = sort++ });
+            _db.LibraryFields.Add(field);
+            changed = true;
+        }
+        if (changed) await _db.SaveChangesAsync(ct);
     }
 
     /// <summary>
