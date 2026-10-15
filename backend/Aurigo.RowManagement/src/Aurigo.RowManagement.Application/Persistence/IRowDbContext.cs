@@ -42,6 +42,9 @@ public interface IRowDbContext
     DbSet<Party> Parties { get; }
     DbSet<LibraryField> LibraryFields { get; }
     DbSet<LibraryValue> LibraryValues { get; }
+    DbSet<ParcelTeamMember> ParcelTeamMembers { get; }
+    DbSet<ParcelDiaryEntry> ParcelDiaryEntries { get; }
+    DbSet<ParcelNote> ParcelNotes { get; }
     DbSet<PartyLink> PartyLinks { get; }
 
     /// <summary>Exposed so a handler that recovers from a failed save can discard the unsaved changes.</summary>

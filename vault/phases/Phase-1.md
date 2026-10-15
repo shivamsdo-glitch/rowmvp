@@ -30,7 +30,7 @@ ROW-001–021, 071–077, 080, 233–241. (ROW-022 is Diagram 5 → deferred. RO
 - **Slice 3a — parties (done):** ROW-014 owners and interests (shares, several per parcel), 015 contacts, 016 tenants and occupants (lease and insurance details), 017 abutters and interested parties, 018 W-9 / 1099 tax ID (encrypted, masked, write-only). ADR 0009. Owners are recorded once on the parent tract and inherited by its parcels; split and combine keep a parcel's own people.
   - Open questions for the user (flagged, not guessed): 018 which parties are 1099-reportable is a flag the agency sets per party; the retention/rotation policy for the tax-ID encryption key is the agency's (the key is `Security__TaxIdKey`; losing it makes stored numbers unreadable).
 - **Library (done, between 3a and 3b):** administrator-defined fields (type, allowed values, defaults), CSV import/export, parcel status list managed there; the 16 default parcel statuses replace the earlier defaults. ADR 0010. The parcel form that uses these fields is a later slice.
-- **Slice 3b — team, diary, notes (next):** ROW-019, 020, 021.
+- **Slice 3b — team, diary, notes (done):** ROW-019 (team by role per parcel; assignees are free text, consultant flag), 020 (negotiation diary; printable; kept by the Negotiations page, so the Negotiator writes and the Project Manager reads), 021 (notes; made by / made on; create and delete follow the Parcels page). ADR 0011.
 - **Slice 3c — the rest:** 077 right of entry, 080 request intake, 239 plan-review gate, 240 staff report/certificate, 241 acquisition plan; 075 (URA alignment) needs no code and is noted here.
 
 ## Exit checklist

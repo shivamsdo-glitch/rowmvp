@@ -124,6 +124,7 @@ public sealed class DemoDataSeedStep : ISeedStep
         if (!await _db.Projects.AnyAsync(p => p.Number == "DEMO-001", ct)) await SeedProjectsAsync(ct);
         await SeedParcelsAsync(ct);
         await SeedPartiesAsync(ct);
+        await SeedParcelRecordsAsync(ct);
     }
 
     private async Task SeedProjectsAsync(CancellationToken ct)
@@ -248,6 +249,29 @@ public sealed class DemoDataSeedStep : ISeedStep
         _db.Parcels.AddRange(atOffer, late, closed, original, partA, remnant, held1, held2);
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Seeded demo parcels.");
+    }
+
+    /// <summary>A team, a diary and a note on the demo parcel at the offer step. Skipped once any exist.</summary>
+    private async Task SeedParcelRecordsAsync(CancellationToken ct)
+    {
+        if (await _db.ParcelTeamMembers.AnyAsync(ct)) return;
+        var bridgeId = await _db.Projects.Where(p => p.Number == "DEMO-002").Select(p => p.Id).FirstOrDefaultAsync(ct);
+        var parcel = await _db.Parcels.FirstOrDefaultAsync(p => p.Number == "001" && p.ProjectId == bridgeId, ct);
+        if (parcel is null) return;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        ParcelTeamMember Member(TeamRole role, string name, string? org, bool consultant) =>
+            new() { ParcelId = parcel.Id, Role = role, Name = name, NameKey = name.ToUpperInvariant(), Organization = org, IsConsultant = consultant };
+        _db.ParcelTeamMembers.AddRange(
+            Member(TeamRole.ProjectLead, "Dana Whitfield", "Agency ROW office", false),
+            Member(TeamRole.Negotiator, "Riley Okafor", "Okafor Land Services", true),
+            Member(TeamRole.Appraiser, "Allison Jackson", "CBRE, Inc.", true));
+        _db.ParcelDiaryEntries.AddRange(
+            new ParcelDiaryEntry { ParcelId = parcel.Id, OccurredOn = today.AddDays(-28), Method = DiaryMethod.Call, Direction = DiaryDirection.Outgoing, ContactName = "Alex Marlowe", Summary = "Introduced the project and explained the offer process.", Outcome = "Asked for the plans by email." },
+            new ParcelDiaryEntry { ParcelId = parcel.Id, OccurredOn = today.AddDays(-14), Method = DiaryMethod.Meeting, Direction = DiaryDirection.Incoming, ContactName = "Jordan Reyes", Summary = "Owner's attorney met us on site to walk the frontage.", Outcome = "Agreed to review the offer package within two weeks." });
+        _db.ParcelNotes.Add(new ParcelNote { ParcelId = parcel.Id, Text = "Owner prefers contact by email in the evening." });
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Seeded demo parcel team, diary and notes.");
     }
 
     /// <summary>

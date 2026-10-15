@@ -15,13 +15,14 @@ import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, Pill, SelectField, TextField,
 } from '../projects/form-kit'
 import { PartyLinksPanel } from '../parties/PartyLinksPanel'
+import { DiaryTab, NotesTab, TeamTab } from './ParcelRecordTabs'
 import { ParcelForm } from './ParcelForm'
 import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from './parcel-kit'
 
 const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
-  ['summary', 'Summary'], ['parties', 'Parties'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
+  ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 
@@ -130,6 +131,9 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
         </TabsList>
         <TabsContent role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
           {tab === 'summary' && <SummaryTab parcel={p} />}
+          {tab === 'team' && <TeamTab parcelId={p.id} editable={live} />}
+          {tab === 'diary' && <DiaryTab parcelId={p.id} editable={live} />}
+          {tab === 'notes' && <NotesTab parcelId={p.id} editable={live} />}
           {tab === 'parties' && (manager.can('parties') ? <PartyLinksPanel target={{ kind: 'parcel', parcelId: p.id }} editable={live} /> : <p className="text-sm text-muted-foreground">Your role cannot see parties.</p>)}
           {tab === 'interests' && <InterestsTab parcel={p} editable={live} />}
           {tab === 'milestones' && <MilestonesTab parcel={p} editable={live} />}

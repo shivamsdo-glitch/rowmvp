@@ -8,6 +8,7 @@ import { fakeAuthFetch } from '@/test/fake-api'
 import { fakeParcelsApi } from '@/test/fake-parcels'
 import { fakeLibraryApi } from '@/test/fake-library'
 import { fakePeopleApi } from '@/test/fake-people'
+import { fakeRecordsApi } from '@/test/fake-records'
 import { fakeProjectsApi } from '@/test/fake-projects'
 import { renderApp } from '@/test/render-app'
 
@@ -340,5 +341,37 @@ describe('accessibility of the Library', () => {
     await user.click(screen.getByRole('button', { name: 'New field' }))
     await settle()
     expect(await violations(), 'new field form').toEqual([])
+  })
+})
+
+describe('accessibility of the parcel team, diary and notes', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 50))
+
+  it('each tab has no violations, with its forms and an editor open', async () => {
+    const user = userEventModule.setup()
+    const fake = fakeRecordsApi({
+      role: 'Admin', rows: permissionRowsFor('Admin'), projects: [{ id: 'p1', number: '2026-0001', name: 'Harbor Bridge' }],
+      parcels: [{ id: 'pc1', projectId: 'p1', number: '001' }],
+      team: [{ parcelId: 'pc1', name: 'Riley Okafor', role: 'Negotiator' }], diary: [{ parcelId: 'pc1' }], notes: [{ parcelId: 'pc1', text: 'A note' }],
+    })
+    renderApp({ path: '/parcels/pc1', fetchImpl: fake.fetch, signedIn: true })
+
+    await user.click(await screen.findByRole('tab', { name: 'Team' }))
+    await screen.findByRole('table', { name: 'Parcel team' })
+    await settle()
+    expect(await violations(), 'team').toEqual([])
+    await user.click(screen.getByRole('button', { name: 'Edit Riley Okafor, Negotiator' }))
+    await settle()
+    expect(await violations(), 'team editor').toEqual([])
+
+    await user.click(screen.getByRole('tab', { name: 'Diary' }))
+    await screen.findByRole('table', { name: 'Negotiation diary' })
+    await settle()
+    expect(await violations(), 'diary').toEqual([])
+
+    await user.click(screen.getByRole('tab', { name: 'Notes' }))
+    await screen.findByText('A note')
+    await settle()
+    expect(await violations(), 'notes').toEqual([])
   })
 })
