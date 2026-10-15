@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requirePageAccess } from '@/auth/guards'
 import { PageHeader } from '@/components/ui/page-header'
 import { useAuth } from '@/auth/auth-context'
+import { PlanReviewGateCard } from '@/features/acquisition/PlanReviewGateCard'
 import { CustomFieldsCard, DeadlineRulesCard, ParcelStatusesCard, StepOverrideCard, WorkflowsCard } from '@/features/parcels/ParcelRulesCards'
 import { NumberSettingsCard } from '@/features/projects/NumberSettingsCard'
 import { TimeZoneCard } from '@/features/projects/TimeZoneCard'
@@ -25,6 +26,7 @@ function AdministrationPage() {
           <DeadlineRulesCard />
           <CustomFieldsCard />
           <StepOverrideCard />
+          <PlanReviewGateCard />
           <WorkflowsCard />
         </>
       )}

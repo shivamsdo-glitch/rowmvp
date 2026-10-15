@@ -17,6 +17,8 @@ export const NAV = [
   { label: 'Projects', page: 'projects', built: true },
   { label: 'Parcels', page: 'parcels', built: true },
   { label: 'Parties', page: 'parties', built: true },
+  { label: 'Requests', page: 'approvals', built: true },
+  { label: 'Rights of entry', page: 'parcels', built: true },
   { label: 'Title & Survey', page: 'title', built: false },
   { label: 'Appraisal', page: 'appraisals', built: false },
   { label: 'Negotiation & Closing', page: 'negotiations', built: false },

@@ -125,6 +125,7 @@ public sealed class DemoDataSeedStep : ISeedStep
         await SeedParcelsAsync(ct);
         await SeedPartiesAsync(ct);
         await SeedParcelRecordsAsync(ct);
+        await SeedAcquisitionRecordsAsync(ct);
     }
 
     private async Task SeedProjectsAsync(CancellationToken ct)
@@ -272,6 +273,32 @@ public sealed class DemoDataSeedStep : ISeedStep
         _db.ParcelNotes.Add(new ParcelNote { ParcelId = parcel.Id, Text = "Owner prefers contact by email in the evening." });
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Seeded demo parcel team, diary and notes.");
+    }
+
+    /// <summary>
+    /// Rights of entry (one ending soon, one still requested), an engineer's plan review, a draft staff report and two acquisition
+    /// requests on the demo bridge project. The plan-review gate stays off. Skipped once any right of entry exists.
+    /// </summary>
+    private async Task SeedAcquisitionRecordsAsync(CancellationToken ct)
+    {
+        if (await _db.RightsOfEntry.AnyAsync(ct)) return;
+        var bridge = await _db.Projects.FirstOrDefaultAsync(p => p.Number == "DEMO-002", ct);
+        if (bridge is null) return;
+        var atOffer = await _db.Parcels.FirstOrDefaultAsync(p => p.Number == "001" && p.ProjectId == bridge.Id, ct);
+        var late = await _db.Parcels.FirstOrDefaultAsync(p => p.Number == "002" && p.ProjectId == bridge.Id, ct);
+        if (atOffer is null || late is null) return;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        _db.RightsOfEntry.AddRange(
+            new RightOfEntry { ParcelId = atOffer.Id, Status = RightOfEntryStatus.Granted, RequestedOn = today.AddDays(-40), GrantedOn = today.AddDays(-30), ExpiresOn = today.AddDays(20), GrantedBy = "Alex Marlowe", Purpose = "Boundary survey and soil borings" },
+            new RightOfEntry { ParcelId = late.Id, Status = RightOfEntryStatus.Requested, RequestedOn = today.AddDays(-5), Purpose = "Appraisal inspection" });
+        _db.ParcelPlanReviews.Add(new ParcelPlanReview { ParcelId = atOffer.Id, Discipline = ReviewDiscipline.Engineer, Outcome = ReviewOutcome.Approved, ReviewedOn = today.AddDays(-10), ReviewerName = "Morgan Ellis, P.E." });
+        _db.ParcelStaffReports.Add(new ParcelStaffReport { ParcelId = atOffer.Id, Kind = ReportKind.StaffReport, Title = "Staff report: 001 Harbor frontage", Body = "The parcel is needed for the bridge approach. The design cannot be moved without losing the required clearance." });
+        _db.AcquisitionRequests.AddRange(
+            new AcquisitionRequest { ProjectId = bridge.Id, RequesterType = RequesterType.Internal, RequesterName = "Design team", Property = "Vacant lot behind 112 Harbor Rd", DesiredParameters = "Temporary construction easement for 18 months", EstimatedAmount = 45_000m },
+            new AcquisitionRequest { RequesterType = RequesterType.External, RequesterName = "Harbor Port Authority", RequesterEmail = "land@harborport.example", Property = "Parcel along the north quay", DesiredParameters = "Fee purchase for a shared-use path" });
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Seeded demo rights of entry, plan review, staff report and acquisition requests.");
     }
 
     /// <summary>

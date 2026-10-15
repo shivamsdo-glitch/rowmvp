@@ -45,6 +45,10 @@ public interface IRowDbContext
     DbSet<ParcelTeamMember> ParcelTeamMembers { get; }
     DbSet<ParcelDiaryEntry> ParcelDiaryEntries { get; }
     DbSet<ParcelNote> ParcelNotes { get; }
+    DbSet<RightOfEntry> RightsOfEntry { get; }
+    DbSet<AcquisitionRequest> AcquisitionRequests { get; }
+    DbSet<ParcelPlanReview> ParcelPlanReviews { get; }
+    DbSet<ParcelStaffReport> ParcelStaffReports { get; }
     DbSet<PartyLink> PartyLinks { get; }
 
     /// <summary>Exposed so a handler that recovers from a failed save can discard the unsaved changes.</summary>

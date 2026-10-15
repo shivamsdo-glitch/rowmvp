@@ -12,4 +12,10 @@ public class AgencySettings : EntityBase
     /// because an agency can span more than one zone. "UTC" until an administrator chooses.
     /// </summary>
     public string TimeZoneId { get; set; } = "UTC";
+
+    /// <summary>
+    /// When on, a parcel cannot leave its plan-review step until an engineer and a surveyor have approved the plans (ROW-239).
+    /// Off until an agency turns it on.
+    /// </summary>
+    public bool PlanReviewGateEnabled { get; set; }
 }

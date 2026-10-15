@@ -8,6 +8,7 @@ import { fakeAuthFetch } from '@/test/fake-api'
 import { fakeParcelsApi } from '@/test/fake-parcels'
 import { fakeLibraryApi } from '@/test/fake-library'
 import { fakePeopleApi } from '@/test/fake-people'
+import { fakeAcquisitionApi } from '@/test/fake-acquisition'
 import { fakeRecordsApi } from '@/test/fake-records'
 import { fakeProjectsApi } from '@/test/fake-projects'
 import { renderApp } from '@/test/render-app'
@@ -373,5 +374,70 @@ describe('accessibility of the parcel team, diary and notes', () => {
     await screen.findByText('A note')
     await settle()
     expect(await violations(), 'notes').toEqual([])
+  })
+})
+
+describe('accessibility of rights of entry, reviews, reports, requests and the plan (ROW-077, 080, 239, 240, 241)', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 50))
+  const fake = () => fakeAcquisitionApi({
+    role: 'Admin', rows: permissionRowsFor('Admin'), projects: [{ id: 'p1', number: '2026-0001', name: 'Harbor Bridge' }],
+    parcels: [{ id: 'pc1', projectId: 'p1', number: '001' }], gateEnabled: true,
+    roes: [{ parcelId: 'pc1', status: 'Granted', grantedOn: '2026-09-01', expiresOn: '2026-12-01', grantedBy: 'Alex' }],
+    reviews: [{ parcelId: 'pc1', discipline: 'Engineer' }],
+    reports: [{ parcelId: 'pc1', kind: 'StaffReport', status: 'Submitted', submittedByMe: false }, { parcelId: 'pc1', kind: 'CertificateOfNecessity', status: 'Draft' }],
+    requests: [{ property: 'Lot behind 112 Harbor Rd', submittedByMe: false }, { property: 'Old depot', status: 'Approved', decisionNote: 'Funded' }],
+  })
+
+  it('the parcel tabs have no violations, with a form and an editor open', async () => {
+    const user = userEventModule.setup()
+    renderApp({ path: '/parcels/pc1', fetchImpl: fake().fetch, signedIn: true })
+
+    await user.click(await screen.findByRole('tab', { name: 'Right of entry' }))
+    await screen.findByRole('table', { name: 'Rights of entry' })
+    await settle()
+    expect(await violations(), 'right of entry').toEqual([])
+    await user.click(screen.getByRole('button', { name: /^Edit the granted right of entry/ }))
+    await settle()
+    expect(await violations(), 'right of entry editor').toEqual([])
+
+    await user.click(screen.getByRole('tab', { name: 'Reviews & reports' }))
+    await screen.findByRole('article', { name: 'Staff report' })
+    await settle()
+    expect(await violations(), 'reviews and reports').toEqual([])
+    await user.click(within(screen.getByRole('article', { name: 'Certificate of necessity' })).getByRole('button', { name: /^Change the certificate/ }))
+    await settle()
+    expect(await violations(), 'report editor').toEqual([])
+  })
+
+  it('the rights of entry report and the requests page have no violations', async () => {
+    const f = fake()
+    const user = userEventModule.setup()
+    const { router } = renderApp({ path: '/rights-of-entry', fetchImpl: f.fetch, signedIn: true })
+    await screen.findByRole('table', { name: 'Rights of entry' })
+    await settle()
+    expect(await violations(), 'report').toEqual([])
+
+    await router.navigate({ to: '/requests' })
+    await screen.findByRole('list', { name: 'Requests' })
+    await settle()
+    expect(await violations(), 'requests').toEqual([])
+    await user.click(within(screen.getByRole('article', { name: 'Request for Lot behind 112 Harbor Rd' })).getByRole('button', { name: 'Reject' }))
+    await settle()
+    expect(await violations(), 'requests with an error').toEqual([])
+  })
+
+  it('the project plan and the gate setting have no violations', async () => {
+    const f = fake()
+    const user = userEventModule.setup()
+    const { router } = renderApp({ path: '/projects/p1', fetchImpl: f.fetch, signedIn: true })
+    await user.click(await screen.findByRole('tab', { name: 'Plan' }))
+    await screen.findByText('No parcels in this project yet')
+    await settle()
+    expect(await violations(), 'plan').toEqual([])
+
+    await router.navigate({ to: '/administration' })
+    await screen.findByRole('checkbox', { name: 'Require engineer and surveyor plan reviews' })
+    await settle()
+    expect(await violations(), 'administration').toEqual([])
   })
 })

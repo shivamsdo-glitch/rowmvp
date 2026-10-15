@@ -422,13 +422,16 @@ public sealed class AdvanceParcelStepCommandHandler : IRequestHandler<AdvancePar
 
         var result = StepGate.CanAdvance(
             steps, parcel.CurrentStepKey, request.TargetStepKey, project.EvaluateGate().Unlocked,
-            await _parcels.CanOverrideAsync(ct), request.OverrideReason);
+            await _parcels.CanOverrideAsync(ct), request.OverrideReason,
+            await PlanReviews.PlanReviewShared.MissingTextAsync(_db, parcel.Id, ct));
 
         switch (result.Outcome)
         {
             case StepMoveOutcome.Allowed:
             case StepMoveOutcome.AllowedWithOverride:
                 break;
+            case StepMoveOutcome.BlockedByPlanReview:
+                throw new ConflictException("plan_review_required", result.Message);
             case StepMoveOutcome.OverrideNotPermitted:
                 throw new ForbiddenException(result.Message);
             case StepMoveOutcome.BlockedByAcquisitionGate:

@@ -58,6 +58,10 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<ParcelTeamMember> ParcelTeamMembers => Set<ParcelTeamMember>();
     public DbSet<ParcelDiaryEntry> ParcelDiaryEntries => Set<ParcelDiaryEntry>();
     public DbSet<ParcelNote> ParcelNotes => Set<ParcelNote>();
+    public DbSet<RightOfEntry> RightsOfEntry => Set<RightOfEntry>();
+    public DbSet<AcquisitionRequest> AcquisitionRequests => Set<AcquisitionRequest>();
+    public DbSet<ParcelPlanReview> ParcelPlanReviews => Set<ParcelPlanReview>();
+    public DbSet<ParcelStaffReport> ParcelStaffReports => Set<ParcelStaffReport>();
     public DbSet<PartyLink> PartyLinks => Set<PartyLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

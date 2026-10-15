@@ -32,10 +32,15 @@ public sealed class IssueDevTokenQueryHandler : IRequestHandler<IssueDevTokenQue
     private readonly IJwtTokenService _jwt;
     public IssueDevTokenQueryHandler(IJwtTokenService jwt) => _jwt = jwt;
 
+    private static Guid DevUserFor(IEnumerable<string> roles) =>
+        new(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("dev-user:" + string.Join(",", roles.Order(StringComparer.Ordinal))))[..16]);
+
     public Task<DevTokenResponse> Handle(IssueDevTokenQuery request, CancellationToken ct)
     {
         var tenant = request.Tenant ?? WellKnownIds.DevTenant;
-        var user = request.User ?? WellKnownIds.DevUser;
+        // One stable person per role, so two people signed in as different roles are different people (the two-person approval rules
+        // need that); asking for a user id still wins.
+        var user = request.User ?? DevUserFor(request.Roles);
         var email = string.IsNullOrWhiteSpace(request.Email)
             ? $"dev.{request.Roles[0].ToLowerInvariant()}@row.local"
             : AuthValidation.NormalizeEmail(request.Email);

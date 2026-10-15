@@ -15,6 +15,8 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdministrationRouteImport } from './routes/_app/administration'
 import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
 import { Route as AppLibraryRouteImport } from './routes/_app/library'
+import { Route as AppRequestsRouteImport } from './routes/_app/requests'
+import { Route as AppRightsOfEntryRouteImport } from './routes/_app/rights-of-entry'
 import { Route as AppParcelsIndexRouteImport } from './routes/_app/parcels.index'
 import { Route as AppParcelsParcelIdRouteImport } from './routes/_app/parcels.$parcelId'
 import { Route as AppPartiesIndexRouteImport } from './routes/_app/parties.index'
@@ -49,6 +51,16 @@ const AppForbiddenRoute = AppForbiddenRouteImport.update({
 const AppLibraryRoute = AppLibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRequestsRoute = AppRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRightsOfEntryRoute = AppRightsOfEntryRouteImport.update({
+  id: '/rights-of-entry',
+  path: '/rights-of-entry',
   getParentRoute: () => AppRoute,
 } as any)
 const AppParcelsIndexRoute = AppParcelsIndexRouteImport.update({
@@ -88,6 +100,8 @@ export interface FileRoutesByFullPath {
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
   '/library': typeof AppLibraryRoute
+  '/requests': typeof AppRequestsRoute
+  '/rights-of-entry': typeof AppRightsOfEntryRoute
   '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/parties/$partyId': typeof AppPartiesPartyIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -100,6 +114,8 @@ export interface FileRoutesByTo {
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
   '/library': typeof AppLibraryRoute
+  '/requests': typeof AppRequestsRoute
+  '/rights-of-entry': typeof AppRightsOfEntryRoute
   '/': typeof AppIndexRoute
   '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/parties/$partyId': typeof AppPartiesPartyIdRoute
@@ -115,6 +131,8 @@ export interface FileRoutesById {
   '/_app/administration': typeof AppAdministrationRoute
   '/_app/forbidden': typeof AppForbiddenRoute
   '/_app/library': typeof AppLibraryRoute
+  '/_app/requests': typeof AppRequestsRoute
+  '/_app/rights-of-entry': typeof AppRightsOfEntryRoute
   '/_app/': typeof AppIndexRoute
   '/_app/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/_app/parties/$partyId': typeof AppPartiesPartyIdRoute
@@ -131,6 +149,8 @@ export interface FileRouteTypes {
     | '/administration'
     | '/forbidden'
     | '/library'
+    | '/requests'
+    | '/rights-of-entry'
     | '/parcels/$parcelId'
     | '/parties/$partyId'
     | '/projects/$projectId'
@@ -143,6 +163,8 @@ export interface FileRouteTypes {
     | '/administration'
     | '/forbidden'
     | '/library'
+    | '/requests'
+    | '/rights-of-entry'
     | '/'
     | '/parcels/$parcelId'
     | '/parties/$partyId'
@@ -157,6 +179,8 @@ export interface FileRouteTypes {
     | '/_app/administration'
     | '/_app/forbidden'
     | '/_app/library'
+    | '/_app/requests'
+    | '/_app/rights-of-entry'
     | '/_app/'
     | '/_app/parcels/$parcelId'
     | '/_app/parties/$partyId'
@@ -215,6 +239,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLibraryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/requests': {
+      id: '/_app/requests'
+      path: '/requests'
+      fullPath: '/requests'
+      preLoaderRoute: typeof AppRequestsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/rights-of-entry': {
+      id: '/_app/rights-of-entry'
+      path: '/rights-of-entry'
+      fullPath: '/rights-of-entry'
+      preLoaderRoute: typeof AppRightsOfEntryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/parcels/': {
       id: '/_app/parcels/'
       path: '/parcels'
@@ -264,6 +302,8 @@ interface AppRouteChildren {
   AppAdministrationRoute: typeof AppAdministrationRoute
   AppForbiddenRoute: typeof AppForbiddenRoute
   AppLibraryRoute: typeof AppLibraryRoute
+  AppRequestsRoute: typeof AppRequestsRoute
+  AppRightsOfEntryRoute: typeof AppRightsOfEntryRoute
   AppIndexRoute: typeof AppIndexRoute
   AppParcelsParcelIdRoute: typeof AppParcelsParcelIdRoute
   AppPartiesPartyIdRoute: typeof AppPartiesPartyIdRoute
@@ -277,6 +317,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdministrationRoute: AppAdministrationRoute,
   AppForbiddenRoute: AppForbiddenRoute,
   AppLibraryRoute: AppLibraryRoute,
+  AppRequestsRoute: AppRequestsRoute,
+  AppRightsOfEntryRoute: AppRightsOfEntryRoute,
   AppIndexRoute: AppIndexRoute,
   AppParcelsParcelIdRoute: AppParcelsParcelIdRoute,
   AppPartiesPartyIdRoute: AppPartiesPartyIdRoute,

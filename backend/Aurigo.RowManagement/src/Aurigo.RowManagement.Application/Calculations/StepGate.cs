@@ -20,6 +20,8 @@ public enum StepMoveOutcome
     AlreadyOnStep = 6,
     /// <summary>The step is not in the parcel's workflow.</summary>
     UnknownStep = 7,
+    /// <summary>The agency requires engineer and surveyor plan reviews before a parcel leaves the review step, and one is missing. Never overridable (ROW-239).</summary>
+    BlockedByPlanReview = 8,
 }
 
 public sealed record StepMoveResult(StepMoveOutcome Outcome, string Message)
@@ -54,7 +56,7 @@ public static class StepGate
 
     public static StepMoveResult CanAdvance(
         IReadOnlyList<WorkflowStepInfo> steps, string currentKey, string targetKey,
-        bool acquisitionGateOpen, bool mayOverride, string? overrideReason)
+        bool acquisitionGateOpen, bool mayOverride, string? overrideReason, string? missingPlanReviews = null)
     {
         var from = IndexOf(steps, currentKey);
         var to = IndexOf(steps, targetKey);
@@ -66,6 +68,14 @@ public static class StepGate
         if (to > from && steps.Skip(from + 1).Take(to - from).Any(s => s.RequiresAcquisitionGate) && !acquisitionGateOpen)
             return new(StepMoveOutcome.BlockedByAcquisitionGate,
                 "Offers and negotiations are on hold until the project has a NEPA decision and an acquisition authorization, or an approved exception.");
+
+        // The plan-review gate holds a parcel on the review step until the plans are reviewed (ROW-239). An override cannot bypass it.
+        if (to > from && missingPlanReviews is not null)
+        {
+            var reviewAt = IndexOf(steps, PlanReviewGate.StepKey);
+            if (reviewAt >= from && reviewAt < to)
+                return new(StepMoveOutcome.BlockedByPlanReview, $"The agency requires an approved plan review by the {missingPlanReviews} before this parcel can leave '{steps[reviewAt].Label}'.");
+        }
 
         if (to == from + 1) return new(StepMoveOutcome.Allowed, $"Moved to '{steps[to].Label}'.");
 

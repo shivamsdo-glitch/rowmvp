@@ -13,6 +13,7 @@
 | AT-AP-12 | Stay out of negotiation and money | Try to list or attach to offers, agreements, closing and payments | – | Every one refused (403) | ✅ | E2E `AT-AP-12`; API matrix |
 | AT-AP-13 | A title examiner can see my outcome | The title examiner opens my appraisal documents | – | Readable; not removable | ✅ | API `RoleAcceptanceApiTests` |
 | AT-AP-15 | See who owns a parcel and whether a tax ID is on file, without being able to change it | Open Parties, search, open a party; open a parcel's Parties tab and a tract's owners panel as the Appraiser | The people are listed; "On file" and the masked number show; no New party, Edit, tax form, Add, Remove or Delete controls | Every create, edit, tax-info, clear, delete and link call is refused (403) and the data is unchanged; the number never appears in any response | ✅ | E2E `AT-AP-15`; API `PartyApiTests` role matrix |
+| AT-AP-25 | Approve a request or a staff report entered by someone else | Open Requests and approve one; open a parcel's Reviews & reports and approve a submitted staff report | Approve works; there is no form to enter a request | The Approvals page allows it; submitting a request is a Projects job (403) | ✅ | E2E `AT-AP-25`; API `AcquisitionApiTests` (role matrix) |
 
 ## Jobs that arrive with later phases
 
@@ -25,5 +26,6 @@
 | AT-AP-24 | Protect an approved value | 3 | An approved appraisal cannot be edited; a revision creates a new version and the old one stays visible |
 
 ## Changelog
+- Phase 1 slice 3c: AT-AP-25 automated (approvals).
 - Phase 1 slice 3a: AT-AP-15 automated (read-only access to parties).
 - Initial: AT-AP-10..13 automated; 20..24 specified.

@@ -26,6 +26,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
   },
+  // The plan-review gate is a setting for the whole agency, so its scenarios run alone, after every other spec.
+  projects: [
+    { name: 'main', testIgnore: /gate\.spec\.ts/ },
+    { name: 'gate', testMatch: /gate\.spec\.ts/, dependencies: ['main'] },
+  ],
   webServer: [
     {
       command: 'node start-api.mjs', // resets the row_e2e database, then runs the API on port 5101

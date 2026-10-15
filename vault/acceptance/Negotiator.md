@@ -16,6 +16,7 @@
 | AT-NG-15 | Add supporting papers to a payment | Attach supporting documents to a payment record; try to remove Finance's request | – | Attach allowed; removal refused (payments are create/read/update for me) | ✅ | API `RoleAcceptanceApiTests` |
 | AT-NG-16 | Capture an owner, their details and their W-9 number, and tidy up after a mistake | On Parties create a party (blank name, then a bad email refused, then valid); on a parcel link them as a fee owner found by search with 100%; try the same person in the same role again; enter an SSN on the party; remove the link and delete the party | Name and email errors beside the fields; duplicate refused with a plain message; the number shows only as `***-**-6789`; link and party removed | Full control of every parties endpoint (create, link, edit, tax info, remove, delete); no response contains the number | ✅ | E2E `AT-NG-16` ×2; API `PartyApiTests` role matrix |
 | AT-NG-17 | Keep the negotiation diary | Open a parcel's Diary tab. Try an empty form, a future date, then log a call and a meeting (who, how, who started it, what was said, what was promised); the project manager opens the same diary; remove a mistaken entry | Newest first; a Print diary button; the project manager sees the entries but no form or remove buttons | Dates are counted in the project's time zone; the project manager's write is refused (403); removal is audited | ✅ | E2E `AT-NG-17`; API `ParcelRecordApiTests`; frontend `records.test.tsx` |
+| AT-NG-26 | Read rights of entry, reviews, reports and requests | Open a parcel's Right of entry and Reviews & reports tabs and the Requests page | Everything is visible with no forms and no Approve, Reject, Write or Record buttons | Reads allowed; plan reviews and new requests are refused (403) | ✅ | E2E `AT-NG-26`; API `AcquisitionApiTests` (role matrix) |
 
 ## Jobs that arrive with later phases
 
@@ -29,6 +30,7 @@
 | AT-NG-25 | Record an impasse | 4 | Parcel status is Impasse with the data for a later condemnation hand-off; closing is blocked |
 
 ## Changelog
+- Phase 1 slice 3c: AT-NG-26 automated (read-only access to acquisition records).
 - Phase 1 slice 3b: AT-NG-17 automated (negotiation diary).
 - Phase 1 slice 3a: AT-NG-16 automated (parties).
 - Initial: AT-NG-10..15 automated; 20..25 specified.

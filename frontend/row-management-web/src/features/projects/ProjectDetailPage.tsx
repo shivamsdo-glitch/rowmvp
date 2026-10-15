@@ -15,10 +15,11 @@ import {
 } from './form-kit'
 import { zoneName } from '../parcels/parcel-kit'
 import { ProjectParcelsTab } from '../parcels/ProjectParcelsTab'
+import { PlanTab } from './PlanTab'
 import { ProjectForm } from './ProjectForm'
 
 const TABS = [
-  ['overview', 'Overview'], ['parcels', 'Parcels'], ['estimates', 'Cost estimates'], ['budget', 'Budget'], ['authorizations', 'ROW authorizations'], ['clearance', 'Clearance'],
+  ['overview', 'Overview'], ['parcels', 'Parcels'], ['estimates', 'Cost estimates'], ['budget', 'Budget'], ['authorizations', 'ROW authorizations'], ['plan', 'Plan'], ['clearance', 'Clearance'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 
@@ -72,7 +73,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       <GateBanner project={p} />
       <Tabs>
         <TabsList role="tablist" aria-label="Project sections">
-          {TABS.filter(([key]) => key !== 'parcels' || manager.can('parcels')).map(([key, label]) => (
+          {TABS.filter(([key]) => (key !== 'parcels' && key !== 'plan') || manager.can('parcels')).map(([key, label]) => (
             <TabsTrigger key={key} role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls={`panel-${key}`} active={tab === key} onClick={() => setTab(key)}>
               {label}
             </TabsTrigger>
@@ -84,6 +85,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           {tab === 'estimates' && <EstimatesTab project={p} />}
           {tab === 'budget' && <BudgetTab project={p} />}
           {tab === 'authorizations' && <AuthorizationsTab project={p} />}
+          {tab === 'plan' && <PlanTab projectId={p.id} />}
           {tab === 'clearance' && <ClearanceTab project={p} />}
         </TabsContent>
       </Tabs>

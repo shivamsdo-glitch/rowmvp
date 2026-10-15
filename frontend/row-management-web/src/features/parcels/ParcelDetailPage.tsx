@@ -15,6 +15,7 @@ import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, Pill, SelectField, TextField,
 } from '../projects/form-kit'
 import { PartyLinksPanel } from '../parties/PartyLinksPanel'
+import { RightOfEntryTab, ReviewsReportsTab } from './AcquisitionTabs'
 import { DiaryTab, NotesTab, TeamTab } from './ParcelRecordTabs'
 import { ParcelForm } from './ParcelForm'
 import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from './parcel-kit'
@@ -22,7 +23,7 @@ import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from '
 const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
-  ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
+  ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['roe', 'Right of entry'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 
@@ -134,6 +135,8 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
           {tab === 'team' && <TeamTab parcelId={p.id} editable={live} />}
           {tab === 'diary' && <DiaryTab parcelId={p.id} editable={live} />}
           {tab === 'notes' && <NotesTab parcelId={p.id} editable={live} />}
+          {tab === 'roe' && <RightOfEntryTab parcelId={p.id} editable={live} />}
+          {tab === 'reviews' && <ReviewsReportsTab parcelId={p.id} editable={live} />}
           {tab === 'parties' && (manager.can('parties') ? <PartyLinksPanel target={{ kind: 'parcel', parcelId: p.id }} editable={live} /> : <p className="text-sm text-muted-foreground">Your role cannot see parties.</p>)}
           {tab === 'interests' && <InterestsTab parcel={p} editable={live} />}
           {tab === 'milestones' && <MilestonesTab parcel={p} editable={live} />}
