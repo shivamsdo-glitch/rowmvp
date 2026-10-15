@@ -24,7 +24,7 @@ public sealed class AuditingSaveChangesInterceptor : SaveChangesInterceptor
 
     /// <summary>Secrets: the fact of a change is recorded, never the value.</summary>
     private static readonly HashSet<string> SecretFields =
-        new(StringComparer.Ordinal) { nameof(AppUser.PasswordHash), nameof(UserToken.TokenHash) };
+        new(StringComparer.Ordinal) { nameof(AppUser.PasswordHash), nameof(UserToken.TokenHash), nameof(Party.TaxIdProtected), nameof(Party.TaxIdLast4) };
 
     private readonly ICurrentUser _currentUser;
     private readonly ICurrentTenant _currentTenant;

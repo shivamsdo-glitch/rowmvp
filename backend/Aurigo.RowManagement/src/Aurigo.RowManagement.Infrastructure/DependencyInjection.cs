@@ -2,6 +2,8 @@ using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Email;
 using Aurigo.RowManagement.Application.ExternalServices;
 using Aurigo.RowManagement.Application.Persistence;
+using Aurigo.RowManagement.Application.Security;
+using Aurigo.RowManagement.Infrastructure.Security;
 using Aurigo.RowManagement.Infrastructure.Auth;
 using Aurigo.RowManagement.Infrastructure.Email;
 using Aurigo.RowManagement.Infrastructure.ExternalClients;
@@ -31,6 +33,11 @@ public static class DependencyInjection
         services.AddSingleton(sp =>
             JwtOptions.Resolve(sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<IHostEnvironment>()));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+        // The key that protects tax ID numbers at rest (ROW-018); required outside Development.
+        services.AddSingleton(sp =>
+            TaxIdOptions.Resolve(sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<IHostEnvironment>()));
+        services.AddSingleton<ITaxIdProtector, AesGcmTaxIdProtector>();
 
         // ── Email: console stub only. A real provider would replace this one registration. ──
         services.AddSingleton<IEmailSender, ConsoleEmailSender>();

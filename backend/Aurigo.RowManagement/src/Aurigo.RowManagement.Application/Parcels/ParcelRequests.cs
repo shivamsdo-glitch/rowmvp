@@ -382,11 +382,14 @@ public sealed class SplitParcelCommandHandler : IRequestHandler<SplitParcelComma
     private readonly IPagePermissionService _permissions;
     private readonly ParcelService _parcels;
 
-    public SplitParcelCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels)
+    private readonly Parties.PartyService _parties;
+
+    public SplitParcelCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels, Parties.PartyService parties)
     {
         _db = db;
         _permissions = permissions;
         _parcels = parcels;
+        _parties = parties;
     }
 
     public async Task<ParcelSplitResultDto> Handle(SplitParcelCommand request, CancellationToken ct)
@@ -433,6 +436,8 @@ public sealed class SplitParcelCommandHandler : IRequestHandler<SplitParcelComma
         source.SupersededOn = _parcels.Now;
         _db.Parcels.AddRange(parts);
         if (remnant is not null) _db.Parcels.Add(remnant);
+        // The people around the parcel (ROW-014..017) do not change because it was cut up.
+        await _parties.CarryLinksAsync(new[] { source.Id }, parts.Concat(remnant is null ? Array.Empty<Parcel>() : new[] { remnant }).Select(x => x.Id).ToList(), ct);
 
         try
         {
@@ -480,11 +485,14 @@ public sealed class CombineParcelsCommandHandler : IRequestHandler<CombineParcel
     private readonly IPagePermissionService _permissions;
     private readonly ParcelService _parcels;
 
-    public CombineParcelsCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels)
+    private readonly Parties.PartyService _parties;
+
+    public CombineParcelsCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels, Parties.PartyService parties)
     {
         _db = db;
         _permissions = permissions;
         _parcels = parcels;
+        _parties = parties;
     }
 
     public async Task<ParcelDto> Handle(CombineParcelsCommand request, CancellationToken ct)
@@ -550,6 +558,7 @@ public sealed class CombineParcelsCommandHandler : IRequestHandler<CombineParcel
 
                 var combined = Build(number);
                 _db.Parcels.Add(combined);
+                await _parties.CarryLinksAsync(ids, new[] { combined.Id }, ct);
                 foreach (var s in sources)
                 {
                     s.State = ParcelState.Combined;

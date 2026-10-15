@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { ErrorState, LoadingRows } from '@/components/ui/states'
 import { DataTable, FormError, messageOf, orNull, TextField } from '../projects/form-kit'
+import { PartyLinksPanel } from '../parties/PartyLinksPanel'
 import { acres } from './parcel-kit'
 
 function Buckets({ title, rows }: { title: string; rows: RollupBucket[] }) {
@@ -48,6 +49,7 @@ export function ProjectParcelsTab({ projectId }: { projectId: string }) {
   const [tractTax, setTractTax] = useState('')
   const [tractError, setTractError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [tractOpen, setTractOpen] = useState<string | null>(null)
 
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['rollup', projectId] }),
@@ -125,7 +127,13 @@ export function ProjectParcelsTab({ projectId }: { projectId: string }) {
       <section aria-label="Parent tracts">
         <h2 className="mb-2 text-sm font-semibold">Parent tracts</h2>
         <p className="mb-2 text-xs text-muted-foreground">An owner&apos;s whole tract with its assessor numbers; parcels are the takes from it.</p>
-        <TractTable tracts={tracts.data} />
+        <TractTable tracts={tracts.data} openId={tractOpen} canSeeParties={manager.can('parties')} onToggle={(id) => setTractOpen(tractOpen === id ? null : id)} />
+        {tractOpen && manager.can('parties') && (
+          <div className="mt-3 rounded-lg border bg-card p-4">
+            <h3 className="mb-3 text-sm font-semibold">Owners and parties of tract {tracts.data.find((t) => t.id === tractOpen)?.number}</h3>
+            <PartyLinksPanel key={tractOpen} headingLevel="h4" target={{ kind: 'tract', projectId, tractId: tractOpen }} />
+          </div>
+        )}
         {canCreate && (
           <form onSubmit={addTract} noValidate aria-label="Add a parent tract" className="mt-3 flex max-w-2xl flex-wrap items-end gap-3">
             <TextField label="Tract number" value={tractNumber} onChange={setTractNumber} maxLength={50} />
@@ -162,15 +170,22 @@ function GroupTable({ groups, canDelete, busy, onDelete }: { groups: ParcelGroup
   )
 }
 
-function TractTable({ tracts }: { tracts: ParentTract[] }) {
+function TractTable({ tracts, openId, canSeeParties, onToggle }: { tracts: ParentTract[]; openId: string | null; canSeeParties: boolean; onToggle: (id: string) => void }) {
   if (tracts.length === 0) return <p className="text-sm text-muted-foreground">No parent tracts yet.</p>
   return (
-    <DataTable caption="Parent tracts" headers={['Tract', 'Tax parcel numbers', 'Parcels']}>
+    <DataTable caption="Parent tracts" headers={canSeeParties ? ['Tract', 'Tax parcel numbers', 'Parcels', 'Parties'] : ['Tract', 'Tax parcel numbers', 'Parcels']}>
       {tracts.map((t) => (
         <tr key={t.id}>
           <td className="px-3 py-2 font-medium">{t.number}</td>
           <td className="px-3 py-2">{t.taxParcelNumbers.length ? t.taxParcelNumbers.join(', ') : '—'}</td>
           <td className="px-3 py-2">{t.parcelCount}</td>
+          {canSeeParties && (
+            <td className="px-3 py-2">
+              <button type="button" aria-expanded={openId === t.id} aria-label={`Owners and parties of tract ${t.number}`} className={buttonClassName('outline', 'sm')} onClick={() => onToggle(t.id)}>
+                {openId === t.id ? 'Hide' : 'Owners & parties'}
+              </button>
+            </td>
+          )}
         </tr>
       ))}
     </DataTable>

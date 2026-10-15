@@ -6,6 +6,7 @@ import { ROLES } from '@/api/auth'
 import { permissionRowsFor } from '@/test/contract'
 import { fakeAuthFetch } from '@/test/fake-api'
 import { fakeParcelsApi } from '@/test/fake-parcels'
+import { fakePeopleApi } from '@/test/fake-people'
 import { fakeProjectsApi } from '@/test/fake-projects'
 import { renderApp } from '@/test/render-app'
 
@@ -239,6 +240,76 @@ describe('accessibility of the parcel screens', () => {
     await screen.findByRole('region', { name: 'Next actions' })
     await settle()
 
+    expect(await violations()).toEqual([])
+  })
+})
+
+describe('accessibility of the parties screens (ROW-014..018)', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 50))
+  function openParties(path: string, role = 'ProjectManager') {
+    const fake = fakePeopleApi({
+      role, rows: permissionRowsFor(role), projects: [{ id: 'p1', number: '2026-0001', name: 'Harbor Bridge' }],
+      tracts: [{ id: 'tr1', projectId: 'p1', number: 'T-1' }],
+      parcels: [{ id: 'pc1', projectId: 'p1', number: '001', parentTractId: 'tr1' }, { id: 'pc2', projectId: 'p1', number: '002' }],
+      parties: [{ id: 'a', name: 'Pat Owner', hasTaxId: true, taxIdType: 'Ssn', taxIdMasked: '***-**-6789' }, { id: 'b', name: 'First Bank', kind: 'Organization' }],
+      links: [{ partyId: 'a', tractId: 'tr1', role: 'FeeOwner', sharePercent: 100 }, { partyId: 'b', parcelId: 'pc1', role: 'Bank' }, { partyId: 'a', parcelId: 'pc2', role: 'Tenant', leaseOnFile: true }],
+    })
+    renderApp({ path, fetchImpl: fake.fetch, signedIn: true })
+    return fake
+  }
+
+  it('the party list and its create form have no violations', async () => {
+    const user = userEventModule.setup()
+    openParties('/parties')
+    await screen.findByRole('table', { name: 'Parties' })
+    await settle()
+    expect(await violations(), 'list').toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'New party' }))
+    await settle()
+    expect(await violations(), 'with the form open').toEqual([])
+  })
+
+  it('a party page with its tax information, editor and usage has no violations', async () => {
+    const user = userEventModule.setup()
+    openParties('/parties/a')
+    await screen.findByRole('form', { name: 'Tax information' })
+    await screen.findByRole('table', { name: 'Where this party appears' })
+    await settle()
+    expect(await violations()).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Edit details' }))
+    await settle()
+    expect(await violations(), 'with the editor open').toEqual([])
+  })
+
+  it('the parcel parties tab has no violations, including the add and edit forms', async () => {
+    const user = userEventModule.setup()
+    openParties('/parcels/pc2')
+    await user.click(await screen.findByRole('tab', { name: 'Parties' }))
+    await screen.findByRole('region', { name: 'Tenants and occupants' })
+    await settle()
+    expect(await violations(), 'tab').toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Add a person or organization' }))
+    await settle()
+    expect(await violations(), 'add form (existing party)').toEqual([])
+    await user.click(screen.getByLabelText('A new person or organization'))
+    await settle()
+    expect(await violations(), 'add form (new party)').toEqual([])
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Edit Pat Owner, Tenant' }))
+    await settle()
+    expect(await violations(), 'edit form').toEqual([])
+  })
+
+  it('a project tract owners panel has no violations', async () => {
+    const user = userEventModule.setup()
+    openParties('/projects/p1')
+    await user.click(await screen.findByRole('tab', { name: 'Parcels' }))
+    await user.click(await screen.findByRole('button', { name: 'Owners and parties of tract T-1' }))
+    await screen.findByRole('region', { name: 'Owners and interests' })
+    await settle()
     expect(await violations()).toEqual([])
   })
 })

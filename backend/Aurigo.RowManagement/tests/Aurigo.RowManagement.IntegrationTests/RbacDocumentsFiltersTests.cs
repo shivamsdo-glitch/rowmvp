@@ -272,7 +272,7 @@ public class RbacDocumentsFiltersTests : IClassFixture<RowApiFactory>
     {
         await using var production = new RowApiFactory("Production", new()
         {
-            ["Jwt:SigningKey"] = new string('p', 48),
+            ["Jwt:SigningKey"] = new string('p', 48), ["Security:TaxIdKey"] = Support.TestKeys.TaxIdKey,
             ["ConnectionStrings:Postgres"] = "Host=unused",
         });
         using var scope = production.Services.CreateScope();

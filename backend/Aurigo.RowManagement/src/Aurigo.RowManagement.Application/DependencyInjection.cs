@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ProjectNumberGenerator>();
         services.AddScoped<AgencyClock>();
         services.AddScoped<ParcelService>();
+        services.AddScoped<Parties.PartyService>();
 
         // Calculations are static, stateless functions (see Calculations/README.md); nothing to register.
         return services;

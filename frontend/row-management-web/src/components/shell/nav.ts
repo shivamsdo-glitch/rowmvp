@@ -1,5 +1,5 @@
 import {
-  BookOpen, FileSearch, FolderKanban, Handshake, LandPlot, LayoutDashboard, Scale, Settings, Users,
+  BookOpen, Contact, FileSearch, FolderKanban, Handshake, LandPlot, LayoutDashboard, Scale, Settings, Users,
 } from 'lucide-react'
 import type { PageKey } from '@/api/auth'
 
@@ -28,6 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/', label: 'Home', Icon: LayoutDashboard, page: 'dashboard' },
       { to: '/projects', label: 'Projects', Icon: FolderKanban, page: 'projects' },
       { to: '/parcels', label: 'Parcels', Icon: LandPlot, page: 'parcels' },
+      { to: '/parties', label: 'Parties', Icon: Contact, page: 'parties' },
     ],
   },
   {

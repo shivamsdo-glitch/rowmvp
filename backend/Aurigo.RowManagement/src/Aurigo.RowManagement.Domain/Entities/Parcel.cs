@@ -35,6 +35,9 @@ public class ParentTract : EntityBase
     public string? Description { get; set; }
     /// <summary>APN / GPIN values from the assessor's records.</summary>
     public List<string> TaxParcelNumbers { get; set; } = new();
+
+    /// <summary>Optimistic concurrency token (Postgres xmin); keeps the owners' shares on the tract honest when two people edit at once.</summary>
+    public uint Version { get; set; }
 }
 
 /// <summary>One take of land for a project (ROW-005): the unit that is appraised, negotiated and closed.</summary>

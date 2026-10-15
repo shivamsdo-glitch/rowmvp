@@ -37,6 +37,7 @@ public class ParentTractConfiguration : IEntityTypeConfiguration<ParentTract>
         b.HasKey(x => x.Id);
         b.Property(x => x.Number).IsRequired().HasMaxLength(50);
         b.Property(x => x.Description).HasMaxLength(500);
+        b.Property(x => x.Version).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
         b.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.ProjectId, x.Number }).IsUnique();
     }

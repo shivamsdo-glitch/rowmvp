@@ -123,6 +123,7 @@ public sealed class DemoDataSeedStep : ISeedStep
         _db.CurrentTenantId = WellKnownIds.DevTenant;
         if (!await _db.Projects.AnyAsync(p => p.Number == "DEMO-001", ct)) await SeedProjectsAsync(ct);
         await SeedParcelsAsync(ct);
+        await SeedPartiesAsync(ct);
     }
 
     private async Task SeedProjectsAsync(CancellationToken ct)
@@ -247,5 +248,41 @@ public sealed class DemoDataSeedStep : ISeedStep
         _db.Parcels.AddRange(atOffer, late, closed, original, partA, remnant, held1, held2);
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Seeded demo parcels.");
+    }
+
+    /// <summary>
+    /// Sample owners, a lienholder, an attorney, a tenant and an abutter around the bridge parcels. No tax numbers are seeded:
+    /// try entering one on a party to see it masked. Skipped once any party exists.
+    /// </summary>
+    private async Task SeedPartiesAsync(CancellationToken ct)
+    {
+        if (await _db.Parties.AnyAsync(ct)) return;
+        var tract = await _db.ParentTracts.FirstOrDefaultAsync(t => t.Number == "T-1001", ct);
+        var bridgeId = await _db.Projects.Where(p => p.Number == "DEMO-002").Select(p => p.Id).FirstOrDefaultAsync(ct);
+        var pier = await _db.Parcels.FirstOrDefaultAsync(p => p.Number == "003" && p.ProjectId == bridgeId, ct);
+        var atOffer = await _db.Parcels.FirstOrDefaultAsync(p => p.Number == "001" && p.ProjectId == bridgeId, ct);
+        if (tract is null || pier is null || atOffer is null) return;
+
+        Party Org(string name, string city) => new() { Kind = PartyKind.Organization, Name = name, City = city, State = "WA", PostalCode = "98101", Phone = "206-555-0100" };
+        Party Person(string name, string city) => new() { Kind = PartyKind.Person, Name = name, City = city, State = "WA", PostalCode = "98101", Email = $"{name.Split(' ')[0].ToLowerInvariant()}@example.test" };
+
+        var harbor = Org("Harbor Holdings LLC", "Seattle");
+        harbor.LegalName = "Harbor Holdings, L.L.C.";
+        var alex = Person("Alex Marlowe", "Seattle");
+        var bank = Org("First Harbor Bank", "Seattle");
+        var lawyer = Person("Jordan Reyes", "Seattle");
+        var tenant = Person("Casey Tran", "Tacoma");
+        var neighbour = Person("Morgan Ellis", "Seattle");
+        _db.Parties.AddRange(harbor, alex, bank, lawyer, tenant, neighbour);
+
+        _db.PartyLinks.AddRange(
+            new PartyLink { PartyId = harbor.Id, ParentTractId = tract.Id, Role = PartyRole.FeeOwner, SharePercent = 60m },
+            new PartyLink { PartyId = alex.Id, ParentTractId = tract.Id, Role = PartyRole.FeeOwner, SharePercent = 40m },
+            new PartyLink { PartyId = bank.Id, ParentTractId = tract.Id, Role = PartyRole.Lienholder, Notes = "Deed of trust recorded 2019." },
+            new PartyLink { PartyId = lawyer.Id, ParentTractId = tract.Id, Role = PartyRole.Attorney, Notes = "Represents the owners in negotiation." },
+            new PartyLink { PartyId = tenant.Id, ParcelId = atOffer.Id, Role = PartyRole.Tenant, LeaseOnFile = true, LeaseDetails = "Retail space, expires 2027-08-31", InsuranceDetails = "Renter's policy on file" },
+            new PartyLink { PartyId = neighbour.Id, ParcelId = pier.Id, Role = PartyRole.Abutter });
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Seeded demo parties.");
     }
 }

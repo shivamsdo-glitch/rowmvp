@@ -225,7 +225,7 @@ public class ResilienceTests : IClassFixture<PgApi>
     [PgFact]
     public async Task Production_boots_on_a_clean_database_with_no_demo_tenant_users_or_dev_token()
     {
-        await using var production = RowApiFactory.WithPostgres(new() { ["Jwt:SigningKey"] = new string('p', 48) }, environment: "Production");
+        await using var production = RowApiFactory.WithPostgres(new() { ["Jwt:SigningKey"] = new string('p', 48), ["Security:TaxIdKey"] = Support.TestKeys.TaxIdKey }, environment: "Production");
         _ = production.Services;
         var db = production.PgDatabase!;
 

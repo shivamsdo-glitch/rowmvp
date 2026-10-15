@@ -30,7 +30,7 @@ public class PlatformBehaviourTests
     [Fact]
     public async Task Swagger_is_off_in_production_unless_explicitly_enabled()
     {
-        var settings = new Dictionary<string, string?> { ["Jwt:SigningKey"] = new string('p', 48) };
+        var settings = new Dictionary<string, string?> { ["Jwt:SigningKey"] = new string('p', 48), ["Security:TaxIdKey"] = Support.TestKeys.TaxIdKey };
         await using var off = new RowApiFactory("Production", settings);
         (await off.CreateClient().GetAsync("/swagger/v1/swagger.json")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 

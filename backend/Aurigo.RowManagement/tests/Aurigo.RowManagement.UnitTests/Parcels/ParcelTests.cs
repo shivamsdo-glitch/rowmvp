@@ -50,8 +50,8 @@ public class ParcelTests
         public GetParcelQueryHandler Get => new(_perms, _parcels);
         public ListParcelsQueryHandler List => new(Db, _perms, _parcels);
         public BatchUpdateParcelsCommandHandler Batch => new(Db, _perms, _parcels);
-        public SplitParcelCommandHandler Split => new(Db, _perms, _parcels);
-        public CombineParcelsCommandHandler Combine => new(Db, _perms, _parcels);
+        public SplitParcelCommandHandler Split => new(Db, _perms, _parcels, new Aurigo.RowManagement.Application.Parties.PartyService(Db));
+        public CombineParcelsCommandHandler Combine => new(Db, _perms, _parcels, new Aurigo.RowManagement.Application.Parties.PartyService(Db));
         public SaveParcelGroupCommandHandler SaveGroup => new(Db, _perms);
         public ListParcelGroupsQueryHandler Groups => new(Db, _perms);
         public DeleteParcelGroupCommandHandler DeleteGroup => new(Db, _perms);

@@ -27,7 +27,10 @@ ROW-001–021, 071–077, 080, 233–241. (ROW-022 is Diagram 5 → deferred. RO
 - **Slice 2 — parcel core (done):** ROW-002, 005–011, 071–074, 233–237. Parcel, groups, parent tracts, interests, milestones, notice to owner, site visits, split/combine, batch update, status board, custom fields, step gating with override, statutory deadlines and reminders, synopsis. ADR 0008.
   - 009 (print-friendly synopsis) is the browser print of the parcel Summary tab; 235 is the status-coloured board (no map).
   - Seeded deadline periods and workflow steps are **placeholders** the agency must confirm (vault/README_Final.md "Yours to verify").
-- **Slice 3 — people & the rest (next):** ROW-014–021 (owners, contacts, tenants, abutters, tax ID, team, diary, notes), 077 right of entry, 080 request intake, 239 plan-review gate, 240 staff report/certificate, 241 acquisition plan, 075.
+- **Slice 3a — parties (done):** ROW-014 owners and interests (shares, several per parcel), 015 contacts, 016 tenants and occupants (lease and insurance details), 017 abutters and interested parties, 018 W-9 / 1099 tax ID (encrypted, masked, write-only). ADR 0009. Owners are recorded once on the parent tract and inherited by its parcels; split and combine keep a parcel's own people.
+  - Open questions for the user (flagged, not guessed): 018 which parties are 1099-reportable is a flag the agency sets per party; the retention/rotation policy for the tax-ID encryption key is the agency's (the key is `Security__TaxIdKey`; losing it makes stored numbers unreadable).
+- **Slice 3b — team, diary, notes (next):** ROW-019, 020, 021.
+- **Slice 3c — the rest:** 077 right of entry, 080 request intake, 239 plan-review gate, 240 staff report/certificate, 241 acquisition plan; 075 (URA alignment) needs no code and is noted here.
 
 ## Exit checklist
 - [ ] Create project → add parent tract → split into parcels → add owners/interests → set milestones, end to end in UI

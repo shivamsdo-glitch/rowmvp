@@ -12,6 +12,7 @@
 | AT-FN-11 | Check the deal behind a payment | Open the offer, agreement and closing documents; try to attach to or remove from them | – | All three open; every change refused (403) | ✅ | E2E `AT-FN-11`; API matrix |
 | AT-FN-12 | Stay out of title and valuation | Try to list or open title, survey and appraisal records | – | All refused (403), even when the document id is known | ✅ | E2E `AT-FN-12` |
 | AT-FN-13 | A negotiator's supporting papers reach me | The negotiator adds supporting documents to a payment; I read them | – | Visible to me; the negotiator cannot remove mine | ✅ | API `RoleAcceptanceApiTests` |
+| AT-FN-15 | See who owns a parcel and whether a tax ID is on file, without being able to change it | Open Parties, search, open a party; open a parcel's Parties tab and a tract's owners panel as the Finance user | The people are listed; "On file" and the masked number show; no New party, Edit, tax form, Add, Remove or Delete controls | Every create, edit, tax-info, clear, delete and link call is refused (403) and the data is unchanged; the number never appears in any response | ✅ | E2E `AT-FN-15`; API `PartyApiTests` role matrix |
 
 ## Jobs that arrive with later phases
 
@@ -23,4 +24,5 @@
 | AT-FN-23 | Work the queue of payments | 4 | Pending, approved and paid are separated; counts match the lists |
 
 ## Changelog
+- Phase 1 slice 3a: AT-FN-15 automated (read-only access to parties; Finance sees whether a payee's W-9 is on file).
 - Initial: AT-FN-10..13 automated; 20..23 specified.

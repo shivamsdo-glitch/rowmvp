@@ -52,6 +52,8 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
     public DbSet<DeadlineRule> DeadlineRules => Set<DeadlineRule>();
     public DbSet<StepGateSettings> StepGateSettings => Set<StepGateSettings>();
+    public DbSet<Party> Parties => Set<Party>();
+    public DbSet<PartyLink> PartyLinks => Set<PartyLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

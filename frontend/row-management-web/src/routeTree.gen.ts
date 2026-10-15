@@ -16,6 +16,8 @@ import { Route as AppAdministrationRouteImport } from './routes/_app/administrat
 import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
 import { Route as AppParcelsIndexRouteImport } from './routes/_app/parcels.index'
 import { Route as AppParcelsParcelIdRouteImport } from './routes/_app/parcels.$parcelId'
+import { Route as AppPartiesIndexRouteImport } from './routes/_app/parties.index'
+import { Route as AppPartiesPartyIdRouteImport } from './routes/_app/parties.$partyId'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app/projects.index'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
 
@@ -53,6 +55,16 @@ const AppParcelsParcelIdRoute = AppParcelsParcelIdRouteImport.update({
   path: '/parcels/$parcelId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPartiesIndexRoute = AppPartiesIndexRouteImport.update({
+  id: '/parties/',
+  path: '/parties/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPartiesPartyIdRoute = AppPartiesPartyIdRouteImport.update({
+  id: '/parties/$partyId',
+  path: '/parties/$partyId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -70,8 +82,10 @@ export interface FileRoutesByFullPath {
   '/administration': typeof AppAdministrationRoute
   '/forbidden': typeof AppForbiddenRoute
   '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
+  '/parties/$partyId': typeof AppPartiesPartyIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/parcels/': typeof AppParcelsIndexRoute
+  '/parties/': typeof AppPartiesIndexRoute
   '/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -80,8 +94,10 @@ export interface FileRoutesByTo {
   '/forbidden': typeof AppForbiddenRoute
   '/': typeof AppIndexRoute
   '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
+  '/parties/$partyId': typeof AppPartiesPartyIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/parcels': typeof AppParcelsIndexRoute
+  '/parties': typeof AppPartiesIndexRoute
   '/projects': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesById {
@@ -92,8 +108,10 @@ export interface FileRoutesById {
   '/_app/forbidden': typeof AppForbiddenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/parcels/$parcelId': typeof AppParcelsParcelIdRoute
+  '/_app/parties/$partyId': typeof AppPartiesPartyIdRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/_app/parcels/': typeof AppParcelsIndexRoute
+  '/_app/parties/': typeof AppPartiesIndexRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRouteTypes {
@@ -104,8 +122,10 @@ export interface FileRouteTypes {
     | '/administration'
     | '/forbidden'
     | '/parcels/$parcelId'
+    | '/parties/$partyId'
     | '/projects/$projectId'
     | '/parcels/'
+    | '/parties/'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -114,8 +134,10 @@ export interface FileRouteTypes {
     | '/forbidden'
     | '/'
     | '/parcels/$parcelId'
+    | '/parties/$partyId'
     | '/projects/$projectId'
     | '/parcels'
+    | '/parties'
     | '/projects'
   id:
     | '__root__'
@@ -125,8 +147,10 @@ export interface FileRouteTypes {
     | '/_app/forbidden'
     | '/_app/'
     | '/_app/parcels/$parcelId'
+    | '/_app/parties/$partyId'
     | '/_app/projects/$projectId'
     | '/_app/parcels/'
+    | '/_app/parties/'
     | '/_app/projects/'
   fileRoutesById: FileRoutesById
 }
@@ -186,6 +210,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppParcelsParcelIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/parties/': {
+      id: '/_app/parties/'
+      path: '/parties'
+      fullPath: '/parties/'
+      preLoaderRoute: typeof AppPartiesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/parties/$partyId': {
+      id: '/_app/parties/$partyId'
+      path: '/parties/$partyId'
+      fullPath: '/parties/$partyId'
+      preLoaderRoute: typeof AppPartiesPartyIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/projects/': {
       id: '/_app/projects/'
       path: '/projects'
@@ -208,8 +246,10 @@ interface AppRouteChildren {
   AppForbiddenRoute: typeof AppForbiddenRoute
   AppIndexRoute: typeof AppIndexRoute
   AppParcelsParcelIdRoute: typeof AppParcelsParcelIdRoute
+  AppPartiesPartyIdRoute: typeof AppPartiesPartyIdRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
   AppParcelsIndexRoute: typeof AppParcelsIndexRoute
+  AppPartiesIndexRoute: typeof AppPartiesIndexRoute
   AppProjectsIndexRoute: typeof AppProjectsIndexRoute
 }
 
@@ -218,8 +258,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppForbiddenRoute: AppForbiddenRoute,
   AppIndexRoute: AppIndexRoute,
   AppParcelsParcelIdRoute: AppParcelsParcelIdRoute,
+  AppPartiesPartyIdRoute: AppPartiesPartyIdRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
   AppParcelsIndexRoute: AppParcelsIndexRoute,
+  AppPartiesIndexRoute: AppPartiesIndexRoute,
   AppProjectsIndexRoute: AppProjectsIndexRoute,
 }
 

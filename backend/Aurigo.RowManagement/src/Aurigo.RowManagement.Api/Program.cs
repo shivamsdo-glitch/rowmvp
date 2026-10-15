@@ -156,6 +156,8 @@ try
 
     // Fail fast: a missing or too-short JWT signing key must stop startup, not the first login.
     _ = app.Services.GetRequiredService<JwtOptions>();
+    // Same for the tax ID encryption key: a missing key stops startup, not the first tax ID saved.
+    _ = app.Services.GetRequiredService<Aurigo.RowManagement.Infrastructure.Security.TaxIdOptions>();
 
     // ── Database: migrate (fail fast on a bad schema), then dev-only seed ──
     if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
