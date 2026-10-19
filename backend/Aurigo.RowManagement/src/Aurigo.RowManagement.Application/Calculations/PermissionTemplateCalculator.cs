@@ -30,6 +30,9 @@ public static class PermissionTemplateCalculator
         PermissionTemplates.Basic => new PermissionFlags(false, true, false, false),
         PermissionTemplates.Standard => new PermissionFlags(true, true, true, false),
         PermissionTemplates.Pro => new PermissionFlags(true, true, true, true),
+        // A default may also be written as the letters of the boxes ticked: "RU" = read and update.
+        { Length: > 0 } code when code.All(c => "CRUD".Contains(c)) =>
+            new PermissionFlags(code.Contains('C'), code.Contains('R'), code.Contains('U'), code.Contains('D')),
         _ => PermissionFlags.None,
     };
 

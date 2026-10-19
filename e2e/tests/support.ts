@@ -3,10 +3,10 @@ import contract from '../../vault/acceptance/permission-matrix.json' with { type
 
 export const ROLES = contract.roles as string[]
 export const PAGES = contract.pages as string[]
-export type Level = 'B' | 'S' | 'P' | null
+export type Level = 'B' | 'U' | 'S' | 'P' | null
 export const level = (role: string, page: string) => (contract.matrix as Record<string, Record<string, Level>>)[role][page]
 export const canRead = (role: string, page: string) => level(role, page) !== null
-export const canUpdate = (role: string, page: string) => level(role, page) === 'S' || level(role, page) === 'P'
+export const canUpdate = (role: string, page: string) => ['U', 'S', 'P'].includes(level(role, page) ?? '')
 export const canDelete = (role: string, page: string) => level(role, page) === 'P'
 /** Which page's permissions govern attachments on each kind of record. */
 export const attachmentPage = contract.attachmentPages as Record<string, string>

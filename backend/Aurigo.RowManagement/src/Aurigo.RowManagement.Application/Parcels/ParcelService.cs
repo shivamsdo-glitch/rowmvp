@@ -221,6 +221,7 @@ public sealed class ParcelService
             p.SiteVisits.OrderByDescending(v => v.VisitedOn).Select(v => new ParcelSiteVisitDto(v.Id, v.VisitedOn, v.Notes, v.OwnerContactConfirmed)).ToList(),
             deadlines, workflow,
             p.StepEvents.OrderByDescending(e => e.CreatedAt).Select(e => new ParcelStepEventDto(e.Id, e.FromStepKey, e.ToStepKey, e.IsOverride, e.Reason, e.CreatedAt, e.CreatedBy)).ToList(),
-            p.UpdatedAt, zone);
+            p.UpdatedAt, zone, p.CadNumber, p.AcquisitionInterestType, p.PossessionDate, p.ProposedPossessionDate, p.Segment, p.Priority,
+            p.PossessionType, p.ParcelLocation, p.IsActiveParcel);
     }
 }

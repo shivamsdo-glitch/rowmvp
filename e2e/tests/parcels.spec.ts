@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { devToken, level, newId, ROLES, sessionToken, signInViaUi, signOutViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi, signOutViaUi } from './support'
 
 /**
  * Phase 1, slice 2 — parcel core (ROW-002, 005-008, 010, 011, 071-074, 233-237). Real browser, real UI, real API, real Postgres.
@@ -716,11 +716,11 @@ for (const role of ROLES) {
       await page.goto(`/parcels?projectId=${project.id}`)
       await expect(page.getByRole('table', { name: 'Parcels' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'New parcel' }), `${role} New parcel`).toHaveCount(canCreate(role) ? 1 : 0)
-      await expect(page.getByRole('checkbox', { name: /Select parcel/ }), `${role} select`).toHaveCount(canCreate(role) ? 1 : 0)
+      await expect(page.getByRole('checkbox', { name: /Select parcel/ }), `${role} select`).toHaveCount(canCreate(role) || canUpdate(role, 'parcels') ? 1 : 0)
 
       // Detail.
       await openParcel(page, parcel.id, 'Parcel 001')
-      await expect(page.getByRole('button', { name: 'Edit parcel' }), `${role} Edit parcel`).toHaveCount(canCreate(role) ? 1 : 0)
+      await expect(page.getByRole('button', { name: 'Edit parcel' }), `${role} Edit parcel`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
       await expect(page.getByRole('button', { name: 'Split', exact: true }), `${role} Split`).toHaveCount(canCreate(role) ? 1 : 0)
       await page.getByRole('tab', { name: 'Interests' }).click()
       await expect(page.getByRole('row', { name: /Remainder/ })).toBeVisible()
@@ -728,10 +728,10 @@ for (const role of ROLES) {
       await expect(page.getByRole('button', { name: 'Remove Remainder interest' }), `${role} remove interest`).toHaveCount(canDelete(role) ? 1 : 0)
       await page.getByRole('tab', { name: 'Workflow' }).click()
       await expect(stepList(page)).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Advance to Title & survey' }), `${role} advance`).toHaveCount(canCreate(role) ? 1 : 0)
-      await expect(page.getByRole('form', { name: 'Move to another step' }), `${role} override`).toHaveCount(canCreate(role) && mayOverride(role) ? 1 : 0)
+      await expect(page.getByRole('button', { name: 'Advance to Title & survey' }), `${role} advance`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
+      await expect(page.getByRole('form', { name: 'Move to another step' }), `${role} override`).toHaveCount(canUpdate(role, 'parcels') && mayOverride(role) ? 1 : 0)
       await page.getByRole('tab', { name: 'Site visits & notice' }).click()
-      await expect(page.getByRole('form', { name: 'Notice to owner' }), `${role} notice`).toHaveCount(canCreate(role) ? 1 : 0)
+      await expect(page.getByRole('form', { name: 'Notice to owner' }), `${role} notice`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
       await expect(page.getByRole('form', { name: 'Record a site visit' }), `${role} site visit`).toHaveCount(canCreate(role) ? 1 : 0)
 
       // The project's Parcels tab: everyone sees it; only some change it.
@@ -761,16 +761,16 @@ for (const role of ROLES) {
       expect(code(await request.get('/api/v1/reminders', { headers }))).toBe(200)
       expect(code(await request.get('/api/v1/parcel-rules/workflows', { headers }))).toBe(200)
       expect(code(await request.post('/api/v1/parcels', { headers, data: parcelBody(project.id, { address: `By ${role}` }) }))).toBe(canCreate(role) ? 201 : 403)
-      expect(code(await request.put(`/api/v1/parcels/${parcel.id}`, { headers, data: parcelBody(undefined, { number: '001', address: `Edited by ${role}`, areaSqFt: 1000 }) }))).toBe(canCreate(role) ? 200 : 403)
+      expect(code(await request.put(`/api/v1/parcels/${parcel.id}`, { headers, data: parcelBody(undefined, { number: '001', address: `Edited by ${role}`, areaSqFt: 1000 }) }))).toBe(canUpdate(role, 'parcels') ? 200 : 403)
       expect(code(await request.post(`/api/v1/parcels/${parcel.id}/milestones`, { headers, data: { name: `By ${role}` } }))).toBe(canCreate(role) ? 201 : 403)
       expect(code(await request.post(`/api/v1/parcels/${parcel.id}/site-visits`, { headers, data: { visitedOn: '2026-10-01', notes: null, ownerContactConfirmed: false } }))).toBe(canCreate(role) ? 201 : 403)
-      expect(code(await request.put(`/api/v1/parcels/${parcel.id}/notice`, { headers, data: { issuedOn: '2026-10-01', method: 'Email' } }))).toBe(canCreate(role) ? 200 : 403)
+      expect(code(await request.put(`/api/v1/parcels/${parcel.id}/notice`, { headers, data: { issuedOn: '2026-10-01', method: 'Email' } }))).toBe(canUpdate(role, 'parcels') ? 200 : 403)
       const statusList = await (await request.get('/api/v1/parcel-rules/statuses', { headers })).json()
-      expect(code(await request.post('/api/v1/parcels/batch-update', { headers, data: { parcelIds: [parcel.id], statusId: statusList[0].id, groupId: null, clearGroup: false } }))).toBe(canCreate(role) ? 200 : 403)
-      expect(code(await request.post(`/api/v1/parcels/${parcel.id}/advance`, { headers, data: { targetStepKey: 'title_survey', overrideReason: null } }))).toBe(canCreate(role) ? 200 : 403)
+      expect(code(await request.post('/api/v1/parcels/batch-update', { headers, data: { parcelIds: [parcel.id], statusId: statusList[0].id, groupId: null, clearGroup: false } }))).toBe(canUpdate(role, 'parcels') ? 200 : 403)
+      expect(code(await request.post(`/api/v1/parcels/${parcel.id}/advance`, { headers, data: { targetStepKey: 'title_survey', overrideReason: null } }))).toBe(canUpdate(role, 'parcels') ? 200 : 403)
       // Skipping ahead (here, past the in-order step) needs the override role as well as update access.
       expect(code(await request.post(`/api/v1/parcels/${parcel.id}/advance`, { headers, data: { targetStepKey: 'closing', overrideReason: 'Spec check' } })))
-        .toBe(canCreate(role) && mayOverride(role) ? 200 : 403)
+        .toBe(canUpdate(role, 'parcels') && mayOverride(role) ? 200 : 403)
 
       const groupRes = await request.post(`/api/v1/projects/${project.id}/groups`, { headers, data: { name: `Group by ${role}` } })
       expect(code(groupRes)).toBe(canCreate(role) ? 201 : 403)

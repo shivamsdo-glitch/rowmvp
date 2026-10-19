@@ -194,6 +194,15 @@ function SummaryTab({ parcel: p }: { parcel: Parcel }) {
           <Fact label="Tax parcel numbers">{p.taxParcelNumbers.length ? p.taxParcelNumbers.join(', ') : '—'}</Fact>
           <Fact label="Workflow step">{p.workflow.steps.find((s) => s.key === p.workflow.currentKey)?.label ?? p.workflow.currentKey}</Fact>
           <Fact label="Notice to owner">{p.noticeIssuedOn ? `${dateText(p.noticeIssuedOn)}${p.noticeMethod ? ` by ${NOTICE_LABEL[p.noticeMethod].toLowerCase()}` : ''}` : 'Not issued'}</Fact>
+          <Fact label="CAD number">{p.cadNumber ?? '—'}</Fact>
+          <Fact label="Acquisition interest type">{p.acquisitionInterestType ?? '—'}</Fact>
+          <Fact label="Possession type">{p.possessionType ?? '—'}</Fact>
+          <Fact label="Possession date">{p.possessionDate ? dateText(p.possessionDate) : '—'}</Fact>
+          <Fact label="Proposed possession date">{p.proposedPossessionDate ? dateText(p.proposedPossessionDate) : '—'}</Fact>
+          <Fact label="Segment">{p.segment ?? '—'}</Fact>
+          <Fact label="Priority">{p.priority ?? '—'}</Fact>
+          <Fact label="Parcel location">{p.parcelLocation ?? '—'}</Fact>
+          <Fact label="Active parcel">{p.isActiveParcel ? 'Yes' : 'No'}</Fact>
           <Fact label="Dates counted in">{zoneName(p.timeZoneId)}</Fact>
           <Fact label="Last updated">{dateText(p.updatedAt)}</Fact>
         </dl>
@@ -276,11 +285,12 @@ function InterestsTab({ parcel: p, editable }: { parcel: Parcel; editable: boole
         {p.interests.length === 0 ? (
           <EmptyState title="No interests recorded" description="Add the fee, easements or other rights this parcel takes." />
         ) : (
-          <DataTable caption="Interests" headers={canDelete ? ['Interest', 'Area', 'Notes', 'Actions'] : ['Interest', 'Area', 'Notes']}>
+          <DataTable caption="Interests" headers={canDelete ? ['Interest', 'Area', 'Acres', 'Notes', 'Actions'] : ['Interest', 'Area', 'Acres', 'Notes']}>
             {p.interests.map((i) => (
               <tr key={i.id}>
                 <td className="px-3 py-2">{INTEREST_LABEL[i.type]}</td>
                 <td className="px-3 py-2">{sqFtText(i.areaSqFt)}</td>
+                <td className="px-3 py-2">{acres(i.areaSqFt)}</td>
                 <td className="px-3 py-2">{i.notes ?? '—'}</td>
                 {canDelete && (
                   <td className="px-3 py-2">

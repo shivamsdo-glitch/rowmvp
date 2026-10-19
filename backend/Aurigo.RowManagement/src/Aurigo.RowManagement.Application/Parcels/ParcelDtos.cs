@@ -42,7 +42,9 @@ public sealed record ParcelDto(
     IReadOnlyList<ParcelInterestDto> Interests, IReadOnlyList<ParcelMilestoneDto> Milestones, IReadOnlyList<ParcelSiteVisitDto> SiteVisits,
     IReadOnlyList<DeadlineDto> Deadlines, WorkflowStateDto Workflow, IReadOnlyList<ParcelStepEventDto> StepHistory, DateTime UpdatedAt,
     /// <summary>The time zone this parcel's dates are counted in: its project's, else the agency's.</summary>
-    string TimeZoneId = "UTC");
+    string TimeZoneId = "UTC",
+    string? CadNumber = null, string? AcquisitionInterestType = null, DateOnly? PossessionDate = null, DateOnly? ProposedPossessionDate = null,
+    string? Segment = null, string? Priority = null, string? PossessionType = null, string? ParcelLocation = null, bool IsActiveParcel = true);
 
 public sealed record RollupBucketDto(Guid? Id, string Name, string? Color, int Count, decimal AreaSqFt, decimal Acres);
 

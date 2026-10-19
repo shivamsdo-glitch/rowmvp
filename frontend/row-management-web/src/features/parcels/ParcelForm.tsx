@@ -5,7 +5,8 @@ import {
 } from '@/api/parcels'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
-import { fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
+import { CheckboxField, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
+import { optionsWith, useLibraryValues } from '../library/library-kit'
 import { useProjectOptions } from './parcel-kit'
 
 const ACQ_OPTIONS = ACQUISITION_TYPES.map((t) => ({ value: t, label: ACQUISITION_LABEL[t] }))
@@ -49,6 +50,15 @@ export function ParcelForm({
   const [statusId, setStatusId] = useState(parcel?.statusId ?? '')
   const [acquisition, setAcquisition] = useState<AcquisitionType>(parcel?.acquisitionType ?? 'Standard')
   const [custom, setCustom] = useState<Record<string, string>>(parcel?.customValues ?? {})
+  const [cad, setCad] = useState(parcel?.cadNumber ?? '')
+  const [interestType, setInterestType] = useState(parcel?.acquisitionInterestType ?? '')
+  const [possessionDate, setPossessionDate] = useState(parcel?.possessionDate ?? '')
+  const [proposedDate, setProposedDate] = useState(parcel?.proposedPossessionDate ?? '')
+  const [segment, setSegment] = useState(parcel?.segment ?? '')
+  const [priority, setPriority] = useState(parcel?.priority ?? '')
+  const [possessionType, setPossessionType] = useState(parcel?.possessionType ?? '')
+  const [location, setLocation] = useState(parcel?.parcelLocation ?? '')
+  const [active, setActive] = useState(parcel?.isActiveParcel ?? true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -59,6 +69,8 @@ export function ParcelForm({
   const statuses = useQuery({ queryKey: ['parcel-statuses'], queryFn: () => api.statuses() })
   const fields = useQuery({ queryKey: ['custom-fields'], queryFn: () => api.customFields() })
 
+  const interestValues = useLibraryValues('interest_type')
+  const possessionValues = useLibraryValues('possession_type')
   const activeFields = (fields.data ?? []).filter((f) => f.isActive)
   const statusOptions = (statuses.data ?? []).filter((s) => s.isActive || s.id === parcel?.statusId).map((s) => ({ value: s.id, label: s.name }))
 
@@ -79,6 +91,9 @@ export function ParcelForm({
         legalDescription: orNull(legal), address: orNull(address), areaSqFt: numOrNull(area) ?? 0,
         propertyType: orNull(propertyType), statusId: statusId || null, acquisitionType: acquisition,
         customValues: Object.fromEntries(activeFields.map((f) => [f.key, orNull(custom[f.key] ?? '')])),
+        cadNumber: orNull(cad), acquisitionInterestType: orNull(interestType), possessionDate: orNull(possessionDate),
+        proposedPossessionDate: orNull(proposedDate), segment: orNull(segment), priority: orNull(priority),
+        possessionType: orNull(possessionType), parcelLocation: orNull(location), isActiveParcel: active,
       })
     } catch (err) {
       const fe = fieldErrorsOf(err)
@@ -106,6 +121,20 @@ export function ParcelForm({
         <SelectField label="Group" value={groupId} onChange={setGroupId} options={(groups.data ?? []).map((g) => ({ value: g.id, label: g.name }))} blankLabel="No group" error={errors.groupId} />
         <SelectField label="Parent tract" value={tractId} onChange={setTractId} options={(tracts.data ?? []).map((t) => ({ value: t.id, label: t.number }))} blankLabel="No parent tract" error={errors.parentTractId} />
       </div>
+      <fieldset className="grid gap-4 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="px-1 text-xs font-medium text-muted-foreground">Parcel details</legend>
+        <TextField label="CAD number" value={cad} onChange={setCad} error={errors.cadNumber} maxLength={100} />
+        <SelectField label="Acquisition interest type" value={interestType} onChange={setInterestType} options={optionsWith(interestValues, interestType)}
+          blankLabel="Select one" error={errors.acquisitionInterestType} />
+        <SelectField label="Possession type" value={possessionType} onChange={setPossessionType} options={optionsWith(possessionValues, possessionType)}
+          blankLabel="Select one" error={errors.possessionType} />
+        <TextField label="Possession date" type="date" value={possessionDate} onChange={setPossessionDate} error={errors.possessionDate} />
+        <TextField label="Proposed possession date" type="date" value={proposedDate} onChange={setProposedDate} error={errors.proposedPossessionDate} />
+        <TextField label="Segment" value={segment} onChange={setSegment} error={errors.segment} maxLength={100} />
+        <TextField label="Priority" value={priority} onChange={setPriority} error={errors.priority} maxLength={100} />
+        <TextField label="Parcel location" value={location} onChange={setLocation} error={errors.parcelLocation} maxLength={500} />
+        <CheckboxField label="Active parcel" checked={active} onChange={setActive} />
+      </fieldset>
       <TextField label="Legal description" value={legal} onChange={setLegal} error={errors.legalDescription} maxLength={4000} />
       {activeFields.length > 0 && (
         <fieldset className="grid gap-4 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">

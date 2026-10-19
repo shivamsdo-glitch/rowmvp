@@ -8,7 +8,7 @@ import contractJson from '../../../../vault/acceptance/permission-matrix.json'
 interface Contract {
   roles: string[]
   pages: string[]
-  matrix: Record<string, Record<string, 'B' | 'S' | 'P' | null>>
+  matrix: Record<string, Record<string, 'B' | 'U' | 'S' | 'P' | null>>
   attachmentPages: Record<string, string>
 }
 
@@ -30,7 +30,7 @@ export function permissionRowsFor(role: string): PagePermission[] {
       pageKey,
       canCreate: level === 'S' || level === 'P',
       canRead: level !== null,
-      canUpdate: level === 'S' || level === 'P',
+      canUpdate: level === 'U' || level === 'S' || level === 'P',
       canDelete: level === 'P',
     }
   })

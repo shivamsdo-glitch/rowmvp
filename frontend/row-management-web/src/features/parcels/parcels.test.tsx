@@ -11,6 +11,7 @@ import { renderApp } from '@/test/render-app'
 beforeEach(() => sessionStorage.clear())
 
 const canCreate = (role: string) => ['S', 'P'].includes(levelFor(role, 'parcels') ?? '')
+const canUpdate = (role: string) => ['U', 'S', 'P'].includes(levelFor(role, 'parcels') ?? '')
 const canDelete = (role: string) => levelFor(role, 'parcels') === 'P'
 const setDate = (label: string, value: string, scope: HTMLElement | Document = document) =>
   fireEvent.change(within(scope as HTMLElement).getByLabelText(new RegExp(`^${label}`)), { target: { value } })
@@ -715,14 +716,14 @@ describe.each(ROLES.map((r) => [r]))('what %s can do with parcels', (role) => {
     await listTable()
 
     expect(!!screen.queryByRole('button', { name: 'New parcel' })).toBe(canCreate(role))
-    expect(!!screen.queryByRole('checkbox', { name: 'Select parcel 002' })).toBe(canCreate(role))
+    expect(!!screen.queryByRole('checkbox', { name: 'Select parcel 002' })).toBe(canCreate(role) || canUpdate(role))
   })
 
   it('sees the parcel, and Edit and Split only if the role may change parcels', async () => {
     open('/parcels/pc1', role)
     await screen.findByRole('heading', { name: '2026-0002 · Parcel 001' })
 
-    expect(!!screen.queryByRole('button', { name: 'Edit parcel' })).toBe(canCreate(role))
+    expect(!!screen.queryByRole('button', { name: 'Edit parcel' })).toBe(canUpdate(role))
     expect(!!screen.queryByRole('button', { name: 'Split' })).toBe(canCreate(role))
   })
 

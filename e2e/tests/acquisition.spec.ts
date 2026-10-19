@@ -11,6 +11,7 @@ import { canRead, devToken, level, newId, ROLES, sessionToken, signInViaUi } fro
 const unique = (label: string) => `${label} ${newId().slice(0, 8)}`
 const allowed = (role: string, page: string, action: 'read' | 'create' | 'update' | 'delete') => {
   const l = level(role, page)
+  if (action === 'update') return ['U', 'S', 'P'].includes(l ?? '')
   return action === 'read' ? l !== null : action === 'delete' ? l === 'P' : l === 'S' || l === 'P'
 }
 const today = (add = 0) => new Date(Date.now() + add * 86_400_000).toISOString().slice(0, 10)

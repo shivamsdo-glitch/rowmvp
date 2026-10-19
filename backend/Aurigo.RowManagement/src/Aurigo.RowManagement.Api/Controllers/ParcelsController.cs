@@ -9,7 +9,9 @@ namespace Aurigo.RowManagement.Api.Controllers;
 
 public sealed record ParcelBody(
     Guid? ProjectId, string? Number, Guid? ParentTractId, Guid? GroupId, string? LegalDescription, string? Address, decimal AreaSqFt,
-    string? PropertyType, Guid? StatusId, AcquisitionType AcquisitionType, Dictionary<string, string?>? CustomValues);
+    string? PropertyType, Guid? StatusId, AcquisitionType AcquisitionType, Dictionary<string, string?>? CustomValues,
+    string? CadNumber = null, string? AcquisitionInterestType = null, DateOnly? PossessionDate = null, DateOnly? ProposedPossessionDate = null,
+    string? Segment = null, string? Priority = null, string? PossessionType = null, string? ParcelLocation = null, bool IsActiveParcel = true);
 public sealed record BatchUpdateBody(List<Guid> ParcelIds, Guid? StatusId, Guid? GroupId, bool ClearGroup);
 public sealed record SplitBody(List<SplitPart> Parts);
 public sealed record CombineBody(List<Guid> ParcelIds, string? Number);
@@ -46,7 +48,8 @@ public sealed class ParcelsController : ControllerBase
     {
         var created = await _mediator.Send(new CreateParcelCommand(
             b.ProjectId ?? Guid.Empty, b.Number, b.ParentTractId, b.GroupId, b.LegalDescription, b.Address, b.AreaSqFt, b.PropertyType,
-            b.StatusId, b.AcquisitionType, b.CustomValues), ct);
+            b.StatusId, b.AcquisitionType, b.CustomValues, b.CadNumber, b.AcquisitionInterestType, b.PossessionDate, b.ProposedPossessionDate,
+            b.Segment, b.Priority, b.PossessionType, b.ParcelLocation, b.IsActiveParcel), ct);
         return Created($"/api/v1/parcels/{created.Id}", created);
     }
 
@@ -54,7 +57,9 @@ public sealed class ParcelsController : ControllerBase
     [ProducesResponseType(typeof(ParcelDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(Guid id, [FromBody] ParcelBody b, CancellationToken ct) =>
         Ok(await _mediator.Send(new UpdateParcelCommand(
-            id, b.Number, b.ParentTractId, b.GroupId, b.LegalDescription, b.Address, b.AreaSqFt, b.PropertyType, b.StatusId, b.AcquisitionType, b.CustomValues), ct));
+            id, b.Number, b.ParentTractId, b.GroupId, b.LegalDescription, b.Address, b.AreaSqFt, b.PropertyType, b.StatusId, b.AcquisitionType, b.CustomValues,
+            b.CadNumber, b.AcquisitionInterestType, b.PossessionDate, b.ProposedPossessionDate, b.Segment, b.Priority, b.PossessionType, b.ParcelLocation,
+            b.IsActiveParcel), ct));
 
     /// <summary>Sets the status and/or group of many parcels at once; all change or none do.</summary>
     [HttpPost("batch-update")]

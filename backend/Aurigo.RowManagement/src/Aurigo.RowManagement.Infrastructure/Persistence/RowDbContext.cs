@@ -23,6 +23,23 @@ public class RowDbContext : DbContext, IRowDbContext
         CurrentTenantId = currentTenant.IsAvailable ? currentTenant.Value : Guid.Empty;
     }
 
+    /// <summary>
+    /// EF wraps a transient database error (a deadlock between two overlapping saves, for example) in a generic
+    /// InvalidOperationException when retries are not enabled. Handlers answer "someone saved at the same moment" by catching
+    /// DbUpdateException, so hand them the real exception instead of letting the caller see a 500.
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (ex.InnerException is DbUpdateException inner)
+        {
+            throw inner;
+        }
+    }
+
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<Role> Roles => Set<Role>();

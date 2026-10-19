@@ -760,6 +760,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AcquisitionInterestType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("acquisition_interest_type");
+
                     b.Property<string>("AcquisitionType")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -775,6 +780,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("area_sq_ft");
+
+                    b.Property<string>("CadNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cad_number");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -798,6 +808,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
+
+                    b.Property<bool>("IsActiveParcel")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active_parcel");
 
                     b.Property<bool>("IsRemnant")
                         .HasColumnType("boolean")
@@ -823,9 +837,28 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("number");
 
+                    b.Property<string>("ParcelLocation")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("parcel_location");
+
                     b.Property<Guid?>("ParentTractId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_tract_id");
+
+                    b.Property<DateOnly?>("PossessionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("possession_date");
+
+                    b.Property<string>("PossessionType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("possession_type");
+
+                    b.Property<string>("Priority")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("priority");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
@@ -835,6 +868,15 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("property_type");
+
+                    b.Property<DateOnly?>("ProposedPossessionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_possession_date");
+
+                    b.Property<string>("Segment")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("segment");
 
                     b.Property<List<Guid>>("SourceParcelIds")
                         .IsRequired()

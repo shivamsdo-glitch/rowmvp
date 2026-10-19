@@ -174,7 +174,7 @@ public class SchemaAndContractTests : IClassFixture<PgApi>
     {
         var expected = new
         {
-            note = "Generated from the backend spec (IntegrationTests/Support/Spec.cs). B=read, S=create/read/update, P=full, null=no access.",
+            note = "Generated from the backend spec (IntegrationTests/Support/Spec.cs). B=read, U=read/update, S=create/read/update, P=full, null=no access.",
             roles = Spec.Roles,
             pages = Spec.Pages,
             matrix = Spec.Roles.ToDictionary(r => r, r => Spec.Pages.ToDictionary(p => p, p => Spec.Level(r, p) == '-' ? null : Spec.Level(r, p).ToString())),

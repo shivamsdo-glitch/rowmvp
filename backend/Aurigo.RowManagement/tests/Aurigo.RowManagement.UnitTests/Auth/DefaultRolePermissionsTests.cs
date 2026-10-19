@@ -32,7 +32,7 @@ public class DefaultRolePermissionsTests
             {
                 var t = DefaultRolePermissions.TemplateFor(role, page);
                 if (t is not null)
-                    new[] { PermissionTemplates.Basic, PermissionTemplates.Standard, PermissionTemplates.Pro }
+                    new[] { PermissionTemplates.Basic, PermissionTemplates.Standard, PermissionTemplates.Pro, "RU" }
                         .Should().Contain(t, $"{role}/{page}");
             }
     }

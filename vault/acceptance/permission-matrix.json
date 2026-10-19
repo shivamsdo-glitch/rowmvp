@@ -1,5 +1,5 @@
 {
-  "note": "Generated from the backend spec (IntegrationTests/Support/Spec.cs). B=read, S=create/read/update, P=full, null=no access.",
+  "note": "Generated from the backend spec (IntegrationTests/Support/Spec.cs). B=read, U=read/update, S=create/read/update, P=full, null=no access.",
   "roles": [
     "ProjectManager",
     "Designer",
@@ -65,7 +65,7 @@
     "DesignApprover": {
       "dashboard": "B",
       "projects": "B",
-      "parcels": "S",
+      "parcels": "U",
       "parties": "B",
       "title": null,
       "survey": null,

@@ -26,6 +26,11 @@ export const DEFAULT_STATUSES: ParcelStatus[] = [
 const STANDARD_MILESTONES = ['Parcel set up', 'Notice to owner', 'Offer delivered', 'Agreement signed', 'Closed']
 const ALWAYS_OVERRIDE = ['ProjectManager', 'Admin']
 const ASSIGNABLE = ['TitleResearcher', 'Appraiser', 'Negotiator', 'Finance']
+/** The Library lists the parcel forms offer (key, label, values), as the demo agency starts with them. */
+export const LIBRARY_LISTS: [string, string, string[]][] = [
+  ['interest_type', 'Interest type', ['Permanent Easement', 'Temporary Construction Easement', 'Full Fee']],
+  ['possession_type', 'Possession type', ['PUA', 'Closing']],
+]
 
 export interface FakeParcelsOptions extends FakeProjectsOptions {
   parcels?: Partial<Parcel>[]
@@ -91,6 +96,8 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
       propertyType: null, groupId: null, groupName: null, parentTractId: null, parentTractNumber: null, taxParcelNumbers: [], acquisitionType: 'Standard',
       state: 'Active', supersededOn: null, sourceParcelIds: [], isRemnant: false, customValues: {}, noticeIssuedOn: null, noticeMethod: null, interests: [],
       milestones: mkMilestones(), siteVisits: [], deadlines: [], stepHistory: [], updatedAt: '2026-01-01T00:00:00Z', timeZoneId: 'UTC',
+      cadNumber: null, acquisitionInterestType: null, possessionDate: null, proposedPossessionDate: null, segment: null, priority: null,
+      possessionType: null, parcelLocation: null, isActiveParcel: true,
       workflow: { steps: STEPS, currentKey: 'setup', nextKey: 'title_survey', acquisitionGateOpen: false, canOverride: false },
       ...g, statusId: status.id, statusName: status.name, statusColor: status.color,
     }
@@ -153,7 +160,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     const url = new URL(String(input), 'http://x')
     const path = url.pathname
     const structure = /^\/api\/v1\/projects\/([^/]+)\/(groups|tracts|parcel-rollup)(?:\/([^/]+))?$/.exec(path)
-    const mine = path.startsWith('/api/v1/parcels') || path.startsWith('/api/v1/parcel-rules') || path.startsWith('/api/v1/reminders') || !!structure
+    const mine = path.startsWith('/api/v1/parcels') || path.startsWith('/api/v1/parcel-rules') || path.startsWith('/api/v1/reminders') || path.startsWith('/api/v1/library/fields') || !!structure
     if (!mine) return base.fetch(input, init)
 
     const headers = (init?.headers ?? {}) as Record<string, string>
@@ -211,6 +218,16 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
         }
       }
       return problem(404, 'not_found', 'Unknown route.')
+    }
+
+    // ── library lists the parcel forms pick from ──
+    if (path.startsWith('/api/v1/library/fields') && method === 'GET') {
+      const lists = LIBRARY_LISTS.map(([key, label, values], i) => ({
+        id: `lf-${key}`, key, label, fieldType: 'List', isSystem: true, isLibraryDriven: true,
+        values: values.map((v, j) => ({ id: `lv-${i}-${j}`, value: v, isActive: true, isDefault: false, sortOrder: j })),
+      }))
+      const one = path.split('/')[5]
+      return one ? json(lists.find((l) => l.id === one) ?? lists[0]) : json(lists.map(({ values: _v, ...l }) => l))
     }
 
     // ── reminders ──
@@ -314,6 +331,9 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     const assign = (p: Parcel, b: any) => {
       p.number = b.number ?? p.number; p.parentTractId = b.parentTractId; p.groupId = b.groupId; p.legalDescription = b.legalDescription; p.address = b.address
       p.areaSqFt = b.areaSqFt; p.propertyType = b.propertyType; p.acquisitionType = b.acquisitionType
+      p.cadNumber = b.cadNumber ?? null; p.acquisitionInterestType = b.acquisitionInterestType ?? null; p.possessionDate = b.possessionDate ?? null
+      p.proposedPossessionDate = b.proposedPossessionDate ?? null; p.segment = b.segment ?? null; p.priority = b.priority ?? null
+      p.possessionType = b.possessionType ?? null; p.parcelLocation = b.parcelLocation ?? null; p.isActiveParcel = b.isActiveParcel ?? true
       if (b.statusId) p.statusId = b.statusId
       p.customValues = Object.fromEntries(Object.entries(b.customValues ?? {}).filter(([, v]) => v !== null && v !== '')) as Record<string, string>
     }

@@ -11,6 +11,7 @@ public static class DefaultRolePermissions
     private const string B = PermissionTemplates.Basic;
     private const string S = PermissionTemplates.Standard;
     private const string P = PermissionTemplates.Pro;
+    private const string RU = "RU"; // read and update, no create or delete
 
     private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Matrix =
         new Dictionary<string, IReadOnlyDictionary<string, string>>
@@ -56,7 +57,7 @@ public static class DefaultRolePermissions
             // Design approver: approves parcels for acquisition.
             [RoleNames.DesignApprover] = new Dictionary<string, string>
             {
-                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = S, [PageKeys.Parties] = B,
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = RU, [PageKeys.Parties] = B,
                 [PageKeys.Approvals] = S,
             },
             // Surveyor: right-of-way limits, field data and survey metadata.

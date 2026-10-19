@@ -15,6 +15,7 @@ const can = (role: string, page: string, action: 'read' | 'create' | 'update' | 
   const level = levelFor(role, page)
   if (action === 'read') return level !== null
   if (action === 'delete') return level === 'P'
+  if (action === 'update') return level === 'U' || level === 'S' || level === 'P'
   return level === 'S' || level === 'P'
 }
 

@@ -22,7 +22,7 @@ export function fakeSettingsApi(opts: { role: string; rows: Parameters<typeof fa
   const id = (p: string) => `${p}${++seq}`
   const permsFor = (name: string): RolePermission[] => PAGE_KEYS.map((p) => {
     const level = name === 'Admin' ? 'P' : contract.matrix[name]?.[p] ?? null
-    return { pageKey: p, canCreate: level === 'S' || level === 'P', canRead: level !== null, canUpdate: level === 'S' || level === 'P', canDelete: level === 'P' }
+    return { pageKey: p, canCreate: level === 'S' || level === 'P', canRead: level !== null, canUpdate: level === 'U' || level === 'S' || level === 'P', canDelete: level === 'P' }
   })
   const roles: Role[] = ROLES.map((name) => ({
     id: `role-${name}`, name, description: `${name} role`, isSystem: true, isLocked: name === 'Admin', userCount: 1, permissions: permsFor(name),

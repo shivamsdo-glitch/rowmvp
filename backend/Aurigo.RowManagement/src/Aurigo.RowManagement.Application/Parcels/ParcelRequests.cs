@@ -32,6 +32,12 @@ public interface IParcelFields
     Guid? StatusId { get; }
     AcquisitionType AcquisitionType { get; }
     IReadOnlyDictionary<string, string?>? CustomValues { get; }
+    string? CadNumber { get; }
+    string? AcquisitionInterestType { get; }
+    string? Segment { get; }
+    string? Priority { get; }
+    string? PossessionType { get; }
+    string? ParcelLocation { get; }
 }
 
 public abstract class ParcelFieldsValidator<T> : AbstractValidator<T> where T : IParcelFields
@@ -45,6 +51,12 @@ public abstract class ParcelFieldsValidator<T> : AbstractValidator<T> where T : 
         RuleFor(x => x.AreaSqFt).InclusiveBetween(0m, ParcelRules.MaxArea).WithMessage("Area must be zero or more square feet.");
         RuleFor(x => x.PropertyType).MaximumLength(100);
         RuleFor(x => x.AcquisitionType).IsInEnum();
+        RuleFor(x => x.CadNumber).MaximumLength(100);
+        RuleFor(x => x.AcquisitionInterestType).MaximumLength(100);
+        RuleFor(x => x.Segment).MaximumLength(100);
+        RuleFor(x => x.Priority).MaximumLength(100);
+        RuleFor(x => x.PossessionType).MaximumLength(100);
+        RuleFor(x => x.ParcelLocation).MaximumLength(500);
     }
 }
 
@@ -53,7 +65,9 @@ public abstract class ParcelFieldsValidator<T> : AbstractValidator<T> where T : 
 /// <summary>Leave <see cref="Number"/> empty to take the next number in the project; <see cref="StatusId"/> empty starts in the initial status.</summary>
 public sealed record CreateParcelCommand(
     Guid ProjectId, string? Number, Guid? ParentTractId, Guid? GroupId, string? LegalDescription, string? Address, decimal AreaSqFt,
-    string? PropertyType, Guid? StatusId, AcquisitionType AcquisitionType, IReadOnlyDictionary<string, string?>? CustomValues)
+    string? PropertyType, Guid? StatusId, AcquisitionType AcquisitionType, IReadOnlyDictionary<string, string?>? CustomValues,
+    string? CadNumber = null, string? AcquisitionInterestType = null, DateOnly? PossessionDate = null, DateOnly? ProposedPossessionDate = null,
+    string? Segment = null, string? Priority = null, string? PossessionType = null, string? ParcelLocation = null, bool IsActiveParcel = true)
     : IRequest<ParcelDto>, IParcelFields;
 
 public sealed class CreateParcelCommandValidator : ParcelFieldsValidator<CreateParcelCommand>
@@ -103,6 +117,15 @@ public sealed class CreateParcelCommandHandler : IRequestHandler<CreateParcelCom
                 AcquisitionType = request.AcquisitionType,
                 CurrentStepKey = template.Steps.OrderBy(s => s.Order).First().Key,
                 CustomValuesJson = customJson,
+                CadNumber = ParcelRules.Clean(request.CadNumber),
+                AcquisitionInterestType = ParcelRules.Clean(request.AcquisitionInterestType),
+                PossessionDate = request.PossessionDate,
+                ProposedPossessionDate = request.ProposedPossessionDate,
+                Segment = ParcelRules.Clean(request.Segment),
+                Priority = ParcelRules.Clean(request.Priority),
+                PossessionType = ParcelRules.Clean(request.PossessionType),
+                ParcelLocation = ParcelRules.Clean(request.ParcelLocation),
+                IsActiveParcel = request.IsActiveParcel,
             };
             _parcels.AddStandardMilestones(parcel, today);
             return parcel;
@@ -155,7 +178,9 @@ public sealed class CreateParcelCommandHandler : IRequestHandler<CreateParcelCom
 
 public sealed record UpdateParcelCommand(
     Guid Id, string? Number, Guid? ParentTractId, Guid? GroupId, string? LegalDescription, string? Address, decimal AreaSqFt,
-    string? PropertyType, Guid? StatusId, AcquisitionType AcquisitionType, IReadOnlyDictionary<string, string?>? CustomValues)
+    string? PropertyType, Guid? StatusId, AcquisitionType AcquisitionType, IReadOnlyDictionary<string, string?>? CustomValues,
+    string? CadNumber = null, string? AcquisitionInterestType = null, DateOnly? PossessionDate = null, DateOnly? ProposedPossessionDate = null,
+    string? Segment = null, string? Priority = null, string? PossessionType = null, string? ParcelLocation = null, bool IsActiveParcel = true)
     : IRequest<ParcelDto>, IParcelFields;
 
 public sealed class UpdateParcelCommandValidator : ParcelFieldsValidator<UpdateParcelCommand>
@@ -211,6 +236,15 @@ public sealed class UpdateParcelCommandHandler : IRequestHandler<UpdateParcelCom
         parcel.AreaSqFt = request.AreaSqFt;
         parcel.PropertyType = ParcelRules.Clean(request.PropertyType);
         parcel.StatusId = statusId;
+        parcel.CadNumber = ParcelRules.Clean(request.CadNumber);
+        parcel.AcquisitionInterestType = ParcelRules.Clean(request.AcquisitionInterestType);
+        parcel.PossessionDate = request.PossessionDate;
+        parcel.ProposedPossessionDate = request.ProposedPossessionDate;
+        parcel.Segment = ParcelRules.Clean(request.Segment);
+        parcel.Priority = ParcelRules.Clean(request.Priority);
+        parcel.PossessionType = ParcelRules.Clean(request.PossessionType);
+        parcel.ParcelLocation = ParcelRules.Clean(request.ParcelLocation);
+        parcel.IsActiveParcel = request.IsActiveParcel;
         parcel.CustomValuesJson = await _parcels.CustomValuesJsonAsync(request.CustomValues, parcel.CustomValuesJson, ct);
 
         await _db.SaveChangesAsync(ct);

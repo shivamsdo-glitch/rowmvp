@@ -54,7 +54,7 @@ public sealed class TenantProvisioner
                     RoleId = role.Id,
                     PageKey = page,
                     // No access is stored as an all-false row labelled Custom.
-                    Template = template ?? PermissionTemplates.Custom,
+                    Template = PermissionTemplateCalculator.TemplateFor(flags),
                     CanCreate = flags.Create,
                     CanRead = flags.Read,
                     CanUpdate = flags.Update,

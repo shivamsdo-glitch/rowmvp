@@ -50,6 +50,18 @@ public class PermissionTemplateCalculatorTests
     }
 
     [Theory]
+    [InlineData("R", false, true, false, false)]
+    [InlineData("RU", false, true, true, false)]
+    [InlineData("CRU", true, true, true, false)]
+    [InlineData("CRUD", true, true, true, true)]
+    [InlineData("RUD", false, true, true, true)]
+    [InlineData("", false, false, false, false)]
+    [InlineData("rx", false, false, false, false)]
+    [InlineData("Custom", false, false, false, false)]
+    public void AT_DE_41_A_default_can_be_written_as_the_letters_of_the_boxes_ticked(string code, bool c, bool r, bool u, bool d) =>
+        PermissionTemplateCalculator.FlagsFor(code).Should().Be(new PermissionFlags(c, r, u, d));
+
+    [Theory]
     [InlineData(false, false, false, false)] // no access
     [InlineData(false, true, true, false)]   // update without create
     [InlineData(false, false, false, true)]  // delete only

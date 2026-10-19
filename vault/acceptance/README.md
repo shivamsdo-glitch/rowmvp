@@ -7,6 +7,7 @@ This is the contract for "it works". Every case is written as a **job a person d
 | Role in the app | Real-world job (Diagram 00 lane) | Cases |
 |---|---|---|
 | Project Manager | ROW Project Lead: creates projects and parcels, owns budget, team and milestones, approves | [ProjectManager.md](ProjectManager.md) |
+| Designer | ROW Designer: adds and updates parcels and their details from the plans | [Designer.md](Designer.md) |
 | Title Researcher | Title research (was Title Examiner; Surveyor is now its own role) | [TitleExaminer.md](TitleExaminer.md) |
 | Appraiser | Appraisal team and approving official: appraise, review, establish just compensation | [Appraiser.md](Appraiser.md) |
 | Negotiator | ROW Agent: offers, negotiation, agreements, closing | [Negotiator.md](Negotiator.md) |

@@ -162,6 +162,15 @@ export interface Parcel {
   updatedAt: string
   /** The IANA time zone this parcel's dates are counted in: its project's, else the agency's. */
   timeZoneId: string
+  cadNumber: string | null
+  acquisitionInterestType: string | null
+  possessionDate: string | null
+  proposedPossessionDate: string | null
+  segment: string | null
+  priority: string | null
+  possessionType: string | null
+  parcelLocation: string | null
+  isActiveParcel: boolean
 }
 
 export interface ParcelInput {
@@ -176,6 +185,15 @@ export interface ParcelInput {
   statusId: string | null
   acquisitionType: AcquisitionType
   customValues: Record<string, string | null> | null
+  cadNumber?: string | null
+  acquisitionInterestType?: string | null
+  possessionDate?: string | null
+  proposedPossessionDate?: string | null
+  segment?: string | null
+  priority?: string | null
+  possessionType?: string | null
+  parcelLocation?: string | null
+  isActiveParcel?: boolean
 }
 
 export interface RollupBucket { id: string | null; name: string; color: string | null; count: number; areaSqFt: number; acres: number }

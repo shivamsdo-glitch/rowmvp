@@ -4,7 +4,7 @@ namespace Aurigo.RowManagement.IntegrationTests.Support;
 /// THE SPEC: what each role may do, written out by hand from vault/acceptance/*.md and the Diagram 00
 /// swimlanes. Deliberately a literal table, not derived from DefaultRolePermissions, so a change to the
 /// production defaults (or a typo in them) fails tests instead of silently redefining the truth.
-/// B = Basic (read) · S = Standard (create/read/update) · P = Pro (create/read/update/delete) · '-' = no access.
+/// B = Basic (read) · U = read and update only · S = Standard (create/read/update) · P = Pro (create/read/update/delete) · '-' = no access.
 /// The same table is published to vault/acceptance/permission-matrix.json for the frontend tests.
 /// </summary>
 public static class Spec
@@ -26,7 +26,7 @@ public static class Spec
     {
         ["ProjectManager"] = "B P P P B B B S B B B B - B",
         ["Designer"]       = "B B P P - - - - - - - - - B",
-        ["DesignApprover"] = "B B S B - - - S - - - - - B",
+        ["DesignApprover"] = "B B U B - - - S - - - - - B",
         ["Surveyor"]       = "B B B B - P - - - - - - - B",
         ["AppraisalApprover"] = "B B B B B B S S - - - - - B",
         ["RelocationAgent"] = "B B B S - - - - - - - - - B",
@@ -43,6 +43,7 @@ public static class Spec
     {
         'P' => true,
         'S' => action != "delete",
+        'U' => action is "read" or "update",
         'B' => action == "read",
         _ => false,
     };

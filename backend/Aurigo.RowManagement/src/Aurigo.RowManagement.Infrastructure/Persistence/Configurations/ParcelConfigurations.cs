@@ -58,6 +58,12 @@ public class ParcelConfiguration : IEntityTypeConfiguration<Parcel>
         b.Property(x => x.CurrentStepKey).IsRequired().HasMaxLength(60);
         b.Property(x => x.State).HasConversion<string>().HasMaxLength(10);
         b.Property(x => x.NoticeMethod).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.CadNumber).HasMaxLength(100);
+        b.Property(x => x.AcquisitionInterestType).HasMaxLength(100);
+        b.Property(x => x.Segment).HasMaxLength(100);
+        b.Property(x => x.Priority).HasMaxLength(100);
+        b.Property(x => x.PossessionType).HasMaxLength(100);
+        b.Property(x => x.ParcelLocation).HasMaxLength(500);
         b.Property(x => x.CustomValuesJson).IsRequired().HasColumnType("jsonb");
         // Postgres system column xmin changes on every update: a free optimistic-concurrency token (see Parcel.Version).
         b.Property(x => x.Version).HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();

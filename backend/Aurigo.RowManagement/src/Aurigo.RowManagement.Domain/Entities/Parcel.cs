@@ -73,6 +73,20 @@ public class Parcel : EntityBase
     public DateOnly? NoticeIssuedOn { get; set; }
     public NoticeMethod? NoticeMethod { get; set; }
 
+    // ── Parcel details form (Phase 1.5, ADR 0017) ──
+    public string? CadNumber { get; set; }
+    /// <summary>A value of the Library's interest type list: the kind of interest being acquired.</summary>
+    public string? AcquisitionInterestType { get; set; }
+    public DateOnly? PossessionDate { get; set; }
+    public DateOnly? ProposedPossessionDate { get; set; }
+    public string? Segment { get; set; }
+    public string? Priority { get; set; }
+    /// <summary>A value of the Library's possession type list.</summary>
+    public string? PossessionType { get; set; }
+    public string? ParcelLocation { get; set; }
+    /// <summary>The "Active Parcel" tick. Not the same as <see cref="State"/>, which records split/combine history.</summary>
+    public bool IsActiveParcel { get; set; } = true;
+
     /// <summary>
     /// Optimistic concurrency token (Postgres xmin). Two people changing the same parcel at once, or combining and splitting it
     /// at once, cannot both succeed: the second save is refused instead of silently overwriting or double-using the parcel.
