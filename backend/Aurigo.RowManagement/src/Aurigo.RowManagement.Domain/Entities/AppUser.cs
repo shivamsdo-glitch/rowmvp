@@ -27,6 +27,9 @@ public class Role : EntityBase
     public string Name { get; set; } = default!;
     public string? Description { get; set; }
 
+    /// <summary>A default role the product refers to by name: it cannot be renamed or deleted (its access can still be edited).</summary>
+    public bool IsSystem { get; set; }
+
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RolePagePermission> Permissions { get; set; } = new List<RolePagePermission>();
 }

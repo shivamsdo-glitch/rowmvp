@@ -34,7 +34,7 @@ describe('sidebar', () => {
     await openShell(ALL)
 
     for (const heading of ['General', 'Acquisition', 'Configure']) expect(screen.getByText(heading)).toBeInTheDocument()
-    for (const label of ['Home', 'Projects', 'Parcels', 'Title & Survey', 'Appraisal', 'Negotiation & Closing', 'Configuration', 'User Management', 'Library']) {
+    for (const label of ['Home', 'Projects', 'Parcels', 'Title & Survey', 'Appraisal', 'Negotiation & Closing', 'Configuration', 'Settings', 'Library']) {
       expect(screen.getByTitle(new RegExp(`^${label.replace('&', '\\&')}`))).toBeInTheDocument()
     }
   })

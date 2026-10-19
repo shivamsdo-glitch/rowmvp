@@ -28,7 +28,7 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
     private static readonly Guid OtherTenant = Guid.Parse("00000000-0000-0000-0000-0000000000a8");
-    private static readonly string[] AllRoles = { "ProjectManager", "TitleResearcher", "Appraiser", "Negotiator", "Finance", "Admin" };
+    private static readonly string[] AllRoles = Aurigo.RowManagement.IntegrationTests.Support.Spec.Roles;
     private readonly PgApi _api;
     public AcquisitionApiTests(PgApi api) => _api = api;
 

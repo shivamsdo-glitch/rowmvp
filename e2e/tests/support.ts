@@ -23,7 +23,7 @@ export const NAV = [
   { label: 'Appraisal', page: 'appraisals', built: false },
   { label: 'Negotiation & Closing', page: 'negotiations', built: false },
   { label: 'Configuration', page: 'administration', built: true },
-  { label: 'User Management', page: 'administration', built: false },
+  { label: 'Settings', page: 'administration', built: true },
   { label: 'Library', page: 'administration', built: true },
 ]
 

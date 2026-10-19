@@ -29,7 +29,7 @@ public class AcquisitionRecordTests
     private static readonly DateOnly Today = new(2026, 3, 15);
     private static readonly Guid PmId = new("aaaaaaaa-0000-0000-0000-0000000000c1");
     private static readonly Guid FinanceId = new("aaaaaaaa-0000-0000-0000-0000000000c2");
-    private static readonly string[] AllRoles = { "ProjectManager", "TitleResearcher", "Appraiser", "Negotiator", "Finance", "Admin" };
+    private static readonly string[] AllRoles = { "ProjectManager", "TitleResearcher", "Appraiser", "Negotiator", "Finance", "Admin" }; // the six roles these per-role rules were written for
 
     private sealed class Ctx : IAsyncDisposable
     {

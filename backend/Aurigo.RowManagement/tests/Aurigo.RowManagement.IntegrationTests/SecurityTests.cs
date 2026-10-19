@@ -8,10 +8,12 @@ using FluentAssertions;
 namespace Aurigo.RowManagement.IntegrationTests;
 
 /// <summary>Nothing is reachable without a valid token this API issued, and a bad token is never a 500.</summary>
-public class SecurityTests : IClassFixture<RowApiFactory>
+public class SecurityTests : IDisposable
 {
-    private readonly RowApiFactory _factory;
-    public SecurityTests(RowApiFactory factory) => _factory = factory;
+    // These tests send every write endpoint, anonymously and as every role, many times within one minute; the write limiter
+    // (itself tested in PlatformBehaviourTests) must not be what answers.
+    private readonly RowApiFactory _factory = RowApiFactory.WithSettings(new() { ["RateLimiting:WritePermitLimit"] = "1000000" });
+    public void Dispose() => _factory.Dispose();
 
     // Anonymous on purpose: sign-in and account recovery. Everything else must demand a token.
     private static readonly HashSet<string> AnonymousOperations = new()

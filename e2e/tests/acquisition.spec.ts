@@ -232,9 +232,15 @@ test.describe('Project Manager and Finance · acquisition requests', () => {
     await expect(card.getByText('Withdrawn')).toBeVisible()
 
     const pm = { Authorization: `Bearer ${await sessionToken(page)}` }
-    const created = (await (await request.get('/api/v1/acquisition-requests?status=Withdrawn&pageSize=200', { headers: pm })).json()).items.find((r: any) => r.property === lot)
+    // Look it up by what was typed; poll because the list is read after the click and other specs add requests at the same time.
+    let createdId = ''
+    await expect.poll(async () => {
+      const items = (await (await request.get('/api/v1/acquisition-requests?status=Withdrawn&pageSize=200', { headers: pm })).json()).items
+      createdId = items.find((r: any) => r.property === lot)?.id ?? ''
+      return createdId
+    }, { timeout: 15_000 }).not.toBe('')
     const otherAdmin = await as(request, 'Admin')
-    expect((await request.post(`/api/v1/acquisition-requests/${created.id}/approve`, { headers: otherAdmin, data: {} })).status()).toBe(409)
+    expect((await request.post(`/api/v1/acquisition-requests/${createdId}/approve`, { headers: otherAdmin, data: {} })).status()).toBe(409)
   })
 })
 

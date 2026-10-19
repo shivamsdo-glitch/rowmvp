@@ -17,6 +17,7 @@ import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
 import { Route as AppLibraryRouteImport } from './routes/_app/library'
 import { Route as AppRequestsRouteImport } from './routes/_app/requests'
 import { Route as AppRightsOfEntryRouteImport } from './routes/_app/rights-of-entry'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppParcelsIndexRouteImport } from './routes/_app/parcels.index'
 import { Route as AppParcelsParcelIdRouteImport } from './routes/_app/parcels.$parcelId'
 import { Route as AppPartiesIndexRouteImport } from './routes/_app/parties.index'
@@ -63,6 +64,11 @@ const AppRightsOfEntryRoute = AppRightsOfEntryRouteImport.update({
   path: '/rights-of-entry',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppParcelsIndexRoute = AppParcelsIndexRouteImport.update({
   id: '/parcels/',
   path: '/parcels/',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof AppLibraryRoute
   '/requests': typeof AppRequestsRoute
   '/rights-of-entry': typeof AppRightsOfEntryRoute
+  '/settings': typeof AppSettingsRoute
   '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/parties/$partyId': typeof AppPartiesPartyIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/library': typeof AppLibraryRoute
   '/requests': typeof AppRequestsRoute
   '/rights-of-entry': typeof AppRightsOfEntryRoute
+  '/settings': typeof AppSettingsRoute
   '/': typeof AppIndexRoute
   '/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/parties/$partyId': typeof AppPartiesPartyIdRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/_app/library': typeof AppLibraryRoute
   '/_app/requests': typeof AppRequestsRoute
   '/_app/rights-of-entry': typeof AppRightsOfEntryRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/parcels/$parcelId': typeof AppParcelsParcelIdRoute
   '/_app/parties/$partyId': typeof AppPartiesPartyIdRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/requests'
     | '/rights-of-entry'
+    | '/settings'
     | '/parcels/$parcelId'
     | '/parties/$partyId'
     | '/projects/$projectId'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/requests'
     | '/rights-of-entry'
+    | '/settings'
     | '/'
     | '/parcels/$parcelId'
     | '/parties/$partyId'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/_app/library'
     | '/_app/requests'
     | '/_app/rights-of-entry'
+    | '/_app/settings'
     | '/_app/'
     | '/_app/parcels/$parcelId'
     | '/_app/parties/$partyId'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRightsOfEntryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/parcels/': {
       id: '/_app/parcels/'
       path: '/parcels'
@@ -304,6 +323,7 @@ interface AppRouteChildren {
   AppLibraryRoute: typeof AppLibraryRoute
   AppRequestsRoute: typeof AppRequestsRoute
   AppRightsOfEntryRoute: typeof AppRightsOfEntryRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppParcelsParcelIdRoute: typeof AppParcelsParcelIdRoute
   AppPartiesPartyIdRoute: typeof AppPartiesPartyIdRoute
@@ -319,6 +339,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLibraryRoute: AppLibraryRoute,
   AppRequestsRoute: AppRequestsRoute,
   AppRightsOfEntryRoute: AppRightsOfEntryRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
   AppParcelsParcelIdRoute: AppParcelsParcelIdRoute,
   AppPartiesPartyIdRoute: AppPartiesPartyIdRoute,

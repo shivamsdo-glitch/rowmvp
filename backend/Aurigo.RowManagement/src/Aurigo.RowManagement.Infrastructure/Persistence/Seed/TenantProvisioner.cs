@@ -27,7 +27,7 @@ public sealed class TenantProvisioner
         foreach (var name in RoleNames.All)
         {
             if (roles.Any(r => r.Name == name)) continue;
-            var role = new Role { TenantId = tenantId, Name = name, Description = DefaultRolePermissions.DescriptionFor(name), };
+            var role = new Role { TenantId = tenantId, Name = name, Description = DefaultRolePermissions.DescriptionFor(name), IsSystem = true };
             _db.Roles.Add(role);
             roles.Add(role);
             added++;

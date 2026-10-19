@@ -41,7 +41,7 @@ function LoginPage() {
       await navigate({ to: target ?? '/' })
     } catch (err) {
       setError(
-        err instanceof ApiError && err.status === 401
+        err instanceof ApiError && err.code === 'invalid_credentials'
           ? 'Incorrect username or password.'
           : err instanceof Error ? err.message : 'Sign-in failed.',
       )
