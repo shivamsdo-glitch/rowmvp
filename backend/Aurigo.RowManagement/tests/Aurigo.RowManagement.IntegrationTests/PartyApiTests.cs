@@ -32,7 +32,7 @@ public class PartyApiTests : IClassFixture<PgApi>
     };
 
     private static readonly Guid OtherTenant = Guid.Parse("00000000-0000-0000-0000-0000000000e5");
-    private static readonly string[] AllRoles = { "ProjectManager", "TitleExaminer", "Appraiser", "Negotiator", "Finance", "Admin" };
+    private static readonly string[] AllRoles = { "ProjectManager", "TitleResearcher", "Appraiser", "Negotiator", "Finance", "Admin" };
 
     private readonly PgApi _api;
     public PartyApiTests(PgApi api) => _api = api;

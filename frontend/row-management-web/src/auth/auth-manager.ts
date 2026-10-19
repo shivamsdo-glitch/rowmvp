@@ -78,6 +78,13 @@ export class AuthManager {
     return this.restoring
   }
 
+  /** Signs in with a username (or email) and password. Throws the API's ApiError (401 wrong credentials, 409 not yet activated). */
+  async signIn(username: string, password: string) {
+    const issued = await authApi(this.api).login(username, password)
+    writeStoredToken(issued.token)
+    await this.load(issued.token, issued.user)
+  }
+
   /** Development login: asks the API's dev-token endpoint (404s outside Development) for a role. */
   async signInAsDevRole(role: Role) {
     const issued = await authApi(this.api).devToken(role)

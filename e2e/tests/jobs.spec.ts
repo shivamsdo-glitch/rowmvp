@@ -81,7 +81,7 @@ test.describe('Project Manager', () => {
 // ───────────────────────────────── Title Examiner ─────────────────────────────────
 test.describe('Title Examiner', () => {
   test('AT-TE-10 attaches the commitment and deed to the title record and the survey CAD file to the survey request', async ({ page, request }) => {
-    const token = await as(page, 'TitleExaminer')
+    const token = await as(page, 'TitleResearcher')
     const docs = documents(request, token)
     const parcel = newId()
 
@@ -94,7 +94,7 @@ test.describe('Title Examiner', () => {
   })
 
   test('AT-TE-11 can withdraw a document they attached by mistake', async ({ page, request }) => {
-    const docs = documents(request, await as(page, 'TitleExaminer'))
+    const docs = documents(request, await as(page, 'TitleResearcher'))
     const parcel = newId()
     const id = (await (await docs.upload('TitleRecord', parcel, 'wrong-parcel.pdf', 'x')).json()).id
 
@@ -105,7 +105,7 @@ test.describe('Title Examiner', () => {
   })
 
   test('AT-TE-12 cannot alter appraisal, offer or payment records and has no view of payments', async ({ page, request }) => {
-    const docs = documents(request, await as(page, 'TitleExaminer'))
+    const docs = documents(request, await as(page, 'TitleResearcher'))
     const entity = newId()
 
     expect((await docs.upload('Appraisal', entity, 'a.pdf', 'x')).status()).toBe(403)
@@ -115,7 +115,7 @@ test.describe('Title Examiner', () => {
   })
 
   test('AT-TE-13 saves a view on the title page but not on a page they cannot open', async ({ page, request }) => {
-    const filters = savedFilters(request, await as(page, 'TitleExaminer'))
+    const filters = savedFilters(request, await as(page, 'TitleResearcher'))
 
     expect((await filters.create('title', 'Defects to clear', { hasDefects: true })).status()).toBe(201)
     expect((await filters.create('payments', 'Nope')).status()).toBe(403)

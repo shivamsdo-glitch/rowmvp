@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Aurigo.RowManagement.Application.Auth;
@@ -17,12 +17,17 @@ public class DevTokenAndRolesTests : IClassFixture<RowApiFactory>
 
     [Theory]
     [InlineData("ProjectManager")]
-    [InlineData("TitleExaminer")]
+    [InlineData("Designer")]
+    [InlineData("DesignApprover")]
+    [InlineData("Surveyor")]
+    [InlineData("TitleResearcher")]
     [InlineData("Appraiser")]
+    [InlineData("AppraisalApprover")]
     [InlineData("Negotiator")]
+    [InlineData("RelocationAgent")]
     [InlineData("Finance")]
     [InlineData("Admin")]
-    public async Task Dev_token_works_for_each_of_the_six_roles(string role)
+    public async Task Dev_token_works_for_each_default_role(string role)
     {
         var client = _factory.CreateClient();
         var response = await client.GetAsync($"/api/v1/auth/dev-token?role={role}");
@@ -166,16 +171,15 @@ public class DevTokenAndRolesTests : IClassFixture<RowApiFactory>
     }
 
     [Fact]
-    public void The_seed_creates_the_dev_tenant_the_six_roles_and_one_user_per_role()
+    public void The_seed_creates_the_dev_tenant_the_eleven_roles_and_the_eleven_named_sign_ins()
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Aurigo.RowManagement.Infrastructure.Persistence.RowDbContext>();
 
         db.Tenants.Should().ContainSingle(t => t.Id == WellKnownIds.DevTenant);
         db.Roles.IgnoreQueryFilters().Select(r => r.Name).Should().BeEquivalentTo(RoleNames.All);
-        db.AppUsers.IgnoreQueryFilters().Select(u => u.Email).Should().BeEquivalentTo(
-            RoleNames.All.Select(r => $"{r.ToLowerInvariant()}@row.local"));
-        db.AppUsers.IgnoreQueryFilters().Should().OnlyContain(u => u.PasswordHash == null); // not activated
+        var named = db.AppUsers.IgnoreQueryFilters().Where(u => u.PasswordHash != null).Select(u => u.Username).ToList();
+        named.Should().BeEquivalentTo(RoleNames.DemoLogins.Select(l => l.Username));
     }
 
     [Fact]

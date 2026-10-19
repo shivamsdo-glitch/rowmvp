@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Aurigo.RowManagement.Application.Auth;
@@ -29,7 +29,7 @@ public class AccountFlowTests
         var client = factory.CreateClient();
 
         // 1. Not activated yet: login is told to activate (409), not "wrong password".
-        var early = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = "whatever1" });
+        var early = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = "whatever1" });
         early.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await Json(early)).RootElement.GetProperty("title").GetString().Should().Be("activation_required");
 
@@ -62,9 +62,9 @@ public class AccountFlowTests
         (await Json(reuse)).RootElement.GetProperty("title").GetString().Should().Be("invalid_token");
 
         // 6. Login now works; wrong password does not; email is case-insensitive.
-        (await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email.ToUpperInvariant(), password = Password1 }))
+        (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email.ToUpperInvariant(), password = Password1 }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
-        var wrong = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = "nope-nope-nope" });
+        var wrong = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = "nope-nope-nope" });
         wrong.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         // 7. Forgot-password on an ACTIVATED account sends a RESET link.
@@ -80,9 +80,9 @@ public class AccountFlowTests
         // 9. Reset: new password works, old one stops working.
         (await client.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = resetToken, password = Password2 }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
-        (await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = Password2 }))
+        (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = Password2 }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
-        (await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = Password1 }))
+        (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = Password1 }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -93,8 +93,8 @@ public class AccountFlowTests
         var client = factory.CreateClient();
         await ActivateAsync(factory, client);
 
-        var wrongPassword = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = "definitely-wrong" });
-        var unknownEmail = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "nobody@row.local", password = "definitely-wrong" });
+        var wrongPassword = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = "definitely-wrong" });
+        var unknownEmail = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = "nobody@row.local", password = "definitely-wrong" });
 
         wrongPassword.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         unknownEmail.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -138,7 +138,7 @@ public class AccountFlowTests
         await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new { email = Email });
         factory.Emails.Sent.Count.Should().Be(sentBefore);
 
-        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = Password1 });
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = Password1 });
         login.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await Json(login)).RootElement.GetProperty("title").GetString().Should().Be("account_unavailable");
     }
@@ -157,7 +157,7 @@ public class AccountFlowTests
             await db.SaveChangesAsync();
         }
 
-        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = Password1 });
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = Email, password = Password1 });
         login.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await Json(login)).RootElement.GetProperty("title").GetString().Should().Be("tenant_unavailable");
     }
@@ -167,13 +167,13 @@ public class AccountFlowTests
     {
         await using var factory = new RowApiFactory();
 
-        var response = await factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login", new { email = "", password = "" });
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login", new { username = "", password = "" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         var root = (await Json(response)).RootElement;
         root.GetProperty("title").GetString().Should().Be("validation_failed");
-        root.GetProperty("errors").EnumerateObject().Select(p => p.Name).Should().Contain(new[] { "Email", "Password" });
+        root.GetProperty("errors").EnumerateObject().Select(p => p.Name).Should().Contain(new[] { "Username", "Password" });
         root.GetProperty("traceId").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
@@ -188,7 +188,7 @@ public class AccountFlowTests
         }));
 
         var response = await broken.CreateClient().PostAsJsonAsync("/api/v1/auth/login",
-            new { email = "ghost@row.local", password = "irrelevant-1" });
+            new { username = "ghost@row.local", password = "irrelevant-1" });
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
@@ -229,7 +229,7 @@ public class AccountFlowTests
 
     private sealed class ExplodingHasher : IPasswordHasher
     {
-        public string Hash(string password) => throw new InvalidOperationException("SECRET-INTERNAL-DETAIL");
+        public string Hash(string password) => "100000.AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; // the seed hashes the demo passwords
         public bool Verify(string password, string storedHash) => throw new InvalidOperationException("SECRET-INTERNAL-DETAIL");
     }
 }

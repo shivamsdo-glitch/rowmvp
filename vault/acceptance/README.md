@@ -7,7 +7,7 @@ This is the contract for "it works". Every case is written as a **job a person d
 | Role in the app | Real-world job (Diagram 00 lane) | Cases |
 |---|---|---|
 | Project Manager | ROW Project Lead: creates projects and parcels, owns budget, team and milestones, approves | [ProjectManager.md](ProjectManager.md) |
-| Title Examiner | Title Examiner and Surveyor: title research, survey, appraisal package | [TitleExaminer.md](TitleExaminer.md) |
+| Title Researcher | Title research (was Title Examiner; Surveyor is now its own role) | [TitleExaminer.md](TitleExaminer.md) |
 | Appraiser | Appraisal team and approving official: appraise, review, establish just compensation | [Appraiser.md](Appraiser.md) |
 | Negotiator | ROW Agent: offers, negotiation, agreements, closing | [Negotiator.md](Negotiator.md) |
 | Finance | Finance / Accounts Payable: payments and expenditure | [Finance.md](Finance.md) |
@@ -18,7 +18,7 @@ This is the contract for "it works". Every case is written as a **job a person d
 
 R = read · C = create · U = update · D = delete. This table is generated from `permission-matrix.json`, which the backend tests publish and the frontend tests read, so the screen, the API and this document cannot disagree.
 
-| Page | Project Manager | Title Examiner | Appraiser | Negotiator | Finance | Administrator |
+| Page | Project Manager | Title Researcher | Appraiser | Negotiator | Finance | Administrator |
 |---|---|---|---|---|---|---|
 | Dashboard | R | R | R | R | R | CRUD |
 | Projects | CRUD | R | R | R | R | CRUD |

@@ -23,7 +23,7 @@ public static class DefaultRolePermissions
                 [PageKeys.Negotiations] = B, [PageKeys.Agreements] = B, [PageKeys.Closing] = B, [PageKeys.Payments] = B,
             },
             // Title research, survey requests and the appraisal package (Diagram 2).
-            [RoleNames.TitleExaminer] = new Dictionary<string, string>
+            [RoleNames.TitleResearcher] = new Dictionary<string, string>
             {
                 [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = B, [PageKeys.Parties] = B,
                 [PageKeys.Title] = P, [PageKeys.Survey] = P, [PageKeys.Appraisals] = B,
@@ -48,6 +48,34 @@ public static class DefaultRolePermissions
                 [PageKeys.Approvals] = S, [PageKeys.Negotiations] = B, [PageKeys.Agreements] = B,
                 [PageKeys.Closing] = B, [PageKeys.Payments] = P,
             },
+            // Designer: adds and edits parcel details and reviews plans and ROW maps (Phase 1.5 flow).
+            [RoleNames.Designer] = new Dictionary<string, string>
+            {
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = P, [PageKeys.Parties] = P,
+            },
+            // Design approver: approves parcels for acquisition.
+            [RoleNames.DesignApprover] = new Dictionary<string, string>
+            {
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = S, [PageKeys.Parties] = B,
+                [PageKeys.Approvals] = S,
+            },
+            // Surveyor: right-of-way limits, field data and survey metadata.
+            [RoleNames.Surveyor] = new Dictionary<string, string>
+            {
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = B, [PageKeys.Parties] = B,
+                [PageKeys.Survey] = P,
+            },
+            // Appraisal approver: reviews appraisals and approves just compensation.
+            [RoleNames.AppraisalApprover] = new Dictionary<string, string>
+            {
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = B, [PageKeys.Parties] = B,
+                [PageKeys.Title] = B, [PageKeys.Survey] = B, [PageKeys.Appraisals] = S, [PageKeys.Approvals] = S,
+            },
+            // Relocation agent: relocation assistance for displaced owners and occupants.
+            [RoleNames.RelocationAgent] = new Dictionary<string, string>
+            {
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = B, [PageKeys.Parties] = S,
+            },
             // Configures the system: full access to every page, including administration.
             [RoleNames.Admin] = PageKeys.All.ToDictionary(k => k, _ => P),
         };
@@ -55,7 +83,12 @@ public static class DefaultRolePermissions
     private static readonly IReadOnlyDictionary<string, string> RoleDescriptions = new Dictionary<string, string>
     {
         [RoleNames.ProjectManager] = "Creates projects and parcels, sets budget, team and milestones; approves at project level.",
-        [RoleNames.TitleExaminer] = "Orders and reviews title, manages survey requests and assembles the appraisal package.",
+        [RoleNames.TitleResearcher] = "Researches title, identifies liens and encumbrances, and links deeds and title reports to the parcel.",
+        [RoleNames.Designer] = "Adds and updates parcels and their details from the plans and ROW maps.",
+        [RoleNames.DesignApprover] = "Approves parcels for acquisition.",
+        [RoleNames.Surveyor] = "Verifies right-of-way limits and interest type, and records field data.",
+        [RoleNames.AppraisalApprover] = "Reviews appraisals and approves just compensation.",
+        [RoleNames.RelocationAgent] = "Handles relocation assistance, eligibility and benefits for displacees.",
         [RoleNames.Appraiser] = "Scopes, performs and reviews appraisals and establishes just compensation.",
         [RoleNames.Negotiator] = "Prepares and delivers offers, negotiates settlements, and executes agreements.",
         [RoleNames.Finance] = "Reserves funds, processes payments and tracks expenditure.",

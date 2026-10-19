@@ -1,4 +1,4 @@
-using Aurigo.RowManagement.Application.Auth;
+﻿using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Domain.Common;
 using FluentAssertions;
 
@@ -23,9 +23,9 @@ public class AuthValidatorTests
 
     [Theory]
     [InlineData("", false)]
-    [InlineData("not-an-email", false)]
+    [InlineData("rowdesign", true)]
     [InlineData("user@row.local", true)]
-    public void Login_requires_a_valid_email(string email, bool valid) =>
+    public void Login_requires_a_username(string email, bool valid) =>
         new LoginCommandValidator().Validate(new LoginCommand(email, "whatever")).IsValid.Should().Be(valid);
 
     [Fact]
@@ -37,7 +37,7 @@ public class AuthValidatorTests
     }
 
     [Fact]
-    public void Dev_token_accepts_each_of_the_six_roles()
+    public void Dev_token_accepts_each_default_role()
     {
         foreach (var role in RoleNames.All)
             new IssueDevTokenQueryValidator().Validate(new IssueDevTokenQuery(new[] { role }, null, null, null))
@@ -54,10 +54,20 @@ public class AuthValidatorTests
     }
 
     [Fact]
-    public void Role_constants_are_the_six_swimlane_roles()
+    public void Role_constants_are_the_eleven_default_roles()
     {
         RoleNames.All.Should().BeEquivalentTo(
-            "ProjectManager", "TitleExaminer", "Appraiser", "Negotiator", "Finance", "Admin");
+            "ProjectManager", "Designer", "DesignApprover", "Surveyor", "TitleResearcher", "Appraiser",
+            "AppraisalApprover", "Negotiator", "RelocationAgent", "Finance", "Admin");
+    }
+
+    [Fact]
+    public void ROW_Phase15_every_default_role_has_exactly_one_demo_sign_in_with_the_agreed_username()
+    {
+        RoleNames.DemoLogins.Select(l => l.Role).Should().BeEquivalentTo(RoleNames.All);
+        RoleNames.DemoLogins.Select(l => l.Username).Should().BeEquivalentTo(
+            "rowprojectmanager", "rowdesign", "rowdesignapprover", "surveyor", "titleresearcher", "appraiser",
+            "appraisalapprover", "rownegotiator", "relocationagent", "rowfinance", "admin");
     }
 
     [Theory]

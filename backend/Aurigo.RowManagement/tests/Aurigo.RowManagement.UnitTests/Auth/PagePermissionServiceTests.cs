@@ -44,10 +44,10 @@ public class PagePermissionServiceTests
     [Fact]
     public async Task A_user_with_several_roles_gets_the_union()
     {
-        var svc = await ServiceFor(TestDb.NewStoreName(), TestDb.TenantA, RoleNames.Finance, RoleNames.TitleExaminer);
+        var svc = await ServiceFor(TestDb.NewStoreName(), TestDb.TenantA, RoleNames.Finance, RoleNames.TitleResearcher);
 
         await svc.EnsureAsync(PageKeys.Payments, PermissionAction.Update);  // from Finance
-        await svc.EnsureAsync(PageKeys.Title, PermissionAction.Update);     // from TitleExaminer
+        await svc.EnsureAsync(PageKeys.Title, PermissionAction.Update);     // from TitleResearcher
         var neither = () => svc.EnsureAsync(PageKeys.Appraisals, PermissionAction.Update);
         await neither.Should().ThrowAsync<ForbiddenException>();
     }

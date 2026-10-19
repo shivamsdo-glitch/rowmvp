@@ -89,7 +89,7 @@ public class RoleAcceptanceApiTests : IClassFixture<PgApi>
     public async Task Title_package_hand_off_the_examiner_attaches_and_everyone_downstream_can_read_but_not_change()
     {
         var parcel = Guid.NewGuid();
-        var examiner = await _api.As("TitleExaminer");
+        var examiner = await _api.As("TitleResearcher");
         var commitment = await examiner.Upload("TitleRecord", parcel, "commitment.pdf", Encoding.UTF8.GetBytes("commitment"), "TitleCommitment");
         var cad = await examiner.Upload("SurveyRequest", parcel, "boundary.dwg", new byte[] { 1, 2, 3 }, "BoundarySurvey");
         commitment.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -128,7 +128,7 @@ public class RoleAcceptanceApiTests : IClassFixture<PgApi>
         (await negotiator.Upload("Appraisal", parcel, "edit.pdf", new byte[] { 1 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         // The title examiner can read appraisals (to see the package outcome) but not alter them.
-        var examiner = await _api.As("TitleExaminer");
+        var examiner = await _api.As("TitleResearcher");
         (await examiner.Http.GetAsync($"/api/v1/documents/{id}/content")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await examiner.Http.DeleteAsync($"/api/v1/documents/{id}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -183,7 +183,7 @@ public class RoleAcceptanceApiTests : IClassFixture<PgApi>
         var created = await pm.Upload("Parcel", parcel, "parcel-sketch.pdf", new byte[] { 1 });
         var id = (await pm.ReadJson(created)).GetProperty("id").GetGuid();
 
-        foreach (var role in new[] { "TitleExaminer", "Appraiser", "Negotiator", "Finance" })
+        foreach (var role in new[] { "TitleResearcher", "Appraiser", "Negotiator", "Finance" })
         {
             var user = await _api.As(role);
             (await user.Http.GetAsync($"/api/v1/documents/{id}/content")).StatusCode.Should().Be(HttpStatusCode.OK, role);
@@ -199,7 +199,7 @@ public class RoleAcceptanceApiTests : IClassFixture<PgApi>
         var upload = await negotiator.Upload("Party", party, "w9.pdf", new byte[] { 1 }, "TaxForm");
         upload.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var examiner = await _api.As("TitleExaminer");
+        var examiner = await _api.As("TitleResearcher");
         (await examiner.Http.GetAsync($"/api/v1/documents?entityType=Party&entityId={party}")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await examiner.Upload("Party", party, "x.pdf", new byte[] { 1 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

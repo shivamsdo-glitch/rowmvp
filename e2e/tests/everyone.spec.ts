@@ -118,8 +118,8 @@ test.describe('AT-X · session and failure handling (any user)', () => {
   test('AT-X-10 the browser tab and top bar carry the product name', async ({ page }) => {
     await signInViaUi(page, 'Admin')
 
-    await expect(page).toHaveTitle('Aurigo · ROW Management')
-    await expect(page.getByRole('link', { name: 'ROW Management home' })).toBeVisible()
+    await expect(page).toHaveTitle('Masterworks Right of Way Management')
+    await expect(page.getByRole('link', { name: 'Masterworks Right of Way Management home' })).toBeVisible()
   })
 
   test('AT-X-11 a second agency can never see the first agency’s files, even as its Admin', async ({ request }) => {

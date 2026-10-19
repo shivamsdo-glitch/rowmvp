@@ -1,7 +1,10 @@
 import type { ApiClient } from './client'
 
 /** Mirrors the backend role names (Domain/Common/RoleNames). */
-export const ROLES = ['ProjectManager', 'TitleExaminer', 'Appraiser', 'Negotiator', 'Finance', 'Admin'] as const
+export const ROLES = [
+  'ProjectManager', 'Designer', 'DesignApprover', 'Surveyor', 'TitleResearcher', 'Appraiser',
+  'AppraisalApprover', 'Negotiator', 'RelocationAgent', 'Finance', 'Admin',
+] as const
 export type Role = (typeof ROLES)[number]
 
 /** Mirrors the backend page keys (Domain/Common/PageKeys). */
@@ -23,6 +26,13 @@ export interface CurrentUser {
   tenantName: string | null
 }
 
+export interface AuthResponse {
+  token: string
+  tokenType: string
+  expiresAtUtc: string
+  user: CurrentUser
+}
+
 export interface PagePermission {
   pageKey: string
   canCreate: boolean
@@ -41,6 +51,7 @@ export interface DevTokenResponse {
 }
 
 export const authApi = (api: ApiClient) => ({
+  login: (username: string, password: string) => api.post<AuthResponse>('/api/v1/auth/login', { username, password }),
   devToken: (role: Role) => api.get<DevTokenResponse>('/api/v1/auth/dev-token', { role }),
   me: () => api.get<CurrentUser>('/api/v1/auth/me'),
   permissions: () => api.get<PagePermission[]>('/api/v1/auth/permissions'),

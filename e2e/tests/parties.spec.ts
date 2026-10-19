@@ -341,7 +341,7 @@ test.describe('Negotiator · parties', () => {
     await create.getByLabel(/^State/).fill('wa')
     await create.getByRole('button', { name: 'Create party' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toContainText(name)
-    await expect(page.getByText('WA')).toBeVisible()
+    await expect(page.getByText('WA', { exact: true })).toBeVisible()
     const partyUrl = page.url()
 
     await openParcelParties(page, parcel.id)
@@ -406,7 +406,7 @@ test.describe('Negotiator · parties', () => {
 })
 
 // ───────────────────────────────── Read-only roles ─────────────────────────────────
-for (const [id, role] of [['AT-TE-15', 'TitleExaminer'], ['AT-AP-15', 'Appraiser'], ['AT-FN-15', 'Finance']] as const) {
+for (const [id, role] of [['AT-TE-15', 'TitleResearcher'], ['AT-AP-15', 'Appraiser'], ['AT-FN-15', 'Finance']] as const) {
   test.describe(`${role} · parties (read only)`, () => {
     test(`${id} reads who owns a parcel and whether a tax ID is on file, and can change nothing`, async ({ page, request }) => {
       expect(canCreate(role)).toBe(false)

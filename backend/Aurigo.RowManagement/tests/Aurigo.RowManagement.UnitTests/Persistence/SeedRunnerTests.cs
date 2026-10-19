@@ -98,7 +98,7 @@ public class SeedRunnerTests
         {
             new DemoTenantSeedStep(db),
             new DefaultRbacSeedStep(db, new TenantProvisioner(db), logger),
-            new DemoUsersSeedStep(db),
+            new DemoUsersSeedStep(db, new Aurigo.RowManagement.Infrastructure.Auth.Pbkdf2PasswordHasher()),
             new DemoDataSeedStep(db, NullLogger<DemoDataSeedStep>.Instance),
         };
 
@@ -118,7 +118,7 @@ public class SeedRunnerTests
             {
                 new DemoTenantSeedStep(db),
                 new DefaultRbacSeedStep(db, new TenantProvisioner(db), NullLogger<DefaultRbacSeedStep>.Instance),
-                new DemoUsersSeedStep(db),
+                new DemoUsersSeedStep(db, new Aurigo.RowManagement.Infrastructure.Auth.Pbkdf2PasswordHasher()),
                 new DemoDataSeedStep(db, NullLogger<DemoDataSeedStep>.Instance),
             }).RunAsync();
         }
@@ -154,7 +154,7 @@ public class SeedRunnerTests
         {
             new DemoTenantSeedStep(db),
             new DefaultRbacSeedStep(db, new TenantProvisioner(db), NullLogger<DefaultRbacSeedStep>.Instance),
-            new DemoUsersSeedStep(db),
+            new DemoUsersSeedStep(db, new Aurigo.RowManagement.Infrastructure.Auth.Pbkdf2PasswordHasher()),
         }).RunAsync();
 
         (await db.Roles.IgnoreQueryFilters().AllAsync(r => r.TenantId == TestDb.TenantA)).Should().BeTrue("inactive tenants are not provisioned");

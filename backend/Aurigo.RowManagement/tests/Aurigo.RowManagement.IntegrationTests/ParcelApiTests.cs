@@ -255,7 +255,7 @@ public class ParcelApiTests : IClassFixture<PgApi>
 
     // ── time zones (ROW-073): days are counted where the project is ──
 
-    private static readonly string[] AllRoles = { "ProjectManager", "TitleExaminer", "Appraiser", "Negotiator", "Finance", "Admin" };
+    private static readonly string[] AllRoles = { "ProjectManager", "TitleResearcher", "Appraiser", "Negotiator", "Finance", "Admin" };
 
     private static DateOnly TodayIn(string zone) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById(zone)).DateTime);

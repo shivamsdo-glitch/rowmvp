@@ -31,6 +31,16 @@ export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission
     if (url.startsWith('/api/v1/auth/dev-token')) {
       return json({ token, tokenType: 'Bearer', expiresAtUtc: '2099-01-01T00:00:00Z', roles: [role], tenantId: 't1', userId: 'u1' })
     }
+    if (url === '/api/v1/auth/login' && init?.method === 'POST') {
+      const body = JSON.parse(String(init.body ?? '{}')) as { username?: string; password?: string }
+      if (body.username?.toLowerCase() === 'admin' && body.password === 'qwertyuiop') {
+        return json({
+          token, tokenType: 'Bearer', expiresAtUtc: '2099-01-01T00:00:00Z',
+          user: { id: 'u1', fullName: 'Admin User', initials: 'AU', email: 'admin@row.local', roles: [role], tenantId: 't1', tenantName: 'Demo DOT' },
+        })
+      }
+      return json({ title: 'invalid_credentials', detail: 'Incorrect username or password.' }, 401)
+    }
     if (headers.Authorization !== `Bearer ${token}`) return json({ title: 'unauthorized' }, 401)
     if (url === '/api/v1/auth/me') {
       if (opts.meFails) return json({ title: 'not_found' }, 404)

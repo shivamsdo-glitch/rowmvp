@@ -1,4 +1,4 @@
-using Aurigo.RowManagement.Application.Agency;
+﻿using Aurigo.RowManagement.Application.Agency;
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.Common;
@@ -1357,7 +1357,7 @@ public class ParcelTests
 
         saved.ExtraOverrideRoles.Should().Equal(RoleNames.Negotiator);
         saved.AlwaysRoles.Should().BeEquivalentTo(RoleNames.ProjectManager, RoleNames.Admin);
-        saved.AssignableRoles.Should().BeEquivalentTo(RoleNames.TitleExaminer, RoleNames.Appraiser, RoleNames.Negotiator, RoleNames.Finance);
+        saved.AssignableRoles.Should().BeEquivalentTo(RoleNames.All.Where(r => r != RoleNames.ProjectManager && r != RoleNames.Admin));
         (await admin.StepGateSettings.Handle(new GetStepGateSettingsQuery(), default)).ExtraOverrideRoles.Should().Equal(RoleNames.Negotiator);
     }
 
@@ -1372,7 +1372,7 @@ public class ParcelTests
         var parcel = await pm.Create.Handle(NewParcel(project), default);
         var other = await pm.Create.Handle(NewParcel(project), default);
 
-        foreach (var role in new[] { RoleNames.TitleExaminer, RoleNames.Appraiser, RoleNames.Negotiator, RoleNames.Finance })
+        foreach (var role in new[] { RoleNames.TitleResearcher, RoleNames.Appraiser, RoleNames.Negotiator, RoleNames.Finance })
         {
             await using var c = new Ctx(store, TestDb.TenantA, TestDb.UserA2, role);
             (await c.Get.Handle(new GetParcelQuery(parcel.Id), default)).Id.Should().Be(parcel.Id);

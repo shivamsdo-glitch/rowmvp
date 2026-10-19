@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
@@ -106,6 +106,35 @@ public sealed class RowApiFactory : WebApplicationFactory<Program>
             services.Remove(services.Single(d => d.ServiceType == typeof(IEmailSender)));
             services.AddSingleton<IEmailSender>(Emails);
         });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        try { AddNotYetActivatedUsers(host.Services); }
+        catch (Exception) when (_settings.TryGetValue("Database:SeedOnStartup", out var seed) && seed == "false") { /* a test that boots the app without a reachable or seeded database */ }
+        return host;
+    }
+
+    /// <summary>
+    /// One invited-but-never-signed-in user per role (<c>negotiator@row.local</c> ...), the fixture the account-flow tests
+    /// (invite, activate, reset) run against. The product's own demo seed signs in eleven named users instead.
+    /// </summary>
+    private static void AddNotYetActivatedUsers(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RowDbContext>();
+        var tenantId = Aurigo.RowManagement.Domain.Entities.WellKnownIds.DevTenant;
+        var roles = db.Roles.IgnoreQueryFilters().Where(r => r.TenantId == tenantId).ToList();
+        foreach (var role in roles)
+        {
+            var email = $"{role.Name.ToLowerInvariant()}@row.local";
+            if (db.AppUsers.IgnoreQueryFilters().Any(u => u.Email == email)) continue;
+            var user = new Aurigo.RowManagement.Domain.Entities.AppUser { TenantId = tenantId, FirstName = role.Name, LastName = "Demo", Email = email, IsActive = true };
+            user.UserRoles.Add(new Aurigo.RowManagement.Domain.Entities.UserRole { TenantId = tenantId, UserId = user.Id, RoleId = role.Id });
+            db.AppUsers.Add(user);
+        }
+        db.SaveChanges();
     }
 
     public override async ValueTask DisposeAsync()

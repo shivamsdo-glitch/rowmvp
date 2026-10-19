@@ -13,13 +13,13 @@ describe('AuthManager', () => {
   })
 
   it('signs in as a dev role and loads the user and permissions', async () => {
-    const auth = new AuthManager({ fetchImpl: fakeAuthFetch({ readable: ['dashboard', 'title'], role: 'TitleExaminer' }) as typeof fetch })
+    const auth = new AuthManager({ fetchImpl: fakeAuthFetch({ readable: ['dashboard', 'title'], role: 'TitleResearcher' }) as typeof fetch })
 
-    await auth.signInAsDevRole('TitleExaminer')
+    await auth.signInAsDevRole('TitleResearcher')
 
     expect(auth.getState().status).toBe('authenticated')
     expect(auth.getState().user?.fullName).toBe('Dev User')
-    expect(auth.hasRole('TitleExaminer')).toBe(true)
+    expect(auth.hasRole('TitleResearcher')).toBe(true)
     expect(auth.hasRole('Admin')).toBe(false)
     expect(auth.can('title')).toBe(true)
     expect(auth.can('payments')).toBe(false)

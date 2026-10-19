@@ -90,10 +90,10 @@ public class PlatformBehaviourTests
         var client = factory.CreateClient();
 
         for (var i = 0; i < 3; i++)
-            (await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "a@row.local", password = "wrong-pass-1" }))
+            (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = "a@row.local", password = "wrong-pass-1" }))
                 .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        var limited = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "a@row.local", password = "wrong-pass-1" });
+        var limited = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = "a@row.local", password = "wrong-pass-1" });
 
         limited.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         limited.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");

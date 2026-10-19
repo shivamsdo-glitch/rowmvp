@@ -741,7 +741,7 @@ for (const role of ROLES) {
       await expect(page.getByRole('form', { name: 'Add a group' }), `${role} add group`).toHaveCount(canCreate(role) ? 1 : 0)
       await page.getByRole('tab', { name: 'Overview' }).click()
       await expect(page.getByRole('region', { name: 'Project time zone' })).toBeVisible()
-      await expect(page.getByRole('form', { name: 'Set the project time zone' }), `${role} project time zone`).toHaveCount(canCreate(role) ? 1 : 0)
+      await expect(page.getByRole('form', { name: 'Set the project time zone' }), `${role} project time zone`).toHaveCount(['S', 'P'].includes(level(role, 'projects') ?? '') ? 1 : 0)
 
       // Configuration: the parcel rules are shown to, and editable by, the people who may open Configuration at all.
       await page.goto('/administration')
@@ -782,7 +782,7 @@ for (const role of ROLES) {
 
       // Agency rules: anyone with Parcels can read them; only the Administrator can change them.
       expect(code(await request.get('/api/v1/agency/time-zone', { headers }))).toBe(200)
-      expect(code(await request.put(`/api/v1/projects/${project.id}/time-zone`, { headers, data: { timeZoneId: null } }))).toBe(canCreate(role) ? 200 : 403)
+      expect(code(await request.put(`/api/v1/projects/${project.id}/time-zone`, { headers, data: { timeZoneId: null } }))).toBe(['S', 'P'].includes(level(role, 'projects') ?? '') ? 200 : 403)
       if (role !== 'Admin') expect(code(await request.put('/api/v1/agency/time-zone', { headers, data: { timeZoneId: 'America/Chicago' } }))).toBe(403)
       const first = statusList[0]
       expect(code(await request.put(`/api/v1/parcel-rules/statuses/${first.id}`, { headers, data: { name: first.name, color: first.color, sortOrder: first.sortOrder, isActive: first.isActive, isInitial: first.isInitial } })))

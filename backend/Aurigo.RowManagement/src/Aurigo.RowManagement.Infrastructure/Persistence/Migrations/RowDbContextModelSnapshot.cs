@@ -232,6 +232,12 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("username");
+
                     b.HasKey("Id")
                         .HasName("pk_app_users");
 
@@ -241,6 +247,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_app_users_tenant_id");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("ix_app_users_username");
 
                     b.ToTable("app_users", (string)null);
                 });

@@ -29,6 +29,8 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         // Email is stored lower-cased and is unique across the whole platform, so an email alone
         // identifies the tenant at login (no tenant hint needed).
         b.HasIndex(x => x.Email).IsUnique();
+        b.Property(x => x.Username).IsRequired().HasMaxLength(254);
+        b.HasIndex(x => x.Username).IsUnique();
         b.HasIndex(x => x.TenantId);
     }
 }

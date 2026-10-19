@@ -64,7 +64,7 @@ public class DocumentHandlerTests
     public async Task Upload_stores_the_bytes_and_records_metadata_with_a_hash_and_a_server_chosen_content_type()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var content = Bytes("title commitment body");
 
         var dto = await h.Uploader.Handle(h.Upload("TitleRecord", "Commitment.PDF", content, docType: "TitleCommitment"), default);
@@ -93,7 +93,7 @@ public class DocumentHandlerTests
     public async Task Upload_cleans_a_hostile_file_name()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
 
         var dto = await h.Uploader.Handle(h.Upload("TitleRecord", @"..\..\boot\evil.pdf", Bytes("x")), default);
 
@@ -104,7 +104,7 @@ public class DocumentHandlerTests
     public async Task Upload_measures_the_real_size_and_rejects_a_stream_larger_than_it_claimed()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, maxBytes: 100, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, maxBytes: 100, roles: RoleNames.TitleResearcher);
 
         // The client claims 10 bytes but sends 5,000.
         var act = () => h.Uploader.Handle(h.Upload("TitleRecord", "big.pdf", new byte[5000], declared: 10), default);
@@ -117,7 +117,7 @@ public class DocumentHandlerTests
     public async Task Upload_rejects_an_empty_stream_even_if_it_claimed_a_size()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
 
         var act = () => h.Uploader.Handle(h.Upload("TitleRecord", "empty.pdf", Array.Empty<byte>(), declared: 50), default);
 
@@ -155,7 +155,7 @@ public class DocumentHandlerTests
     public async Task List_returns_only_that_entitys_live_documents_newest_first()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var other = Guid.NewGuid();
 
         await h.Uploader.Handle(h.Upload("TitleRecord", "first.pdf", Bytes("1"), entityId: Parcel), default);
@@ -173,7 +173,7 @@ public class DocumentHandlerTests
     public async Task List_can_filter_by_document_type()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         await h.Uploader.Handle(h.Upload("TitleRecord", "a.pdf", Bytes("1"), docType: "Deed"), default);
         await h.Uploader.Handle(h.Upload("TitleRecord", "b.pdf", Bytes("2"), docType: "Plat"), default);
 
@@ -186,10 +186,10 @@ public class DocumentHandlerTests
     public async Task Listing_requires_read_on_the_owning_page()
     {
         var store = await Provision();
-        await using var titleExaminer = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var titleExaminer = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         await titleExaminer.Uploader.Handle(titleExaminer.Upload("TitleRecord", "t.pdf", Bytes("x")), default);
 
-        // TitleExaminer has no access to the negotiations page.
+        // TitleResearcher has no access to the negotiations page.
         var denied = () => titleExaminer.Lister.Handle(new ListDocumentsQuery("Offer", Parcel), default);
         await denied.Should().ThrowAsync<ForbiddenException>();
     }
@@ -198,7 +198,7 @@ public class DocumentHandlerTests
     public async Task Download_returns_the_exact_bytes_with_the_stored_name_and_type()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var content = Bytes("the real deed contents");
         var dto = await h.Uploader.Handle(h.Upload("TitleRecord", "deed.pdf", content), default);
 
@@ -226,11 +226,11 @@ public class DocumentHandlerTests
     public async Task Download_where_the_store_has_lost_the_file_is_not_found_not_an_empty_success()
     {
         var store = await Provision();
-        await using var uploader = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var uploader = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var dto = await uploader.Uploader.Handle(uploader.Upload("TitleRecord", "deed.pdf", Bytes("x")), default);
 
         // A different (empty) store instance stands in for a store that no longer has the bytes.
-        await using var reader = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var reader = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var act = () => reader.Downloader.Handle(new DownloadDocumentQuery(dto.Id), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -240,7 +240,7 @@ public class DocumentHandlerTests
     public async Task Delete_hides_the_document_but_keeps_the_row_and_the_stored_bytes()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var dto = await h.Uploader.Handle(h.Upload("TitleRecord", "deed.pdf", Bytes("x")), default);
         var externalId = (await h.Db.Documents.SingleAsync()).ExternalDocId;
 
@@ -261,7 +261,7 @@ public class DocumentHandlerTests
     public async Task Deleting_twice_is_not_found_the_second_time()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var dto = await h.Uploader.Handle(h.Upload("TitleRecord", "deed.pdf", Bytes("x")), default);
         await h.Deleter.Handle(new DeleteDocumentCommand(dto.Id), default);
 
@@ -274,7 +274,7 @@ public class DocumentHandlerTests
     public async Task Deleting_is_audited_as_an_update_of_the_deleted_flag()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
         var dto = await h.Uploader.Handle(h.Upload("TitleRecord", "deed.pdf", Bytes("x")), default);
         await h.Deleter.Handle(new DeleteDocumentCommand(dto.Id), default);
 
@@ -321,7 +321,7 @@ public class DocumentHandlerTests
     public async Task Identical_files_get_identical_hashes_and_different_files_do_not()
     {
         var store = await Provision();
-        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleExaminer);
+        await using var h = new Harness(store, TestDb.TenantA, TestDb.UserA, roles: RoleNames.TitleResearcher);
 
         await h.Uploader.Handle(h.Upload("TitleRecord", "a.pdf", Bytes("same")), default);
         await h.Uploader.Handle(h.Upload("TitleRecord", "b.pdf", Bytes("same")), default);

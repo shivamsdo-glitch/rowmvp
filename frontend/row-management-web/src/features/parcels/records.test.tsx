@@ -149,7 +149,7 @@ describe('Negotiation diary (ROW-020)', () => {
     expect(screen.queryByRole('button', { name: /Remove the/ })).not.toBeInTheDocument()
     pm.unmount()
     sessionStorage.clear()
-    await diaryTab('TitleExaminer')
+    await diaryTab('TitleResearcher')
     expect(await screen.findByText('Your role cannot see the negotiation diary.')).toBeInTheDocument()
   })
 })

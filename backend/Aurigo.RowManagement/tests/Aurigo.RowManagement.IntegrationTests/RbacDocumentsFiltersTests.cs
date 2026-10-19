@@ -82,7 +82,7 @@ public class RbacDocumentsFiltersTests : IClassFixture<RowApiFactory>
     [Fact]
     public async Task Permissions_reflect_the_default_matrix_for_a_role()
     {
-        var client = await As(RoleNames.TitleExaminer);
+        var client = await As(RoleNames.TitleResearcher);
 
         var perms = await client.GetFromJsonAsync<List<PagePermissionDto>>("/api/v1/auth/permissions", Json);
 
@@ -102,7 +102,7 @@ public class RbacDocumentsFiltersTests : IClassFixture<RowApiFactory>
     [Fact]
     public async Task A_document_can_be_uploaded_listed_downloaded_and_deleted()
     {
-        var client = await As(RoleNames.TitleExaminer);
+        var client = await As(RoleNames.TitleResearcher);
         var bytes = Encoding.UTF8.GetBytes("deed body");
 
         var upload = await client.PostAsync("/api/v1/documents", Form("TitleRecord", Parcel, "Deed.pdf", bytes, "Deed"));

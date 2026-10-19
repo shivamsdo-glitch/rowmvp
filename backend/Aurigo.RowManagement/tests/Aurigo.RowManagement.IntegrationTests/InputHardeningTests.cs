@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -394,9 +394,9 @@ public class InputHardeningTests : IClassFixture<PgApi>
         var anon = _api.Factory.CreateClient();
         foreach (var (url, body) in new[]
         {
-            ("/api/v1/auth/login", "{}"), ("/api/v1/auth/login", "{\"email\":null,\"password\":null}"),
-            ("/api/v1/auth/login", "{\"email\":\"not-an-email\",\"password\":\"x\"}"),
-            ("/api/v1/auth/login", "{\"email\":\"" + new string('a', 5000) + "@x.com\",\"password\":\"" + new string('p', 100000) + "\"}"),
+            ("/api/v1/auth/login", "{}"), ("/api/v1/auth/login", "{\"username\":null,\"password\":null}"),
+            ("/api/v1/auth/login", "{\"username\":\"not-an-email\",\"password\":\"x\"}"),
+            ("/api/v1/auth/login", "{\"username\":\"" + new string('a', 5000) + "@x.com\",\"password\":\"" + new string('p', 100000) + "\"}"),
             ("/api/v1/auth/forgot-password", "{}"), ("/api/v1/auth/forgot-password", "{\"email\":\"a\\u0000b@x.com\"}"),
             ("/api/v1/auth/activate", "{\"token\":\"\",\"password\":\"\"}"), ("/api/v1/auth/activate", "{\"token\":\"x\\u0000y\",\"password\":\"Aa1!aaaaaa\"}"),
             ("/api/v1/auth/reset-password", "{}"), ("/api/v1/auth/reset-password", "garbage"),

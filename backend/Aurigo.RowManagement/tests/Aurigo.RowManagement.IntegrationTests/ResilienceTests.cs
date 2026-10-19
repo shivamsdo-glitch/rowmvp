@@ -164,15 +164,15 @@ public class ResilienceTests : IClassFixture<PgApi>
     {
         var other = await NewTenant("Custom DOT");
         var entity = Guid.NewGuid();
-        var examinerA = await _api.As("TitleExaminer");
-        var examinerB = await _api.As("TitleExaminer", tenant: other);
+        var examinerA = await _api.As("TitleResearcher");
+        var examinerB = await _api.As("TitleResearcher", tenant: other);
         (await examinerB.Upload("TitleRecord", entity, "a.pdf", new byte[] { 1 })).StatusCode.Should().Be(HttpStatusCode.Created);
 
         // That agency's administrator removes the right to attach title documents.
         await PgTestDatabase.QueryAsync(_api.Database, """
             update role_page_permissions set can_update=false, template='Custom'
             where tenant_id=@t and page_key='title'
-              and role_id=(select id from roles where tenant_id=@t and name='TitleExaminer')
+              and role_id=(select id from roles where tenant_id=@t and name='TitleResearcher')
             """, ("t", other));
 
         // No new sign-in needed: the very next request reflects it, and the other agency is unaffected.
@@ -199,7 +199,7 @@ public class ResilienceTests : IClassFixture<PgApi>
         };
 
         // An administrator edits one permission; and one page row is missing (as if a new page shipped).
-        await PgTestDatabase.QueryAsync(db, "update role_page_permissions set can_update=false, template='Custom' where page_key='title' and role_id=(select id from roles where name='TitleExaminer')");
+        await PgTestDatabase.QueryAsync(db, "update role_page_permissions set can_update=false, template='Custom' where page_key='title' and role_id=(select id from roles where name='TitleResearcher')");
         await PgTestDatabase.QueryAsync(db, "delete from role_page_permissions where page_key='payments' and role_id=(select id from roles where name='Finance')");
 
         await using var second = RowApiFactory.WithPostgres(existingDatabase: db);
@@ -213,12 +213,12 @@ public class ResilienceTests : IClassFixture<PgApi>
             await PgTestDatabase.ScalarAsync(db, "select count(*) from role_page_permissions"),
         };
         after.Should().Equal(before, "a restart must not duplicate or lose anything");
-        (await PgTestDatabase.ScalarAsync(db, "select count(*) from role_page_permissions p join roles r on r.id=p.role_id where r.name='TitleExaminer' and p.page_key='title' and p.can_update=false and p.template='Custom'"))
+        (await PgTestDatabase.ScalarAsync(db, "select count(*) from role_page_permissions p join roles r on r.id=p.role_id where r.name='TitleResearcher' and p.page_key='title' and p.can_update=false and p.template='Custom'"))
             .Should().Be(1, "the administrator's edit survives a restart");
         (await PgTestDatabase.ScalarAsync(db, "select count(*) from role_page_permissions p join roles r on r.id=p.role_id where r.name='Finance' and p.page_key='payments' and p.can_delete=true"))
             .Should().Be(1, "the missing page is added back with its default");
 
-        var examiner = await TestUser.SignInAsync(second, "TitleExaminer", null, Guid.NewGuid());
+        var examiner = await TestUser.SignInAsync(second, "TitleResearcher", null, Guid.NewGuid());
         (await examiner.Upload("TitleRecord", Guid.NewGuid(), "x.pdf", new byte[] { 1 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -272,7 +272,7 @@ public class ResilienceTests : IClassFixture<PgApi>
     [PgFact]
     public async Task Every_upload_and_removal_is_in_the_audit_trail_with_who_did_it_and_never_the_file_contents()
     {
-        var examiner = await _api.As("TitleExaminer");
+        var examiner = await _api.As("TitleResearcher");
         var marker = "TOP-SECRET-CONTENT-" + Guid.NewGuid();
         var dto = await examiner.ReadJson(await examiner.Upload("TitleRecord", Guid.NewGuid(), "deed.pdf", Encoding.UTF8.GetBytes(marker)));
         var id = dto.GetProperty("id").GetGuid();
@@ -307,29 +307,29 @@ public class ResilienceTests : IClassFixture<PgApi>
     [PgFact]
     public async Task A_seeded_user_can_be_invited_activate_sign_in_and_reset_their_password_and_no_secret_reaches_the_audit_log()
     {
-        const string email = "appraiser@row.local";
+        const string email = "negotiator@row.local";
         var client = _api.Factory.CreateClient();
-        (await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "whatever-1" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = email, password = "whatever-1" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         (await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new { email })).EnsureSuccessStatusCode();
         var activation = _api.Factory.Emails.LastTokenFor(email);
         (await client.PostAsJsonAsync("/api/v1/auth/activate", new { token = activation, password = "Real-Password-1" })).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.PostAsJsonAsync("/api/v1/auth/activate", new { token = activation, password = "Real-Password-2" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "Real-Password-1" });
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { username = email, password = "Real-Password-1" });
         login.StatusCode.Should().Be(HttpStatusCode.OK);
         var token = (await login.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("token").GetString()!;
         var signedIn = _api.Factory.ClientWithToken(token);
         (await signedIn.GetAsync("/api/v1/auth/me")).StatusCode.Should().Be(HttpStatusCode.OK);
-        // An appraiser's own sign-in carries an appraiser's access, not more.
+        // A negotiator's own sign-in carries a negotiator's access, not more.
         (await signedIn.GetAsync("/api/v1/admin/ping")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await signedIn.PostAsync("/api/v1/documents", TestUser.Form("Appraisal", Guid.NewGuid(), "r.pdf", new byte[] { 1 }))).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await signedIn.PostAsync("/api/v1/documents", TestUser.Form("Offer", Guid.NewGuid(), "r.pdf", new byte[] { 1 }))).StatusCode.Should().Be(HttpStatusCode.Created);
 
         (await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new { email })).EnsureSuccessStatusCode();
         var reset = _api.Factory.Emails.LastTokenFor(email);
         (await client.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = reset, password = "Another-Password-3" })).StatusCode.Should().Be(HttpStatusCode.OK);
-        (await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "Real-Password-1" })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "Another-Password-3" })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = email, password = "Real-Password-1" })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync("/api/v1/auth/login", new { username = email, password = "Another-Password-3" })).StatusCode.Should().Be(HttpStatusCode.OK);
 
         // The stored hash and the emailed tokens must not appear anywhere in the audit trail.
         var hash = (string)(await PgTestDatabase.QueryAsync(_api.Database, "select password_hash from app_users where email=@e", ("e", email)))[0][0]!;

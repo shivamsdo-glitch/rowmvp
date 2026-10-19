@@ -76,7 +76,7 @@ describe('top bar', () => {
     await openShell(ALL)
 
     expect(BRAND.logoSrc).toBeNull()
-    expect(screen.getByRole('link', { name: `${BRAND.productName} home` })).toHaveTextContent('ROW Management')
+    expect(screen.getByRole('link', { name: `${BRAND.productName} home` })).toHaveTextContent('Masterworks Right of Way Management')
   })
 
   it('renders an inert bell while the notifications module does not exist', async () => {

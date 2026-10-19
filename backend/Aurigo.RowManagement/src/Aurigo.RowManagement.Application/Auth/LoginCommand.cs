@@ -6,13 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Aurigo.RowManagement.Application.Auth;
 
-public sealed record LoginCommand(string Email, string Password) : IRequest<AuthResponse>;
+/// <summary>Signs in with a username (or the account email) and password.</summary>
+public sealed record LoginCommand(string Username, string Password) : IRequest<AuthResponse>;
 
 public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 {
     public LoginCommandValidator()
     {
-        RuleFor(x => x.Email).ValidEmail();
+        RuleFor(x => x.Username).NotEmpty().MaximumLength(AuthValidation.EmailMaxLength);
         RuleFor(x => x.Password).NotEmpty().MaximumLength(AuthValidation.PasswordMaxLength);
     }
 }
@@ -38,14 +39,14 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
 
     public async Task<AuthResponse> Handle(LoginCommand request, CancellationToken ct)
     {
-        var email = AuthValidation.NormalizeEmail(request.Email);
+        var name = AuthValidation.NormalizeEmail(request.Username);
 
         // Anonymous endpoint: there is no tenant context yet, so the tenant filter is bypassed.
-        // Email is globally unique, so the email alone identifies the tenant.
+        // Username and email are each globally unique, so either alone identifies the tenant.
         var user = await _db.AppUsers
             .IgnoreQueryFilters()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.Email == email, ct);
+            .FirstOrDefaultAsync(u => u.Username == name || u.Email == name, ct);
 
         if (user is null)
         {
@@ -74,5 +75,5 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
     }
 
     private static AuthenticationFailedException InvalidCredentials() =>
-        new("invalid_credentials", "Incorrect email or password.");
+        new("invalid_credentials", "Incorrect username or password.");
 }

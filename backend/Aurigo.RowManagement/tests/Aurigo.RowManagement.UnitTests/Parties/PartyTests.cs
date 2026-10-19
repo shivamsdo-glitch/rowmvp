@@ -186,7 +186,7 @@ public class PartyTests
     [InlineData(RoleNames.ProjectManager, true)]
     [InlineData(RoleNames.Negotiator, true)]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.TitleExaminer, false)]
+    [InlineData(RoleNames.TitleResearcher, false)]
     [InlineData(RoleNames.Appraiser, false)]
     [InlineData(RoleNames.Finance, false)]
     public async Task ROW_014_Only_roles_with_the_parties_page_can_change_parties_but_all_can_read(string role, bool canWrite)
@@ -491,7 +491,7 @@ public class PartyTests
     [InlineData(RoleNames.ProjectManager, true)]
     [InlineData(RoleNames.Negotiator, true)]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.TitleExaminer, false)]
+    [InlineData(RoleNames.TitleResearcher, false)]
     [InlineData(RoleNames.Appraiser, false)]
     [InlineData(RoleNames.Finance, false)]
     public async Task ROW_014_Only_roles_that_may_edit_parties_can_link_change_or_remove_them(string role, bool canWrite)

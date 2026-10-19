@@ -1,3 +1,4 @@
+using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
 using Aurigo.RowManagement.Domain.Enums;
@@ -65,14 +66,22 @@ public sealed class DefaultRbacSeedStep : ISeedStep
 }
 
 /// <summary>
-/// One not-yet-activated user per role (<c>projectmanager@row.local</c> ...) in the demo tenant.
-/// To sign in as one, POST /api/v1/auth/forgot-password for the address and follow the activation link
-/// written to the console, or use GET /api/v1/auth/dev-token.
+/// The eleven demo sign-ins (rowprojectmanager, rowdesign, ... admin; see <see cref="RoleNames.DemoLogins"/>), one per default role,
+/// all with the shared demo password. Development only: outside Development nobody gets a known password.
+/// Also retires the older not-yet-activated per-role users (<c>projectmanager@row.local</c> ...).
 /// </summary>
 public sealed class DemoUsersSeedStep : ISeedStep
 {
+    /// <summary>The shared password for the demo sign-ins (U: "Next requirements"). Development seed only.</summary>
+    public const string DemoPassword = "qwertyuiop";
+
     private readonly RowDbContext _db;
-    public DemoUsersSeedStep(RowDbContext db) => _db = db;
+    private readonly IPasswordHasher _hasher;
+    public DemoUsersSeedStep(RowDbContext db, IPasswordHasher hasher)
+    {
+        _db = db;
+        _hasher = hasher;
+    }
 
     public string Name => "Demo users";
     public int Order => 30;
@@ -85,12 +94,25 @@ public sealed class DemoUsersSeedStep : ISeedStep
             .Where(r => r.TenantId == tenantId && RoleNames.All.Contains(r.Name))
             .ToListAsync(ct);
 
-        foreach (var role in roles)
-        {
-            var email = $"{role.Name.ToLowerInvariant()}@row.local";
-            if (await _db.AppUsers.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct)) continue;
+        var legacyEmails = RoleNames.All.Select(r => $"{r.ToLowerInvariant()}@row.local").ToList();
+        var legacy = await _db.AppUsers.IgnoreQueryFilters()
+            .Where(u => u.TenantId == tenantId && u.PasswordHash == null && legacyEmails.Contains(u.Email))
+            .Include(u => u.UserRoles)
+            .ToListAsync(ct);
+        _db.AppUsers.RemoveRange(legacy);
 
-            var user = new AppUser { TenantId = tenantId, FirstName = role.Name, LastName = "Demo", Email = email, IsActive = true };
+        foreach (var (username, first, last, roleName) in RoleNames.DemoLogins)
+        {
+            var role = roles.SingleOrDefault(r => r.Name == roleName);
+            if (role is null) continue;
+            if (await _db.AppUsers.IgnoreQueryFilters().AnyAsync(u => u.Username == username, ct)) continue;
+
+            var user = new AppUser
+            {
+                TenantId = tenantId, FirstName = first, LastName = last, Username = username,
+                Email = $"{username}@row.local", IsActive = true,
+                PasswordHash = _hasher.Hash(DemoPassword), PasswordSetAt = DateTime.UtcNow,
+            };
             user.UserRoles.Add(new UserRole { TenantId = tenantId, UserId = user.Id, RoleId = role.Id });
             _db.AppUsers.Add(user);
         }

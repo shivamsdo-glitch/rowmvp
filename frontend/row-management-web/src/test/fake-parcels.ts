@@ -25,7 +25,7 @@ export const DEFAULT_STATUSES: ParcelStatus[] = [
 
 const STANDARD_MILESTONES = ['Parcel set up', 'Notice to owner', 'Offer delivered', 'Agreement signed', 'Closed']
 const ALWAYS_OVERRIDE = ['ProjectManager', 'Admin']
-const ASSIGNABLE = ['TitleExaminer', 'Appraiser', 'Negotiator', 'Finance']
+const ASSIGNABLE = ['TitleResearcher', 'Appraiser', 'Negotiator', 'Finance']
 
 export interface FakeParcelsOptions extends FakeProjectsOptions {
   parcels?: Partial<Parcel>[]

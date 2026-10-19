@@ -325,7 +325,7 @@ public class ParcelRecordTests
     [InlineData(RoleNames.ProjectManager, true, false, true)]
     [InlineData(RoleNames.Admin, true, true, true)]
     [InlineData(RoleNames.Negotiator, false, true, false)]
-    [InlineData(RoleNames.TitleExaminer, false, false, false)]
+    [InlineData(RoleNames.TitleResearcher, false, false, false)]
     [InlineData(RoleNames.Appraiser, false, false, false)]
     [InlineData(RoleNames.Finance, false, false, false)]
     public async Task ROW_019_020_021_Each_role_can_do_exactly_what_its_pages_allow(string role, bool teamAndNotes, bool diary, bool notesToo)
@@ -342,7 +342,7 @@ public class ParcelRecordTests
         (await c.Team.Handle(new ListParcelTeamQuery(parcel), default)).Should().NotBeEmpty();
         (await c.Notes.Handle(new ListParcelNotesQuery(parcel), default)).Should().NotBeEmpty();
         var readDiary = () => c.Diary.Handle(new ListParcelDiaryQuery(parcel), default);
-        if (role is RoleNames.TitleExaminer or RoleNames.Appraiser) await readDiary.Should().ThrowAsync<ForbiddenException>();
+        if (role is RoleNames.TitleResearcher or RoleNames.Appraiser) await readDiary.Should().ThrowAsync<ForbiddenException>();
         else await readDiary.Should().NotThrowAsync();
 
         async Task Check(Func<Task> act, bool allowed)

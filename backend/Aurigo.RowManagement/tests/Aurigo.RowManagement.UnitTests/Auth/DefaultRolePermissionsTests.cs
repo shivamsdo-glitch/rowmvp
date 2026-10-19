@@ -65,7 +65,7 @@ public class DefaultRolePermissionsTests
     public void No_non_admin_role_can_delete_on_a_page_it_does_not_own()
     {
         // Pro (which includes delete) is reserved for a role's own module; spot-check the rest are not Pro.
-        Flags(RoleNames.TitleExaminer, PageKeys.Parcels).Delete.Should().BeFalse();
+        Flags(RoleNames.TitleResearcher, PageKeys.Parcels).Delete.Should().BeFalse();
         Flags(RoleNames.Appraiser, PageKeys.Title).Delete.Should().BeFalse();
         Flags(RoleNames.Negotiator, PageKeys.Appraisals).Delete.Should().BeFalse();
         Flags(RoleNames.Finance, PageKeys.Agreements).Delete.Should().BeFalse();
@@ -74,9 +74,9 @@ public class DefaultRolePermissionsTests
     [Fact]
     public void Each_role_owns_its_module_and_cannot_write_into_another()
     {
-        Flags(RoleNames.TitleExaminer, PageKeys.Title).Update.Should().BeTrue();
-        Flags(RoleNames.TitleExaminer, PageKeys.Survey).Update.Should().BeTrue();
-        Flags(RoleNames.TitleExaminer, PageKeys.Negotiations).Read.Should().BeFalse();
+        Flags(RoleNames.TitleResearcher, PageKeys.Title).Update.Should().BeTrue();
+        Flags(RoleNames.TitleResearcher, PageKeys.Survey).Update.Should().BeTrue();
+        Flags(RoleNames.TitleResearcher, PageKeys.Negotiations).Read.Should().BeFalse();
 
         Flags(RoleNames.Appraiser, PageKeys.Appraisals).Update.Should().BeTrue();
         Flags(RoleNames.Appraiser, PageKeys.Title).Update.Should().BeFalse();

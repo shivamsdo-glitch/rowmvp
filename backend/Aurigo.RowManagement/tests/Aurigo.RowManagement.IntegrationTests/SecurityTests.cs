@@ -261,13 +261,13 @@ public class SecurityTests : IClassFixture<RowApiFactory>
     public async Task A_user_holding_several_roles_gets_the_union_of_their_access()
     {
         var client = _factory.CreateClient();
-        var token = (await client.GetFromJsonAsync<DevToken>("/api/v1/auth/dev-token?role=Finance&role=TitleExaminer", RowApiFactory.JsonOptions))!.Token;
+        var token = (await client.GetFromJsonAsync<DevToken>("/api/v1/auth/dev-token?role=Finance&role=TitleResearcher", RowApiFactory.JsonOptions))!.Token;
 
         var perms = JsonDocument.Parse(await _factory.ClientWithToken(token).GetStringAsync("/api/v1/auth/permissions")).RootElement;
         bool Can(string page, string flag) => perms.EnumerateArray().Single(p => p.GetProperty("pageKey").GetString() == page).GetProperty(flag).GetBoolean();
 
         Can("payments", "canDelete").Should().BeTrue("Finance");
-        Can("title", "canCreate").Should().BeTrue("TitleExaminer");
+        Can("title", "canCreate").Should().BeTrue("TitleResearcher");
         Can("administration", "canRead").Should().BeFalse("neither role");
     }
 

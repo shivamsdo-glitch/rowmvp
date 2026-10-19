@@ -2,9 +2,14 @@
   "note": "Generated from the backend spec (IntegrationTests/Support/Spec.cs). B=read, S=create/read/update, P=full, null=no access.",
   "roles": [
     "ProjectManager",
-    "TitleExaminer",
+    "Designer",
+    "DesignApprover",
+    "Surveyor",
+    "TitleResearcher",
     "Appraiser",
+    "AppraisalApprover",
     "Negotiator",
+    "RelocationAgent",
     "Finance",
     "Admin"
   ],
@@ -39,7 +44,52 @@
       "payments": "B",
       "administration": null
     },
-    "TitleExaminer": {
+    "Designer": {
+      "dashboard": "B",
+      "projects": "B",
+      "parcels": "P",
+      "parties": "P",
+      "title": null,
+      "survey": null,
+      "appraisals": null,
+      "approvals": null,
+      "negotiations": null,
+      "agreements": null,
+      "closing": null,
+      "payments": null,
+      "administration": null
+    },
+    "DesignApprover": {
+      "dashboard": "B",
+      "projects": "B",
+      "parcels": "S",
+      "parties": "B",
+      "title": null,
+      "survey": null,
+      "appraisals": null,
+      "approvals": "S",
+      "negotiations": null,
+      "agreements": null,
+      "closing": null,
+      "payments": null,
+      "administration": null
+    },
+    "Surveyor": {
+      "dashboard": "B",
+      "projects": "B",
+      "parcels": "B",
+      "parties": "B",
+      "title": null,
+      "survey": "P",
+      "appraisals": null,
+      "approvals": null,
+      "negotiations": null,
+      "agreements": null,
+      "closing": null,
+      "payments": null,
+      "administration": null
+    },
+    "TitleResearcher": {
       "dashboard": "B",
       "projects": "B",
       "parcels": "B",
@@ -69,6 +119,21 @@
       "payments": null,
       "administration": null
     },
+    "AppraisalApprover": {
+      "dashboard": "B",
+      "projects": "B",
+      "parcels": "B",
+      "parties": "B",
+      "title": "B",
+      "survey": "B",
+      "appraisals": "S",
+      "approvals": "S",
+      "negotiations": null,
+      "agreements": null,
+      "closing": null,
+      "payments": null,
+      "administration": null
+    },
     "Negotiator": {
       "dashboard": "B",
       "projects": "B",
@@ -82,6 +147,21 @@
       "agreements": "P",
       "closing": "S",
       "payments": "S",
+      "administration": null
+    },
+    "RelocationAgent": {
+      "dashboard": "B",
+      "projects": "B",
+      "parcels": "B",
+      "parties": "S",
+      "title": null,
+      "survey": null,
+      "appraisals": null,
+      "approvals": null,
+      "negotiations": null,
+      "agreements": null,
+      "closing": null,
+      "payments": null,
       "administration": null
     },
     "Finance": {

@@ -29,7 +29,7 @@ public class AcquisitionRecordTests
     private static readonly DateOnly Today = new(2026, 3, 15);
     private static readonly Guid PmId = new("aaaaaaaa-0000-0000-0000-0000000000c1");
     private static readonly Guid FinanceId = new("aaaaaaaa-0000-0000-0000-0000000000c2");
-    private static readonly string[] AllRoles = { "ProjectManager", "TitleExaminer", "Appraiser", "Negotiator", "Finance", "Admin" };
+    private static readonly string[] AllRoles = { "ProjectManager", "TitleResearcher", "Appraiser", "Negotiator", "Finance", "Admin" };
 
     private sealed class Ctx : IAsyncDisposable
     {
@@ -550,7 +550,7 @@ public class AcquisitionRecordTests
             await using var c = new Ctx(store, TestDb.TenantA, role, Guid.NewGuid());
             var list = () => c.Requests.Handle(new ListAcquisitionRequestsQuery(null), default);
             var submit = () => c.Submit.Handle(Request(), default);
-            if (role == RoleNames.TitleExaminer) await list.Should().ThrowAsync<ForbiddenException>(role); else await list.Should().NotThrowAsync(role);
+            if (role == RoleNames.TitleResearcher) await list.Should().ThrowAsync<ForbiddenException>(role); else await list.Should().NotThrowAsync(role);
             if (role is RoleNames.ProjectManager or RoleNames.Admin) await submit.Should().NotThrowAsync(role); else await submit.Should().ThrowAsync<ForbiddenException>(role);
         }
     }

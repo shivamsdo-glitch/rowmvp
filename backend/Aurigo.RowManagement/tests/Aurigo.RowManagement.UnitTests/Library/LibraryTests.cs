@@ -289,7 +289,7 @@ public class LibraryTests
     [Theory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.ProjectManager, false)]
-    [InlineData(RoleNames.TitleExaminer, false)]
+    [InlineData(RoleNames.TitleResearcher, false)]
     [InlineData(RoleNames.Appraiser, false)]
     [InlineData(RoleNames.Negotiator, false)]
     [InlineData(RoleNames.Finance, false)]

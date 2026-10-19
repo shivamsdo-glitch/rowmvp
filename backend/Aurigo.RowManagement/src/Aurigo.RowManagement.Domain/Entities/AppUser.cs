@@ -7,6 +7,9 @@ public class AppUser : EntityBase
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string Email { get; set; } = default!;
+
+    /// <summary>Sign-in name, stored lower-cased and unique across the platform (like email). Defaults to the email.</summary>
+    public string Username { get; set; } = default!;
     public bool IsActive { get; set; } = true;
     public bool IsLocked { get; set; }
 

@@ -16,7 +16,7 @@ export default defineConfig({
   workers: 4,
   retries: 0, // a retry would hide a flaky test; flakiness is a defect to fix
   forbidOnly: !!process.env.CI,
-  timeout: 45_000,
+  timeout: 90_000, // the role-matrix specs now run for eleven roles, so the shared API is busier
   expect: { timeout: 10_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {

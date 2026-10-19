@@ -6,11 +6,11 @@
  * image path (served from /public) when the asset exists; the shell uses it automatically.
  */
 export const BRAND = {
-  productName: 'ROW Management',
+  productName: 'Masterworks Right of Way Management',
   /** Set to an image path (e.g. '/row-management.png') once a real logo exists. */
   logoSrc: null as string | null,
   tagline: 'Right-of-way acquisition, from parcel to closing.',
   /** Document <title>. */
-  htmlTitle: 'Aurigo · ROW Management',
+  htmlTitle: 'Masterworks Right of Way Management',
   copyright: '© 2026 Aurigo Software Technologies Inc.',
 }

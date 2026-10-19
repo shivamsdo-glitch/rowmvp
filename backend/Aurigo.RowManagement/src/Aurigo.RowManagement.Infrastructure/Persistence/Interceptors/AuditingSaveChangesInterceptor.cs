@@ -70,6 +70,8 @@ public sealed class AuditingSaveChangesInterceptor : SaveChangesInterceptor
             switch (entry.State)
             {
                 case EntityState.Added:
+                    // A user created without a sign-in name signs in with the email.
+                    if (entry.Entity is AppUser { Username: null or "" } newUser) newUser.Username = newUser.Email;
                     StampCreated(entry, now, userId, contextTenant);
                     Append(context, entry, AuditAction.Create, null, null, Snapshot(entry, useOriginal: false), userId, now, contextTenant);
                     break;

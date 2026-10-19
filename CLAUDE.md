@@ -41,7 +41,7 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - **DTOs are never entities.** Map in `Application/Mappers/`; controllers never return entities.
 - **FluentValidation at the API boundary only** (MediatR pipeline behavior). No duplicate validation in Domain; Domain enforces invariants/state transitions only.
 - **Multi-tenancy:** `tenant_id` on every aggregate root, enforced by an EF global query filter and set on save from `ITenantContext` (from JWT claim). MVP demo runs one tenant.
-- **Roles** for `[Authorize(Roles=...)]`: `ProjectManager`, `TitleExaminer`, `Appraiser`, `Negotiator`, `Finance`, `Admin` (from Diagram00 swimlanes).
+- **Roles** (Phase 1.5, ADR 0013): `ProjectManager`, `Designer`, `DesignApprover`, `Surveyor`, `TitleResearcher`, `Appraiser`, `AppraisalApprover`, `Negotiator`, `RelocationAgent`, `Finance`, `Admin`. Agencies can add roles; access is the role x page grid (`RolePagePermission`).
 - **Pure calculations** (offer/compensation thresholds, approval-chain gating, statutory deadlines, settlement variance) go in `Application/Calculations/` as stateless static functions with dedicated unit tests. No DB, clock, or DI inside them (pass `now` in).
 - **Approval chains** are configurable data (threshold bands → required roles), evaluated by a Calculations function; never hard-coded dollar amounts.
 - **Parcel status and agreement/interest status** are manually-set lists at both levels (user decision, README); ordered step-gating (ROW-072) is a separate, configurable check.
@@ -50,7 +50,7 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - Every feature references its ROW-IDs in commit messages and test names so traceability to the vault holds.
 
 ## Backend platform (built in Phase 0; see ADRs 0001–0007 in `vault/decisions/`)
-- **Run:** `docker compose up -d` (Postgres 16 on host port 5434), then `dotnet run --project backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api` → http://localhost:5100/swagger. In Development it migrates and seeds the demo tenant, six roles and one inactive user per role.
+- **Run:** `docker compose up -d` (Postgres 16 on host port 5434), then `dotnet run --project backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api` → http://localhost:5100/swagger. In Development it migrates and seeds the demo tenant, the eleven default roles and eleven named sign-ins (`rowprojectmanager`, `rowdesign`, `rowdesignapprover`, `surveyor`, `titleresearcher`, `appraiser`, `appraisalapprover`, `rownegotiator`, `relocationagent`, `rowfinance`, `admin`; shared demo password `qwertyuiop`, Development only).
 - **Test:** `dotnet test backend/Aurigo.RowManagement` (unit tests use EF InMemory; integration tests host the real API with `WebApplicationFactory`; neither needs Docker).
 - **Migrations:** `dotnet tool restore`, then `dotnet ef migrations add <Name> --project src/Aurigo.RowManagement.Infrastructure --startup-project src/Aurigo.RowManagement.Api --output-dir Persistence/Migrations` from `backend/Aurigo.RowManagement`.
 - **Tenancy/audit are automatic.** New entities derive `EntityBase`; never write tenant or audit code in handlers. Only anonymous auth flows use `IgnoreQueryFilters()`.

@@ -1,4 +1,4 @@
-namespace Aurigo.RowManagement.IntegrationTests.Support;
+﻿namespace Aurigo.RowManagement.IntegrationTests.Support;
 
 /// <summary>
 /// THE SPEC: what each role may do, written out by hand from vault/acceptance/*.md and the Diagram 00
@@ -9,7 +9,11 @@ namespace Aurigo.RowManagement.IntegrationTests.Support;
 /// </summary>
 public static class Spec
 {
-    public static readonly string[] Roles = { "ProjectManager", "TitleExaminer", "Appraiser", "Negotiator", "Finance", "Admin" };
+    public static readonly string[] Roles =
+    {
+        "ProjectManager", "Designer", "DesignApprover", "Surveyor", "TitleResearcher", "Appraiser",
+        "AppraisalApprover", "Negotiator", "RelocationAgent", "Finance", "Admin",
+    };
 
     public static readonly string[] Pages =
     {
@@ -21,7 +25,12 @@ public static class Spec
     private static readonly Dictionary<string, string> Rows = new()
     {
         ["ProjectManager"] = "B P P P B B B S B B B B -",
-        ["TitleExaminer"]  = "B B B B P P B - - - - - -",
+        ["Designer"]       = "B B P P - - - - - - - - -",
+        ["DesignApprover"] = "B B S B - - - S - - - - -",
+        ["Surveyor"]       = "B B B B - P - - - - - - -",
+        ["AppraisalApprover"] = "B B B B B B S S - - - - -",
+        ["RelocationAgent"] = "B B B S - - - - - - - - -",
+        ["TitleResearcher"]  = "B B B B P P B - - - - - -",
         ["Appraiser"]      = "B B B B B B P S - - - - -",
         ["Negotiator"]     = "B B B P B - B B P P S S -",
         ["Finance"]        = "B B B B - - - S B B B P -",

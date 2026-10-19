@@ -418,7 +418,7 @@ test.describe('Other roles · acquisition records', () => {
     const a = await as(request, 'Admin')
     const parcel = await makeParcel(request, a)
     await request.post(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: a, data: { status: 'Requested', requestedOn: today(-1), grantedBy: 'Seed' } })
-    await signInViaUi(page, 'TitleExaminer')
+    await signInViaUi(page, 'TitleResearcher')
 
     await expect(page.getByRole('complementary', { name: 'Primary' }).getByRole('link', { name: 'Requests' })).toHaveCount(0)
     await page.goto('/requests')
