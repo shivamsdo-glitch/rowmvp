@@ -14,12 +14,13 @@ namespace Aurigo.RowManagement.Application.Library;
 
 // ── DTOs ────────────────────────────────────────────────────────────────
 
-public sealed record LibraryFieldSummaryDto(Guid Id, string Key, string Label, CustomFieldType FieldType, bool IsSystem, int ValueCount, int ActiveCount);
+/// <summary><see cref="IsLibraryDriven"/>: people choose from a list defined here (a dropdown) rather than typing; true for List fields.</summary>
+public sealed record LibraryFieldSummaryDto(Guid Id, string Key, string Label, CustomFieldType FieldType, bool IsSystem, int ValueCount, int ActiveCount, bool IsLibraryDriven);
 
 /// <summary><see cref="IsDefault"/> marks the value new records start with, where the field has one (the initial parcel status).</summary>
 public sealed record LibraryValueDto(Guid Id, string Value, bool IsActive, int SortOrder, bool IsDefault);
 
-public sealed record LibraryFieldDto(Guid Id, string Key, string Label, CustomFieldType FieldType, bool IsSystem, IReadOnlyList<LibraryValueDto> Values);
+public sealed record LibraryFieldDto(Guid Id, string Key, string Label, CustomFieldType FieldType, bool IsSystem, IReadOnlyList<LibraryValueDto> Values, bool IsLibraryDriven);
 
 public sealed record LibraryImportResultDto(int Added, int AlreadyThere, LibraryFieldDto Field);
 
@@ -51,7 +52,7 @@ internal static class LibraryRules
             values = (await db.LibraryValues.Where(v => v.LibraryFieldId == f.Id).OrderBy(v => v.SortOrder).ThenBy(v => v.Value).ToListAsync(ct))
                 .Select(v => new LibraryValueDto(v.Id, v.Value, v.IsActive, v.SortOrder, false)).ToList();
         }
-        return new LibraryFieldDto(f.Id, f.Key, f.Label, f.FieldType, f.IsSystem, values);
+        return new LibraryFieldDto(f.Id, f.Key, f.Label, f.FieldType, f.IsSystem, values, f.FieldType == CustomFieldType.List);
     }
 
     public static void EnsureList(LibraryField f)
@@ -78,7 +79,7 @@ public sealed class ListLibraryFieldsQueryHandler : IRequestHandler<ListLibraryF
 
     public async Task<IReadOnlyList<LibraryFieldSummaryDto>> Handle(ListLibraryFieldsQuery request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Read, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Read, ct);
         var fields = await _db.LibraryFields.OrderBy(f => f.SortOrder).ThenBy(f => f.Label).ToListAsync(ct);
         var counts = (await _db.LibraryValues.GroupBy(v => v.LibraryFieldId)
             .Select(g => new { g.Key, Total = g.Count(), Active = g.Count(v => v.IsActive) }).ToListAsync(ct)).ToDictionary(x => x.Key);
@@ -87,9 +88,9 @@ public sealed class ListLibraryFieldsQueryHandler : IRequestHandler<ListLibraryF
 
         return fields.Select(f =>
         {
-            if (LibraryRules.IsParcelStatus(f)) return new LibraryFieldSummaryDto(f.Id, f.Key, f.Label, f.FieldType, f.IsSystem, statusTotal, statusActive);
+            if (LibraryRules.IsParcelStatus(f)) return new LibraryFieldSummaryDto(f.Id, f.Key, f.Label, f.FieldType, f.IsSystem, statusTotal, statusActive, true);
             counts.TryGetValue(f.Id, out var c);
-            return new LibraryFieldSummaryDto(f.Id, f.Key, f.Label, f.FieldType, f.IsSystem, c?.Total ?? 0, c?.Active ?? 0);
+            return new LibraryFieldSummaryDto(f.Id, f.Key, f.Label, f.FieldType, f.IsSystem, c?.Total ?? 0, c?.Active ?? 0, f.FieldType == CustomFieldType.List);
         }).ToList();
     }
 }
@@ -109,7 +110,7 @@ public sealed class GetLibraryFieldQueryHandler : IRequestHandler<GetLibraryFiel
 
     public async Task<LibraryFieldDto> Handle(GetLibraryFieldQuery request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Read, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Read, ct);
         return await LibraryRules.ToDtoAsync(_db, await LibraryRules.LoadAsync(_db, request.Id, ct), ct);
     }
 }
@@ -141,7 +142,7 @@ public sealed class CreateLibraryFieldCommandHandler : IRequestHandler<CreateLib
 
     public async Task<LibraryFieldDto> Handle(CreateLibraryFieldCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Create, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Create, ct);
         var label = request.Label.Trim();
         var lower = label.ToLower();
         if (await _db.LibraryFields.AnyAsync(f => f.Label.ToLower() == lower, ct))
@@ -198,7 +199,7 @@ public sealed class UpdateLibraryFieldCommandHandler : IRequestHandler<UpdateLib
 
     public async Task<LibraryFieldDto> Handle(UpdateLibraryFieldCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Update, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Update, ct);
         var field = await LibraryRules.LoadAsync(_db, request.Id, ct);
         var label = request.Label.Trim();
         var lower = label.ToLower();
@@ -254,7 +255,7 @@ public sealed class AddLibraryValueCommandHandler : IRequestHandler<AddLibraryVa
 
     public async Task<LibraryFieldDto> Handle(AddLibraryValueCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Create, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Create, ct);
         var field = await LibraryRules.LoadAsync(_db, request.FieldId, ct);
         LibraryRules.EnsureList(field);
         var value = request.Value.Trim();
@@ -315,7 +316,7 @@ public sealed class UpdateLibraryValueCommandHandler : IRequestHandler<UpdateLib
 
     public async Task<LibraryFieldDto> Handle(UpdateLibraryValueCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Update, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Update, ct);
         var field = await LibraryRules.LoadAsync(_db, request.FieldId, ct);
         var value = request.Value.Trim();
 
@@ -376,7 +377,7 @@ public sealed class ImportLibraryValuesCommandHandler : IRequestHandler<ImportLi
 
     public async Task<LibraryImportResultDto> Handle(ImportLibraryValuesCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Administration, PermissionAction.Update, ct);
+        await _permissions.EnsureAsync(PageKeys.Library, PermissionAction.Update, ct);
         var field = await LibraryRules.LoadAsync(_db, request.FieldId, ct);
         LibraryRules.EnsureList(field);
 

@@ -55,6 +55,7 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<Party> Parties => Set<Party>();
     public DbSet<LibraryField> LibraryFields => Set<LibraryField>();
     public DbSet<LibraryValue> LibraryValues => Set<LibraryValue>();
+    public DbSet<LibraryAgent> LibraryAgents => Set<LibraryAgent>();
     public DbSet<ParcelTeamMember> ParcelTeamMembers => Set<ParcelTeamMember>();
     public DbSet<ParcelDiaryEntry> ParcelDiaryEntries => Set<ParcelDiaryEntry>();
     public DbSet<ParcelNote> ParcelNotes => Set<ParcelNote>();

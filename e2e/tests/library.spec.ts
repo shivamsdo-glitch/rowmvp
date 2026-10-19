@@ -206,7 +206,7 @@ test.describe('Administrator · library', () => {
 
 test.describe('Everyone · library', () => {
   for (const role of ROLES) {
-    test(`AT-X-37 ${role}: the Library opens only for roles with Administration access, and the server agrees`, async ({ page, request }) => {
+    test(`AT-X-37 ${role}: everyone reads the Library; only roles that may change it see its controls, and the server agrees`, async ({ page, request }) => {
       await signInViaUi(page, role)
       const mine = { Authorization: `Bearer ${await sessionToken(page)}` }
       const link = page.getByRole('complementary', { name: 'Primary' }).getByRole('link', { name: 'Library' })
@@ -214,17 +214,14 @@ test.describe('Everyone · library', () => {
       const agent = (await (await request.get('/api/v1/library/fields', { headers: admin })).json()).find((f: any) => f.key === 'agent_type')
 
       await page.goto('/library')
-      if (canRead(role, 'administration')) {
-        await expect(page.getByRole('heading', { level: 1 })).toHaveText('Library')
-        await expect(link).toBeVisible()
-        await expect(page.getByRole('button', { name: 'New field' })).toBeVisible()
-      } else {
-        await expect(page.getByText(/don't have access/i)).toBeVisible()
-        await expect(link).toHaveCount(0)
-      }
-      const allowed = canRead(role, 'administration')
+      // The approved matrix gives every role Read on the Library (forms need its dropdown values); only Admin changes it.
+      expect(canRead(role, 'library')).toBe(true)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Library')
+      await expect(link).toBeVisible()
+      const allowed = role === 'Admin'
+      await expect(page.getByRole('button', { name: 'New field' })).toHaveCount(allowed ? 1 : 0)
       const tag = `${role}-${newId().slice(0, 5)}`
-      expect((await request.get('/api/v1/library/fields', { headers: mine })).status()).toBe(allowed ? 200 : 403)
+      expect((await request.get('/api/v1/library/fields', { headers: mine })).status()).toBe(200)
       expect((await request.post(`/api/v1/library/fields/${agent.id}/values`, { headers: mine, data: { value: `Value ${tag}` } })).status()).toBe(allowed ? 201 : 403)
       expect((await request.post('/api/v1/library/fields', { headers: mine, data: { label: `Field ${tag}`, fieldType: 'Text' } })).status()).toBe(allowed ? 201 : 403)
       expect((await request.get('/api/v1/library/fields')).status()).toBe(401)

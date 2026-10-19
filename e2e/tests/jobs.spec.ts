@@ -278,7 +278,7 @@ test.describe('Administrator', () => {
     const token = await as(page, 'Admin')
     const perms = await (await request.get('/api/v1/auth/permissions', { headers: { Authorization: `Bearer ${token}` } })).json()
 
-    expect(perms).toHaveLength(13)
+    expect(perms).toHaveLength(14)
     for (const p of perms) expect([p.pageKey, p.canCreate, p.canRead, p.canUpdate, p.canDelete]).toEqual([p.pageKey, true, true, true, true])
   })
 })

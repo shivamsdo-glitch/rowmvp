@@ -30,3 +30,20 @@ public class LibraryValueConfiguration : IEntityTypeConfiguration<LibraryValue>
         b.HasIndex(x => new { x.LibraryFieldId, x.NormalizedValue }).IsUnique();
     }
 }
+
+public class LibraryAgentConfiguration : IEntityTypeConfiguration<LibraryAgent>
+{
+    public void Configure(EntityTypeBuilder<LibraryAgent> b)
+    {
+        b.ToTable("library_agents");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Name).IsRequired().HasMaxLength(150);
+        b.Property(x => x.AgentType).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Company).HasMaxLength(150);
+        b.Property(x => x.Phone).HasMaxLength(40);
+        b.Property(x => x.Email).HasMaxLength(254);
+        b.Property(x => x.NormalizedKey).IsRequired().HasMaxLength(420);
+        // The same person for the same job and company is entered once, whatever races to add them.
+        b.HasIndex(x => new { x.TenantId, x.NormalizedKey }).IsUnique();
+    }
+}

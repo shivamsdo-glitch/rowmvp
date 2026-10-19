@@ -42,6 +42,7 @@ public interface IRowDbContext
     DbSet<Party> Parties { get; }
     DbSet<LibraryField> LibraryFields { get; }
     DbSet<LibraryValue> LibraryValues { get; }
+    DbSet<LibraryAgent> LibraryAgents { get; }
     DbSet<ParcelTeamMember> ParcelTeamMembers { get; }
     DbSet<ParcelDiaryEntry> ParcelDiaryEntries { get; }
     DbSet<ParcelNote> ParcelNotes { get; }

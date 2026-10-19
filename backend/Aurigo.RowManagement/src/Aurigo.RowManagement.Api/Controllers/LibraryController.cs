@@ -10,6 +10,7 @@ namespace Aurigo.RowManagement.Api.Controllers;
 public sealed record LibraryFieldBody(string Label, CustomFieldType FieldType);
 public sealed record LibraryValueBody(string Value, bool IsActive = true);
 public sealed record LibraryImportBody(List<string> Values);
+public sealed record LibraryAgentBody(string Name, string AgentType, string? Company, string? Phone, string? Email, bool IsActive = true);
 
 /// <summary>
 /// The Library: fields the agency defines once (name, type, and for a list its allowed values) that forms then use. Default
@@ -58,4 +59,23 @@ public sealed class LibraryController : ControllerBase
     [ProducesResponseType(typeof(LibraryImportResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Import(Guid id, [FromBody] LibraryImportBody b, CancellationToken ct) =>
         Ok(await _mediator.Send(new ImportLibraryValuesCommand(id, b.Values ?? new List<string>()), ct));
+
+    /// <summary>The agents list. Everyone with Library access reads it (forms pick from it); optionally only one job, only active people.</summary>
+    [HttpGet("agents")]
+    [ProducesResponseType(typeof(IReadOnlyList<LibraryAgentDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Agents([FromQuery] string? agentType, [FromQuery] bool activeOnly = false, CancellationToken ct = default) =>
+        Ok(await _mediator.Send(new ListLibraryAgentsQuery(agentType, activeOnly), ct));
+
+    [HttpPost("agents")]
+    [ProducesResponseType(typeof(LibraryAgentDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateAgent([FromBody] LibraryAgentBody b, CancellationToken ct)
+    {
+        var agent = await _mediator.Send(new SaveLibraryAgentCommand(null, b.Name, b.AgentType, b.Company, b.Phone, b.Email, b.IsActive), ct);
+        return Created($"/api/v1/library/agents/{agent.Id}", agent);
+    }
+
+    [HttpPut("agents/{id:guid}")]
+    [ProducesResponseType(typeof(LibraryAgentDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateAgent(Guid id, [FromBody] LibraryAgentBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SaveLibraryAgentCommand(id, b.Name, b.AgentType, b.Company, b.Phone, b.Email, b.IsActive), ct));
 }

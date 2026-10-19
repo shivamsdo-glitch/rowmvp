@@ -29,3 +29,20 @@ public class LibraryValue : EntityBase
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; }
 }
+
+/// <summary>
+/// A person in the Library's Agents list: the people the agency assigns to parcels as designer, surveyor, title researcher, appraiser,
+/// negotiator, broker and so on, entered once so forms pick them instead of retyping. Switched off, never deleted.
+/// </summary>
+public class LibraryAgent : EntityBase
+{
+    public string Name { get; set; } = default!;
+    /// <summary>A value of the <c>agent_type</c> Library list, kept as text so the record stays readable if that value is later switched off.</summary>
+    public string AgentType { get; set; } = default!;
+    public string? Company { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public bool IsActive { get; set; } = true;
+    /// <summary>Upper-cased name|type|company: the key of the "no two the same person for the same job" rule.</summary>
+    public string NormalizedKey { get; set; } = default!;
+}

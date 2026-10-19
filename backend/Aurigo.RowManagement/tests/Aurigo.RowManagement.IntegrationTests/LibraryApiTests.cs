@@ -62,7 +62,15 @@ public class LibraryApiTests : IClassFixture<PgApi>
         var admin = await _api.As("Admin");
 
         var fields = await Fields(admin);
-        fields.Select(f => f.Key).Should().StartWith(new[] { "parcel_status", "interest_type", "possession_type", "agent_type", "contact_type", "cad_number", "segment", "priority" });
+        fields.Select(f => f.Key).Should().StartWith(new[] { "parcel_status", "interest_type", "possession_type", "agent_type", "contact_type", "cad_number", "segment", "priority", "owner_type", "relocation_type", "encumbrance_type" });
+        fields.Select(f => f.Key).Should().Contain(new[] { "appraisal_type", "mode_of_contact", "easement_type", "offer_type", "demo_status", "disposition_type", "conveyance_type", "fund_type", "title_company" });
+        (await Field(admin, "owner_type")).Values.Select(v => v.Value).Should().Equal("CAD Owner", "Commercial Sign Owner", "Fee Owner", "Prior Owner", "Vested Owner");
+        (await Field(admin, "relocation_type")).Values.Select(v => v.Value).Should().Equal("Residential", "Non-residential", "Personal Property only");
+        (await Field(admin, "encumbrance_type")).Values.Select(v => v.Value).Should().Contain(new[] { "Mortgage Lien", "Mechanic Lien", "Financing Statements (UCC-1)", "Deed of Trust" }).And.HaveCount(17);
+        (await Field(admin, "agent_type")).Values.Select(v => v.Value).Should().Contain(new[] { "Row Designer", "Surveyor", "Title Researcher", "Appraiser", "Negotiator", "Broker" });
+        (await Field(admin, "appraisal_type")).Values.Should().BeEmpty("the agency fills these in");
+        fields.Single(f => f.Key == "possession_type").IsLibraryDriven.Should().BeTrue();
+        fields.Single(f => f.Key == "cad_number").IsLibraryDriven.Should().BeFalse();
         (await Field(admin, "possession_type")).Values.Select(v => v.Value).Should().StartWith(new[] { "PUA", "Closing", "Notice of Deposit", "Judgement" });
         (await Field(admin, "interest_type")).Values.Select(v => v.Value).Should().Contain(new[] { "Partial Fee", "Full Fee", "Drainage Easement" });
         var status = await Field(admin, "parcel_status");
@@ -124,7 +132,7 @@ public class LibraryApiTests : IClassFixture<PgApi>
 
     [PgTheory]
     [MemberData(nameof(Roles))]
-    public async Task Only_the_administrator_can_read_or_change_the_library(string role)
+    public async Task Everyone_can_read_the_library_and_only_the_administrator_can_change_it(string role)
     {
         var admin = await _api.As("Admin");
         var possession = await Field(admin, "possession_type");
@@ -133,8 +141,9 @@ public class LibraryApiTests : IClassFixture<PgApi>
         HttpStatusCode Expect(HttpStatusCode ok) => allowed ? ok : HttpStatusCode.Forbidden;
         var tag = $"{role}-{Guid.NewGuid().ToString("N")[..5]}";
 
-        (await Status(user.Http.GetAsync("/api/v1/library/fields"))).Should().Be(Expect(HttpStatusCode.OK));
-        (await Status(user.Http.GetAsync($"/api/v1/library/fields/{possession.Id}"))).Should().Be(Expect(HttpStatusCode.OK));
+        // The approved matrix gives every role Read on the Library (forms need its dropdown values); only Admin changes it.
+        (await Status(user.Http.GetAsync("/api/v1/library/fields"))).Should().Be(HttpStatusCode.OK);
+        (await Status(user.Http.GetAsync($"/api/v1/library/fields/{possession.Id}"))).Should().Be(HttpStatusCode.OK);
         (await Status(user.Http.PostAsJsonAsync("/api/v1/library/fields", new { label = $"Field {tag}", fieldType = "Text" }, Json))).Should().Be(Expect(HttpStatusCode.Created));
         (await Status(user.Http.PutAsJsonAsync($"/api/v1/library/fields/{possession.Id}", new { label = "Possession type", fieldType = "List" }, Json))).Should().Be(Expect(HttpStatusCode.OK));
         (await Status(user.Http.PostAsJsonAsync($"/api/v1/library/fields/{possession.Id}/values", new { value = $"Value {tag}" }, Json))).Should().Be(Expect(HttpStatusCode.Created));

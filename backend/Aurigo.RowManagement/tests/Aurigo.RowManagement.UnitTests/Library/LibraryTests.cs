@@ -136,15 +136,15 @@ public class LibraryTests
         await using var c = Admin(store);
         var field = await c.Field(LibraryKeys.AgentType);
 
-        var added = await c.Add.Handle(new AddLibraryValueCommand(field.Id, "  Surveyor  "), default);
-        var surveyor = added.Values.Single(v => v.Value == "Surveyor");
-        added.Values.Should().HaveCount(2);
+        var added = await c.Add.Handle(new AddLibraryValueCommand(field.Id, "  Wizard  "), default);
+        var surveyor = added.Values.Single(v => v.Value == "Wizard");
+        added.Values.Should().HaveCount(11, "ten defaults and the new one");
 
         var renamed = await c.UpdateValue.Handle(new UpdateLibraryValueCommand(field.Id, surveyor.Id, "Land surveyor", true), default);
-        renamed.Values.Select(v => v.Value).Should().Equal("Appraiser", "Land surveyor");
+        renamed.Values.Select(v => v.Value).Should().Contain("Appraiser").And.Contain("Land surveyor").And.NotContain("Wizard");
         var off = await c.UpdateValue.Handle(new UpdateLibraryValueCommand(field.Id, surveyor.Id, "Land surveyor", false), default);
         off.Values.Single(v => v.Id == surveyor.Id).IsActive.Should().BeFalse();
-        (await c.List.Handle(new ListLibraryFieldsQuery(), default)).Single(f => f.Key == LibraryKeys.AgentType).Should().Match<LibraryFieldSummaryDto>(f => f.ValueCount == 2 && f.ActiveCount == 1);
+        (await c.List.Handle(new ListLibraryFieldsQuery(), default)).Single(f => f.Key == LibraryKeys.AgentType).Should().Match<LibraryFieldSummaryDto>(f => f.ValueCount == 11 && f.ActiveCount == 10);
     }
 
     [Fact]
@@ -293,7 +293,7 @@ public class LibraryTests
     [InlineData(RoleNames.Appraiser, false)]
     [InlineData(RoleNames.Negotiator, false)]
     [InlineData(RoleNames.Finance, false)]
-    public async Task Library_Only_the_administrator_can_read_or_change_it(string role, bool allowed)
+    public async Task Library_Everyone_can_read_it_and_only_the_administrator_can_change_it(string role, bool allowed)
     {
         var store = await Provision();
         await using var admin = Admin(store);
@@ -310,9 +310,11 @@ public class LibraryTests
             () => c.UpdateValue.Handle(new UpdateLibraryValueCommand(possession.Id, possession.Values[0].Id, "PUA", true), default),
             () => c.Import.Handle(new ImportLibraryValuesCommand(possession.Id, new[] { $"Imp {role}" }), default),
         };
-        foreach (var attempt in attempts)
+        // Reading the Library is open to every role (forms need its dropdown values); changing it is the Library permission's.
+        foreach (var (attempt, index) in attempts.Select((a, i) => (a, i)))
         {
-            if (allowed) await attempt.Should().NotThrowAsync();
+            var isRead = index < 2;
+            if (allowed || isRead) await attempt.Should().NotThrowAsync();
             else await attempt.Should().ThrowAsync<ForbiddenException>();
         }
         if (!allowed) (await admin.Field(LibraryKeys.PossessionType)).Values.Should().HaveCount(4, "a refused request changes nothing");

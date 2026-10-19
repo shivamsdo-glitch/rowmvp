@@ -10,17 +10,22 @@ public sealed class PgApi : IAsyncLifetime
 {
     public RowApiFactory Factory { get; private set; } = null!;
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         if (PgTestDatabase.UnavailableReason is { } reason)
         {
             // Tests are skipped by [PgFact]; but when Postgres is REQUIRED (release gate) a missing database must fail loudly.
             if (PgTestDatabase.Required) throw new InvalidOperationException(reason);
-            return Task.CompletedTask;
+            return;
         }
-        Factory = RowApiFactory.WithPostgres();
-        _ = Factory.Services; // boot the host now so migrations and seeding have run before any test queries the database
-        return Task.CompletedTask;
+        // Booting the host blocks (database creation, migrations, seeding). Do that on the thread pool: xUnit runs fixture setup on
+        // a sync context with one slot per core, and a blocked slot per fixture deadlocks once there are more fixtures than cores.
+        Factory = await Task.Run(() =>
+        {
+            var factory = RowApiFactory.WithPostgres();
+            _ = factory.Services; // boot the host now so migrations and seeding have run before any test queries the database
+            return factory;
+        });
     }
 
     public async Task DisposeAsync()

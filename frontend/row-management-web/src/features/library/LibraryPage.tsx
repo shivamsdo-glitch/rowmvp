@@ -8,9 +8,11 @@ import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
-import { DataTable, fieldErrorsOf, FormError, messageOf, Pill, SelectField, TextField } from '../projects/form-kit'
+import { AgentsPanel } from './AgentsPanel'
+import { CheckboxField, DataTable, fieldErrorsOf, FormError, messageOf, Pill, SelectField, TextField } from '../projects/form-kit'
 
 const TYPE_OPTIONS = CUSTOM_FIELD_TYPES.map((t) => ({ value: t, label: t === 'Boolean' ? 'Yes / No' : t }))
+const AGENTS = 'agents'
 const typeName = (t: LibraryFieldType) => TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t
 
 /**
@@ -21,12 +23,18 @@ export function LibraryPage() {
   const { manager } = useAuth()
   const api = libraryApi(manager.api)
   const queryClient = useQueryClient()
-  const canCreate = manager.can('administration', 'create')
+  const canCreate = manager.can('library', 'create')
   const fields = useQuery({ queryKey: ['library', 'fields'], queryFn: () => api.fields() })
   const [selected, setSelected] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['library'] })
+  const shownId = selected === AGENTS ? null : (selected ?? fields.data?.[0]?.id)
+  const agentTypeField = fields.data?.find((f) => f.key === 'agent_type')
+  const agentTypeValues = useQuery({
+    queryKey: ['library', 'field', agentTypeField?.id], queryFn: () => api.field(agentTypeField!.id), enabled: selected === AGENTS && !!agentTypeField,
+  })
+  const agentTypes = (agentTypeValues.data?.values ?? []).filter((v) => v.isActive).map((v) => v.value)
 
   return (
     <>
@@ -43,15 +51,28 @@ export function LibraryPage() {
                 <li key={f.id}>
                   <button
                     type="button"
-                    aria-current={(selected ?? fields.data[0]?.id) === f.id ? 'true' : undefined}
+                    aria-current={shownId === f.id ? 'true' : undefined}
                     onClick={() => setSelected(f.id)}
-                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/50 ${(selected ?? fields.data[0]?.id) === f.id ? 'border-primary bg-muted/60 font-medium' : ''}`}
+                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/50 ${shownId === f.id ? 'border-primary bg-muted/60 font-medium' : ''}`}
                   >
                     <span>{f.label}</span>
                     <span className="text-xs text-muted-foreground">{f.fieldType === 'List' ? `${f.activeCount}/${f.valueCount}` : typeName(f.fieldType)}</span>
                   </button>
                 </li>
               ))}
+            </ul>
+            <p className="px-1 pt-2 text-xs font-medium uppercase text-muted-foreground">People</p>
+            <ul>
+              <li>
+                <button
+                  type="button"
+                  aria-current={selected === AGENTS ? 'true' : undefined}
+                  onClick={() => setSelected(AGENTS)}
+                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/50 ${selected === AGENTS ? 'border-primary bg-muted/60 font-medium' : ''}`}
+                >
+                  <span>Agents</span>
+                </button>
+              </li>
             </ul>
             {canCreate && !adding && <button type="button" className={buttonClassName('outline')} onClick={() => setAdding(true)}>New field</button>}
             {canCreate && adding && (
@@ -61,7 +82,9 @@ export function LibraryPage() {
               />
             )}
           </nav>
-          <FieldPanel summary={fields.data.find((f) => f.id === (selected ?? fields.data[0]?.id))} onChanged={refresh} />
+          {selected === AGENTS
+            ? <AgentsPanel agentTypes={agentTypes} />
+            : <FieldPanel summary={fields.data.find((f) => f.id === shownId)} onChanged={refresh} />}
         </div>
       )}
     </>
@@ -72,7 +95,8 @@ function NewFieldForm({ onCancel, onCreated }: { onCancel: () => void; onCreated
   const { manager } = useAuth()
   const api = libraryApi(manager.api)
   const [label, setLabel] = useState('')
-  const [type, setType] = useState<LibraryFieldType | ''>('List')
+  const [libraryDriven, setLibraryDriven] = useState(true)
+  const [type, setType] = useState<LibraryFieldType | ''>('Text')
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -84,7 +108,8 @@ function NewFieldForm({ onCancel, onCreated }: { onCancel: () => void; onCreated
     if (!label.trim()) { setFields({ label: 'Name is required.' }); return }
     setBusy(true)
     try {
-      await onCreated(await api.createField(label.trim(), type || 'List'))
+      // A library-driven field is a list people choose from; otherwise it is typed in as the chosen type.
+      await onCreated(await api.createField(label.trim(), libraryDriven ? 'List' : type || 'Text'))
     } catch (err) {
       const fe = fieldErrorsOf(err)
       setFields(fe)
@@ -98,7 +123,8 @@ function NewFieldForm({ onCancel, onCreated }: { onCancel: () => void; onCreated
     <form onSubmit={submit} noValidate aria-label="Define a field" className="space-y-3 rounded-lg border bg-card p-3">
       <h2 className="text-sm font-semibold">Define a field</h2>
       <TextField label="Field name" value={label} onChange={setLabel} maxLength={100} error={fields.label} />
-      <SelectField label="Field type" value={type} onChange={setType} options={TYPE_OPTIONS} error={fields.fieldType} />
+      <CheckboxField label="Library-driven (people choose from a list defined here)" checked={libraryDriven} onChange={setLibraryDriven} />
+      {!libraryDriven && <SelectField label="Field type" value={type} onChange={setType} options={TYPE_OPTIONS.filter((o) => o.value !== 'List')} error={fields.fieldType} />}
       <FormError error={error} />
       <div className="flex gap-2">
         <button type="submit" disabled={busy} className={buttonClassName('default', 'sm')}>Create field</button>
@@ -111,8 +137,8 @@ function NewFieldForm({ onCancel, onCreated }: { onCancel: () => void; onCreated
 function FieldPanel({ summary, onChanged }: { summary: LibraryFieldSummary | undefined; onChanged: () => Promise<unknown> }) {
   const { manager } = useAuth()
   const api = libraryApi(manager.api)
-  const canCreate = manager.can('administration', 'create')
-  const canUpdate = manager.can('administration', 'update')
+  const canCreate = manager.can('library', 'create')
+  const canUpdate = manager.can('library', 'update')
   const field = useQuery({ queryKey: ['library', 'field', summary?.id], queryFn: () => api.field(summary!.id), enabled: !!summary })
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState('')
@@ -190,7 +216,7 @@ function FieldPanel({ summary, onChanged }: { summary: LibraryFieldSummary | und
         <div>
           <h2 className="text-base font-semibold">{f.label}</h2>
           <p className="text-xs text-muted-foreground">
-            {typeName(f.fieldType)}{f.isSystem && <> · <Pill tone="neutral">Used by the product</Pill></>}
+            {f.isLibraryDriven ? 'Library-driven dropdown' : typeName(f.fieldType)}{f.isSystem && <> · <Pill tone="neutral">Used by the product</Pill></>}
             {f.key === 'parcel_status' && <> · These are the parcel statuses. New parcels start as the default (Inactive).</>}
           </p>
         </div>

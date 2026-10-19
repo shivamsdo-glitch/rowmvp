@@ -14,6 +14,9 @@ public static class LibraryKeys
     public const string CadNumber = "cad_number";
     public const string Segment = "segment";
     public const string Priority = "priority";
+    public const string OwnerType = "owner_type";
+    public const string RelocationType = "relocation_type";
+    public const string EncumbranceType = "encumbrance_type";
 }
 
 public sealed record DefaultLibraryField(string Key, string Label, CustomFieldType Type, IReadOnlyList<string> Values);
@@ -33,10 +36,44 @@ public static class DefaultLibrary
             "Drainage Easement", "Temporary Construction Easement", "Partial Fee", "Full Fee",
         }),
         new(LibraryKeys.PossessionType, "Possession type", CustomFieldType.List, new[] { "PUA", "Closing", "Notice of Deposit", "Judgement" }),
-        new(LibraryKeys.AgentType, "Agent type", CustomFieldType.List, new[] { "Appraiser" }),
+        new(LibraryKeys.AgentType, "Agent type", CustomFieldType.List, new[]
+        {
+            "Row Designer", "Surveyor", "Title Researcher", "Appraiser", "Negotiator", "Broker", "Relocation", "Land Planner", "Community Engagement", "Site Work",
+        }),
         new(LibraryKeys.ContactType, "Contact type", CustomFieldType.List, new[] { "Broker" }),
         new(LibraryKeys.CadNumber, "CAD number", CustomFieldType.Text, Array.Empty<string>()),
         new(LibraryKeys.Segment, "Segment", CustomFieldType.Text, Array.Empty<string>()),
         new(LibraryKeys.Priority, "Priority", CustomFieldType.Text, Array.Empty<string>()),
+        // Lists the parcel forms use (Phase 1.5). The three below carry the values the reference screens showed; the rest start empty
+        // for the agency to fill (U: "empty, except where the screens show values").
+        new(LibraryKeys.OwnerType, "Owner type", CustomFieldType.List, new[] { "CAD Owner", "Commercial Sign Owner", "Fee Owner", "Prior Owner", "Vested Owner" }),
+        new(LibraryKeys.RelocationType, "Relocation type", CustomFieldType.List, new[] { "Residential", "Non-residential", "Personal Property only" }),
+        new(LibraryKeys.EncumbranceType, "Encumbrance type", CustomFieldType.List, new[]
+        {
+            "Mortgage Lien", "Easement - Access", "Mechanic Lien", "Financing Statements (UCC-1)", "Judgment", "Agreement", "Restrictive Covenants",
+            "Deed/Use Restrictions", "Lease", "Encroachment", "License", "Reservation", "Other", "Easement - Public Utility", "Easement - Private Utility",
+            "Easement - Other", "Deed of Trust",
+        }),
+        new("appraisal_type", "Appraisal type", CustomFieldType.List, Array.Empty<string>()),
+        new("appraisal_amount_type", "Appraisal amount type", CustomFieldType.List, Array.Empty<string>()),
+        new("review_type", "Appraisal review type", CustomFieldType.List, Array.Empty<string>()),
+        new("review_recommendation", "Review recommendation", CustomFieldType.List, Array.Empty<string>()),
+        new("mode_of_contact", "Mode of contact", CustomFieldType.List, Array.Empty<string>()),
+        new("easement_type", "Easement type", CustomFieldType.List, Array.Empty<string>()),
+        new("offer_type", "Offer type", CustomFieldType.List, Array.Empty<string>()),
+        new("settlement_type", "Settlement type", CustomFieldType.List, Array.Empty<string>()),
+        new("counteroffer_response", "Counteroffer response", CustomFieldType.List, Array.Empty<string>()),
+        new("jat_response", "JAT response", CustomFieldType.List, Array.Empty<string>()),
+        new("demo_status", "Demo status", CustomFieldType.List, Array.Empty<string>()),
+        new("disposition_type", "Disposition type", CustomFieldType.List, Array.Empty<string>()),
+        new("disposition_method", "Disposition method", CustomFieldType.List, Array.Empty<string>()),
+        new("disposition_status", "Disposition status", CustomFieldType.List, Array.Empty<string>()),
+        new("displacee_status", "Displacee status", CustomFieldType.List, Array.Empty<string>()),
+        new("displacee_interest", "Displacee interest", CustomFieldType.List, Array.Empty<string>()),
+        new("eligibility_type", "Relocation eligibility type", CustomFieldType.List, Array.Empty<string>()),
+        new("conveyance_type", "Conveyance type", CustomFieldType.List, Array.Empty<string>()),
+        new("fund_type", "Fund type", CustomFieldType.List, Array.Empty<string>()),
+        new("title_company", "Title company", CustomFieldType.List, Array.Empty<string>()),
+        new("address_type", "Address type", CustomFieldType.List, Array.Empty<string>()),
     };
 }

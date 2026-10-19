@@ -46,7 +46,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/administration', label: 'Configuration', Icon: Settings, page: 'administration' },
       { to: '/settings', label: 'Settings', Icon: Users, page: 'administration' },
-      { to: '/library', label: 'Library', Icon: BookOpen, page: 'administration' },
+      { to: '/library', label: 'Library', Icon: BookOpen, page: 'library' },
     ],
   },
 ]

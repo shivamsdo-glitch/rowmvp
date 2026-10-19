@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Aurigo.RowManagement.Application.Settings;
@@ -68,7 +68,7 @@ public class SettingsApiTests : IClassFixture<PgApi>
 
         roles.Select(r => r.Name).Take(11).Should().Equal("ProjectManager", "Designer", "DesignApprover", "Surveyor", "TitleResearcher", "Appraiser",
             "AppraisalApprover", "Negotiator", "RelocationAgent", "Finance", "Admin");
-        roles.Take(11).Should().OnlyContain(r => r.IsSystem && r.Permissions.Count == 13);
+        roles.Take(11).Should().OnlyContain(r => r.IsSystem && r.Permissions.Count == 14);
         roles.Single(r => r.Name == "Admin").IsLocked.Should().BeTrue();
         roles.Single(r => r.Name == "Admin").Permissions.Should().OnlyContain(p => p.CanCreate && p.CanRead && p.CanUpdate && p.CanDelete);
         var surveyor = roles.Single(r => r.Name == "Surveyor").Permissions.Single(p => p.PageKey == "survey");
@@ -83,7 +83,7 @@ public class SettingsApiTests : IClassFixture<PgApi>
         var created = await Ok<RoleDto>(await admin.Http.PostAsJsonAsync("/api/v1/roles", new { name, description = "Walks parcels" }), HttpStatusCode.Created);
 
         created.IsSystem.Should().BeFalse();
-        created.Permissions.Should().HaveCount(13).And.OnlyContain(p => !p.CanRead && !p.CanCreate && !p.CanUpdate && !p.CanDelete);
+        created.Permissions.Should().HaveCount(14).And.OnlyContain(p => !p.CanRead && !p.CanCreate && !p.CanUpdate && !p.CanDelete);
 
         var grid = created.Permissions.Select(p => p.PageKey == "parcels" ? p with { CanRead = true, CanUpdate = true } : p.PageKey == "dashboard" ? p with { CanRead = true } : p).ToList();
         var saved = await Ok<RoleDto>(await admin.Http.PutAsJsonAsync($"/api/v1/roles/{created.Id}/permissions", new { permissions = grid }));

@@ -9,7 +9,8 @@ import { renderApp } from '@/test/render-app'
 
 beforeEach(() => sessionStorage.clear())
 
-const canRead = (role: string) => levelFor(role, 'administration') !== null
+const canRead = (role: string) => levelFor(role, 'library') !== null
+const canChange = (role: string) => ['S', 'P'].includes(levelFor(role, 'library') ?? '')
 
 function open(role = 'Admin', extra: Partial<FakeLibraryOptions> = {}) {
   const fake = fakeLibraryApi({ role, rows: permissionRowsFor(role), ...extra })
@@ -212,20 +213,20 @@ describe('Library (defaults, values and fields)', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
-  it.each(ROLES.map((r) => [r]))('%s: the Library opens only for roles with Administration access, and the sidebar link agrees', async (role) => {
+  it.each(ROLES.map((r) => [r]))('%s: everyone reads the Library, only roles that change it see its controls, and the sidebar link agrees', async (role) => {
     open(role)
-    if (canRead(role)) {
-      expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /Library/ })).toHaveAttribute('href', '/library')
-      expect(await screen.findByRole('button', { name: 'New field' })).toBeInTheDocument()
-    } else {
-      expect(await screen.findByText(/don't have access/i)).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: /Library/ })).not.toBeInTheDocument()
+    expect(canRead(role)).toBe(true)
+    expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Library/ })).toHaveAttribute('href', '/library')
+    if (canChange(role)) expect(await screen.findByRole('button', { name: 'New field' })).toBeInTheDocument()
+    else {
+      await screen.findByRole('navigation', { name: 'Library fields' })
+      expect(screen.queryByRole('button', { name: 'New field' })).not.toBeInTheDocument()
     }
   })
 
   it('a role that can read but not change sees no editing controls', async () => {
-    const rows = permissionRowsFor('Admin').map((r) => (r.pageKey === 'administration' ? { ...r, canCreate: false, canUpdate: false, canDelete: false } : r))
+    const rows = permissionRowsFor('Admin').map((r) => (r.pageKey === 'library' ? { ...r, canCreate: false, canUpdate: false, canDelete: false } : r))
     const { user } = open('Admin', { rows })
     await user.click(await fieldButton(/Possession type/))
     const table = await valuesTable('Possession type')

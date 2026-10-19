@@ -12,6 +12,8 @@ export interface LibraryFieldSummary {
   isSystem: boolean
   valueCount: number
   activeCount: number
+  /** People choose from a list defined here (a dropdown) rather than typing. */
+  isLibraryDriven: boolean
 }
 
 export interface LibraryValue {
@@ -30,7 +32,20 @@ export interface LibraryField {
   fieldType: LibraryFieldType
   isSystem: boolean
   values: LibraryValue[]
+  isLibraryDriven: boolean
 }
+
+export interface LibraryAgent {
+  id: string
+  name: string
+  agentType: string
+  company: string | null
+  phone: string | null
+  email: string | null
+  isActive: boolean
+}
+
+export type LibraryAgentInput = Omit<LibraryAgent, 'id'>
 
 export interface LibraryImportResult {
   added: number
@@ -46,6 +61,9 @@ export const libraryApi = (api: ApiClient) => ({
   addValue: (id: string, value: string) => api.post<LibraryField>(`/api/v1/library/fields/${id}/values`, { value }),
   updateValue: (id: string, valueId: string, value: string, isActive: boolean) =>
     api.put<LibraryField>(`/api/v1/library/fields/${id}/values/${valueId}`, { value, isActive }),
+  agents: () => api.get<LibraryAgent[]>('/api/v1/library/agents'),
+  saveAgent: (id: string | null, a: LibraryAgentInput) =>
+    id ? api.put<LibraryAgent>(`/api/v1/library/agents/${id}`, a) : api.post<LibraryAgent>('/api/v1/library/agents', a),
   importValues: (id: string, values: string[]) => api.post<LibraryImportResult>(`/api/v1/library/fields/${id}/import`, { values }),
 })
 

@@ -26,7 +26,8 @@
     "agreements",
     "closing",
     "payments",
-    "administration"
+    "administration",
+    "library"
   ],
   "matrix": {
     "ProjectManager": {
@@ -42,7 +43,8 @@
       "agreements": "B",
       "closing": "B",
       "payments": "B",
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -57,7 +59,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -72,7 +75,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -87,7 +91,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -102,7 +107,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -117,7 +123,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -132,7 +139,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -147,7 +155,8 @@
       "agreements": "P",
       "closing": "S",
       "payments": "S",
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -162,7 +171,8 @@
       "agreements": null,
       "closing": null,
       "payments": null,
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "Finance": {
       "dashboard": "B",
@@ -177,7 +187,8 @@
       "agreements": "B",
       "closing": "B",
       "payments": "P",
-      "administration": null
+      "administration": null,
+      "library": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -192,7 +203,8 @@
       "agreements": "P",
       "closing": "P",
       "payments": "P",
-      "administration": "P"
+      "administration": "P",
+      "library": "P"
     }
   },
   "attachmentPages": {

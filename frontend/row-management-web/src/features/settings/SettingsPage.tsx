@@ -15,7 +15,7 @@ type SettingsTab = 'users' | 'permissions'
 export const PAGE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard', projects: 'Projects', parcels: 'Parcels', parties: 'Parties', title: 'Title', survey: 'Survey',
   appraisals: 'Appraisals', approvals: 'Approvals', negotiations: 'Negotiations', agreements: 'Agreements', closing: 'Closing',
-  payments: 'Payments', administration: 'Administration',
+  payments: 'Payments', administration: 'Administration', library: 'Library',
 }
 const pageLabel = (key: string) => PAGE_LABELS[key] ?? key
 

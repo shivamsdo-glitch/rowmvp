@@ -27,6 +27,7 @@
 | AT-AD-35 | Add a person | Username, name, email, role, password; the person signs in at once; taken username/email and weak passwords are refused with the reason | Unique across all agencies; 400 on bad input | ✅ | E2E `AT-AD-35`; API `SettingsApiTests` |
 | AT-AD-36 | Change or switch off a person | New role, name, email, active flag, new password; takes effect at their next sign-in; inactive people cannot sign in; no password or hash reaches the audit trail | Audited | ✅ | E2E `AT-AD-36`; API `SettingsApiTests` |
 | AT-AD-37 | Keep an administrator | You cannot deactivate yourself; the last active administrator cannot be demoted or switched off; another agency sees none of this agency's roles or users | 409 `cannot_deactivate_self`, 409 `last_admin`; 404 across agencies | ✅ | API `SettingsApiTests` |
+| AT-AD-38 | The Library: agents, the library-driven flag and the default lists | Open Library: an Agents list (name, job, company, phone, email, active) with filters; adding a field asks whether it is library-driven (a dropdown) or typed in; owner, relocation and encumbrance types and the empty lists the forms need are there | Everyone reads the Library; only the Library permission changes it; a job must be an active value of the Agent type list; the same person, job and company is entered once; 12 simultaneous identical adds give one | ✅ | E2E `AT-AD-38` x13; API `LibraryAgentsApiTests`, `LibraryApiTests`; frontend `agents.test.tsx`, `library.test.tsx` |
 
 ## Jobs that arrive with later phases
 
@@ -38,6 +39,7 @@
 | AT-AD-24 | Maintain document and report templates | 5 | Library entries versioned and used by title and offer documents |
 
 ## Changelog
+- Phase 1.5 slice 3: AT-AD-38 automated (Library agents, library-driven flag, default lists, Library permission).
 - Phase 1.5 slice 2: AT-AD-30..37 automated (Settings: users, roles, permission grid).
 - Phase 1 slice 3c: AT-AD-29 automated (plan-review gate setting).
 - Library: AT-AD-28 automated (fields, types, allowed values, defaults; parcel status list managed here; CSV import and export).

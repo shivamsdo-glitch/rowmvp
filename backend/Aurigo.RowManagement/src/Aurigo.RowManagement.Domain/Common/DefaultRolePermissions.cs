@@ -97,6 +97,7 @@ public static class DefaultRolePermissions
 
     /// <summary>The template for a role on a page, or null when the role has no access to it.</summary>
     public static string? TemplateFor(string role, string pageKey) =>
+        pageKey == PageKeys.Library && Matrix.ContainsKey(role) ? (role == RoleNames.Admin ? P : B) :
         Matrix.TryGetValue(role, out var pages) && pages.TryGetValue(pageKey, out var t) ? t : null;
 
     public static string DescriptionFor(string role) =>
