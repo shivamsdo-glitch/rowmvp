@@ -10,7 +10,10 @@ namespace Aurigo.RowManagement.Api.Controllers;
 public sealed record ProjectBody(
     string? Number, string Name, string? Description, string? Region, string? District, OversightType OversightType,
     string? FundingSource, decimal? FundingAmount, decimal? DesignEstimate,
-    DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate);
+    DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate,
+    string? Phase = null, string? Location = null, Guid? ProjectManagerUserId = null, string? DocumentFolderStructure = null,
+    string? DocumentProperties = null, string? ConstructionProjectManager = null, DateOnly? RightOfWayClearDate = null,
+    string? LinkedSource = null, string? LinkedProjectNumber = null);
 public sealed record NepaBody(NepaDecisionType? DecisionType, DateOnly? DecisionDate);
 public sealed record ExceptionBody(AcquisitionExceptionType? ExceptionType, DateOnly? ApprovedOn, string? Reason);
 public sealed record CostEstimateBody(decimal LandCost, decimal ImprovementsCost, decimal RelocationCost, decimal IndirectCost, string? Notes);
@@ -48,7 +51,9 @@ public sealed class ProjectsController : ControllerBase
     {
         var created = await _mediator.Send(new CreateProjectCommand(
             b.Number, b.Name, b.Description, b.Region, b.District, b.OversightType, b.FundingSource, b.FundingAmount,
-            b.DesignEstimate, b.LettingDate, b.PlanTurnInDate, b.ConstructionStartDate, b.ConstructionEndDate), ct);
+            b.DesignEstimate, b.LettingDate, b.PlanTurnInDate, b.ConstructionStartDate, b.ConstructionEndDate,
+            b.Phase, b.Location, b.ProjectManagerUserId, b.DocumentFolderStructure, b.DocumentProperties, b.ConstructionProjectManager,
+            b.RightOfWayClearDate, b.LinkedSource, b.LinkedProjectNumber), ct);
         return Created($"/api/v1/projects/{created.Id}", created);
     }
 
@@ -57,7 +62,20 @@ public sealed class ProjectsController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] ProjectBody b, CancellationToken ct) =>
         Ok(await _mediator.Send(new UpdateProjectCommand(
             id, b.Number, b.Name, b.Description, b.Region, b.District, b.OversightType, b.FundingSource, b.FundingAmount,
-            b.DesignEstimate, b.LettingDate, b.PlanTurnInDate, b.ConstructionStartDate, b.ConstructionEndDate), ct));
+            b.DesignEstimate, b.LettingDate, b.PlanTurnInDate, b.ConstructionStartDate, b.ConstructionEndDate,
+            b.Phase, b.Location, b.ProjectManagerUserId, b.DocumentFolderStructure, b.DocumentProperties, b.ConstructionProjectManager,
+            b.RightOfWayClearDate, b.LinkedSource, b.LinkedProjectNumber), ct));
+
+    /// <summary>People who can be chosen as a project's manager: active users of this agency.</summary>
+    [HttpGet("managers")]
+    [ProducesResponseType(typeof(IReadOnlyList<AssignableManagerDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Managers(CancellationToken ct) => Ok(await _mediator.Send(new ListAssignableManagersQuery(), ct));
+
+    /// <summary>Planned or Build projects a ROW project can be linked to (from the wider platform; a stand-in in the MVP).</summary>
+    [HttpGet("catalog")]
+    [ProducesResponseType(typeof(IReadOnlyList<CatalogProjectDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Catalog([FromQuery] string source, [FromQuery] string? search, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SearchProjectCatalogQuery(source, search), ct));
 
     /// <summary>Creates many projects from rows prepared elsewhere. Each row succeeds or fails on its own.</summary>
     [HttpPost("import")]

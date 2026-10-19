@@ -7,6 +7,8 @@ import {
 } from '@/api/projects'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
+import { useNavigate } from '@tanstack/react-router'
+import { parcelsApi } from '@/api/parcels'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -14,6 +16,7 @@ import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, money, numOrNull, orNull, Pill, SelectField, TextField,
 } from './form-kit'
 import { zoneName } from '../parcels/parcel-kit'
+import { ParcelForm } from '../parcels/ParcelForm'
 import { ProjectParcelsTab } from '../parcels/ProjectParcelsTab'
 import { PlanTab } from './PlanTab'
 import { ProjectForm } from './ProjectForm'
@@ -49,7 +52,20 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const { manager } = useAuth()
   const api = projectsApi(manager.api)
   const [tab, setTab] = useState<TabKey>('overview')
+  const [addingParcel, setAddingParcel] = useState(false)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const project = useQuery({ queryKey: ['project', projectId], queryFn: () => api.get(projectId) })
+  const createParcel = useMutation({
+    mutationFn: (input: Parameters<ReturnType<typeof parcelsApi>['create']>[0]) => parcelsApi(manager.api).create(input),
+    onSuccess: async (parcel) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['parcels'] }),
+        queryClient.invalidateQueries({ queryKey: ['rollup', projectId] }),
+      ])
+      await navigate({ to: '/parcels/$parcelId', params: { parcelId: parcel.id } })
+    },
+  })
 
   if (project.isPending) return <LoadingRows />
   if (project.isError) {
@@ -69,7 +85,21 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         title={`${p.number} · ${p.name}`}
         subtitle={[p.region, p.district].filter(Boolean).join(' / ') || undefined}
         crumbs={[{ label: 'Projects', to: '/projects' }, { label: p.number }]}
+        actions={manager.can('parcels', 'create') && (
+          <button type="button" className={buttonClassName('default')} onClick={() => setAddingParcel((a) => !a)}>Add parcel</button>
+        )}
       />
+      {addingParcel && manager.can('parcels', 'create') && (
+        <section aria-label="Add a parcel to this project" className="mb-6 rounded-lg border bg-card p-4">
+          <h2 className="mb-3 text-sm font-semibold">Add a parcel to {p.number}</h2>
+          <ParcelForm
+            defaultProjectId={p.id}
+            submitLabel="Create parcel"
+            onCancel={() => setAddingParcel(false)}
+            onSubmit={async (input) => { await createParcel.mutateAsync(input) }}
+          />
+        </section>
+      )}
       <GateBanner project={p} />
       <Tabs>
         <TabsList role="tablist" aria-label="Project sections">
@@ -146,11 +176,26 @@ function OverviewTab({ project: p }: { project: Project }) {
   return (
     <section aria-label="Project details" className="space-y-4">
       <Facts items={[
-        ['Project number', p.number], ['Name', p.name], ['Funding oversight', p.oversightType],
-        ['Funding source', p.fundingSource], ['Funding amount', money(p.fundingAmount)], ['Design estimate', money(p.designEstimate)],
-        ['Current estimate', money(p.currentEstimate)], ['Letting date', dateText(p.lettingDate)], ['Plan turn-in', dateText(p.planTurnInDate)],
-        ['Construction start', dateText(p.constructionStartDate)], ['Construction end', dateText(p.constructionEndDate)],
+        ['Project number', p.number], ['Name', p.name], ['Phase', p.phase], ['Location', p.location],
+        ['Project manager', p.projectManagerName], ['Funding oversight', p.oversightType],
+        ['Document folder structure', p.documentFolderStructure], ['Document properties', p.documentProperties],
+        ['Linked project', p.linkedSource ? `${p.linkedSource}: ${p.linkedProjectNumber} · ${p.linkedProjectName ?? ''}` : null],
       ]} />
+      <section aria-label="Funding information" className="space-y-2 border-t pt-4">
+        <h2 className="text-sm font-semibold">Funding information</h2>
+        <Facts items={[
+          ['Funding source', p.fundingSource], ['Funding amount', money(p.fundingAmount)], ['Design estimate', money(p.designEstimate)],
+          ['Board approved funds', money(p.boardApprovedFunds)], ['Cost estimate', money(p.currentEstimate)], ['Actual cost', money(p.actualCost)],
+        ]} />
+      </section>
+      <section aria-label="Construction details" className="space-y-2 border-t pt-4">
+        <h2 className="text-sm font-semibold">Construction details</h2>
+        <Facts items={[
+          ['Construction project manager', p.constructionProjectManager], ['Letting date', dateText(p.lettingDate)],
+          ['Right of way clear date', dateText(p.rightOfWayClearDate)], ['Plan turn-in', dateText(p.planTurnInDate)],
+          ['Construction start', dateText(p.constructionStartDate)], ['Construction end', dateText(p.constructionEndDate)],
+        ]} />
+      </section>
       {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
       <TimeZoneSection project={p} />
       {canUpdate && <button type="button" className={buttonClassName('outline')} onClick={() => setEditing(true)}>Edit project</button>}
@@ -270,14 +315,15 @@ function EstimatesTab({ project: p }: { project: Project }) {
 // ── Annual budget (ROW-013) ──────────────────────────────────────────────
 
 function BudgetTab({ project: p }: { project: Project }) {
-  const { manager, api, queryClient } = useProjectApi(p.id)
+  const { manager, api, queryClient, refreshProject } = useProjectApi(p.id)
   const canUpdate = manager.can('projects', 'update')
   const canDelete = manager.can('projects', 'delete')
   const budgets = useQuery({ queryKey: ['project', p.id, 'budgets'], queryFn: () => api.budgets(p.id) })
   const [v, setV] = useState({ fiscalYear: '', amount: '', notes: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['project', p.id, 'budgets'] })
+  // The project's board-approved funds are the budgets added up, so the project is read again too.
+  const refresh = () => Promise.all([queryClient.invalidateQueries({ queryKey: ['project', p.id, 'budgets'] }), refreshProject()])
   const save = useMutation({
     mutationFn: () => api.setBudget(p.id, Number(v.fiscalYear), numOrNull(v.amount) ?? NaN, orNull(v.notes)),
     onSuccess: async () => { await refresh(); setV({ fiscalYear: '', amount: '', notes: '' }) },

@@ -17,7 +17,16 @@ public sealed record ProjectDto(
     AcquisitionExceptionType? ExceptionType, DateOnly? ExceptionApprovedOn, string? ExceptionReason,
     AcquisitionGateDto AcquisitionGate, DateTime UpdatedAt,
     /// <summary>The project's own time zone; null means it follows the agency's.</summary>
-    string? TimeZoneId = null);
+    string? TimeZoneId = null,
+    string? Phase = null, string? Location = null, Guid? ProjectManagerUserId = null, string? ProjectManagerName = null,
+    string? DocumentFolderStructure = null, string? DocumentProperties = null, string? ConstructionProjectManager = null,
+    DateOnly? RightOfWayClearDate = null, string? LinkedSource = null, string? LinkedProjectNumber = null, string? LinkedProjectName = null,
+    /// <summary>The funds the board approved: the project's annual budgets added together.</summary>
+    decimal BoardApprovedFunds = 0m,
+    /// <summary>What has been spent: payments are not built yet, so this is 0 until they are.</summary>
+    decimal ActualCost = 0m);
+
+public sealed record AssignableManagerDto(Guid Id, string Name);
 
 public sealed record CostEstimateDto(
     Guid Id, int Version, decimal LandCost, decimal ImprovementsCost, decimal RelocationCost, decimal IndirectCost,

@@ -1,6 +1,7 @@
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.Common;
+using Aurigo.RowManagement.Application.ExternalServices;
 using Aurigo.RowManagement.Application.Mappers;
 using Aurigo.RowManagement.Application.Persistence;
 using Aurigo.RowManagement.Domain.Common;
@@ -29,6 +30,15 @@ public interface IProjectFields
     DateOnly? PlanTurnInDate { get; }
     DateOnly? ConstructionStartDate { get; }
     DateOnly? ConstructionEndDate { get; }
+    string? Phase { get; }
+    string? Location { get; }
+    Guid? ProjectManagerUserId { get; }
+    string? DocumentFolderStructure { get; }
+    string? DocumentProperties { get; }
+    string? ConstructionProjectManager { get; }
+    DateOnly? RightOfWayClearDate { get; }
+    string? LinkedSource { get; }
+    string? LinkedProjectNumber { get; }
 }
 
 public abstract class ProjectFieldsValidator<T> : AbstractValidator<T> where T : IProjectFields
@@ -46,6 +56,17 @@ public abstract class ProjectFieldsValidator<T> : AbstractValidator<T> where T :
         RuleFor(x => x.FundingSource).MaximumLength(200);
         RuleFor(x => x.FundingAmount).GreaterThanOrEqualTo(0m).LessThan(1_000_000_000_000m);
         RuleFor(x => x.DesignEstimate).GreaterThanOrEqualTo(0m).LessThan(1_000_000_000_000m);
+        RuleFor(x => x.Phase).MaximumLength(100);
+        RuleFor(x => x.Location).MaximumLength(500);
+        RuleFor(x => x.DocumentFolderStructure).MaximumLength(100);
+        RuleFor(x => x.DocumentProperties).MaximumLength(100);
+        RuleFor(x => x.ConstructionProjectManager).MaximumLength(200);
+        RuleFor(x => x.LinkedSource).Must(CatalogSources.IsKnown).When(x => !string.IsNullOrWhiteSpace(x.LinkedSource))
+            .WithMessage("Link to a Planned or a Build project.");
+        RuleFor(x => x.LinkedProjectNumber).NotEmpty().MaximumLength(50).When(x => !string.IsNullOrWhiteSpace(x.LinkedSource))
+            .WithMessage("Choose the project to link to.");
+        RuleFor(x => x.LinkedSource).NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.LinkedProjectNumber))
+            .WithMessage("Say whether the linked project is Planned or Build.");
         RuleFor(x => x.ConstructionEndDate)
             .GreaterThanOrEqualTo(x => x.ConstructionStartDate!.Value)
             .When(x => x.ConstructionStartDate is not null && x.ConstructionEndDate is not null)
@@ -56,7 +77,7 @@ public abstract class ProjectFieldsValidator<T> : AbstractValidator<T> where T :
 internal static class ProjectLoading
 {
     public static async Task<Project> LoadAsync(IRowDbContext db, Guid id, CancellationToken ct) =>
-        await db.Projects.Include(p => p.Estimates).Include(p => p.Authorizations)
+        await db.Projects.Include(p => p.Estimates).Include(p => p.Authorizations).Include(p => p.Budgets)
             .FirstOrDefaultAsync(p => p.Id == id, ct)
         ?? throw new NotFoundException("Project", id);
 
@@ -83,6 +104,51 @@ internal static class ProjectLoading
         p.PlanTurnInDate = f.PlanTurnInDate;
         p.ConstructionStartDate = f.ConstructionStartDate;
         p.ConstructionEndDate = f.ConstructionEndDate;
+        p.Phase = Clean(f.Phase);
+        p.Location = Clean(f.Location);
+        p.DocumentFolderStructure = Clean(f.DocumentFolderStructure);
+        p.DocumentProperties = Clean(f.DocumentProperties);
+        p.ConstructionProjectManager = Clean(f.ConstructionProjectManager);
+        p.RightOfWayClearDate = f.RightOfWayClearDate;
+    }
+
+    /// <summary>
+    /// The fields that need another record to be true: the project manager must be an active person in this agency (the name is kept as
+    /// chosen) and a linked Planned or Build project must exist in that module.
+    /// </summary>
+    public static async Task ApplyLookupsAsync(IRowDbContext db, IProjectCatalogClient? catalog, Project p, IProjectFields f, CancellationToken ct)
+    {
+        if (f.ProjectManagerUserId is { } managerId)
+        {
+            if (p.ProjectManagerUserId != managerId)
+            {
+                var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Id == managerId && u.IsActive, ct)
+                    ?? throw new InvalidRequestException("unknown_project_manager", "Choose a project manager from the list.");
+                p.ProjectManagerName = user.FullName;
+            }
+            p.ProjectManagerUserId = managerId;
+        }
+        else
+        {
+            p.ProjectManagerUserId = null;
+            p.ProjectManagerName = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(f.LinkedSource))
+        {
+            p.LinkedSource = null;
+            p.LinkedProjectNumber = null;
+            p.LinkedProjectName = null;
+        }
+        else if (p.LinkedSource != f.LinkedSource || !string.Equals(p.LinkedProjectNumber, f.LinkedProjectNumber?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            var found = catalog is null ? null : await catalog.FindAsync(f.LinkedSource!, f.LinkedProjectNumber!, ct);
+            if (found is null)
+                throw new InvalidRequestException("unknown_linked_project", $"There is no {f.LinkedSource} project numbered '{f.LinkedProjectNumber!.Trim()}'.");
+            p.LinkedSource = found.Source;
+            p.LinkedProjectNumber = found.Number;
+            p.LinkedProjectName = found.Name;
+        }
     }
 }
 
@@ -92,7 +158,10 @@ internal static class ProjectLoading
 public sealed record CreateProjectCommand(
     string? Number, string Name, string? Description, string? Region, string? District, OversightType OversightType,
     string? FundingSource, decimal? FundingAmount, decimal? DesignEstimate,
-    DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate)
+    DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate,
+    string? Phase = null, string? Location = null, Guid? ProjectManagerUserId = null, string? DocumentFolderStructure = null,
+    string? DocumentProperties = null, string? ConstructionProjectManager = null, DateOnly? RightOfWayClearDate = null,
+    string? LinkedSource = null, string? LinkedProjectNumber = null)
     : IRequest<ProjectDto>, IProjectFields;
 
 public sealed class CreateProjectCommandValidator : ProjectFieldsValidator<CreateProjectCommand> { }
@@ -103,6 +172,7 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     private readonly IPagePermissionService _permissions;
     private readonly ProjectNumberGenerator _numbers;
     private readonly ICurrentTenant _tenant;
+    private readonly IProjectCatalogClient? _catalog;
 
     /// <summary>
     /// One issuer at a time per agency within this server, so simultaneous creates queue instead of fighting over the
@@ -111,12 +181,14 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, SemaphoreSlim> IssueLocks = new();
 
     public CreateProjectCommandHandler(
-        IRowDbContext db, IPagePermissionService permissions, ProjectNumberGenerator numbers, ICurrentTenant tenant)
+        IRowDbContext db, IPagePermissionService permissions, ProjectNumberGenerator numbers, ICurrentTenant tenant,
+        IProjectCatalogClient? catalog = null)
     {
         _db = db;
         _permissions = permissions;
         _numbers = numbers;
         _tenant = tenant;
+        _catalog = catalog;
     }
 
     public async Task<ProjectDto> Handle(CreateProjectCommand request, CancellationToken ct)
@@ -159,6 +231,7 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     {
         var project = new Project { Number = number };
         ProjectLoading.Apply(project, fields);
+        await ProjectLoading.ApplyLookupsAsync(_db, _catalog, project, fields, ct);
         _db.Projects.Add(project);
         try
         {
@@ -178,7 +251,10 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
 public sealed record UpdateProjectCommand(
     Guid Id, string? Number, string Name, string? Description, string? Region, string? District, OversightType OversightType,
     string? FundingSource, decimal? FundingAmount, decimal? DesignEstimate,
-    DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate)
+    DateOnly? LettingDate, DateOnly? PlanTurnInDate, DateOnly? ConstructionStartDate, DateOnly? ConstructionEndDate,
+    string? Phase = null, string? Location = null, Guid? ProjectManagerUserId = null, string? DocumentFolderStructure = null,
+    string? DocumentProperties = null, string? ConstructionProjectManager = null, DateOnly? RightOfWayClearDate = null,
+    string? LinkedSource = null, string? LinkedProjectNumber = null)
     : IRequest<ProjectDto>, IProjectFields;
 
 public sealed class UpdateProjectCommandValidator : ProjectFieldsValidator<UpdateProjectCommand>
@@ -191,10 +267,13 @@ public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectC
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
 
-    public UpdateProjectCommandHandler(IRowDbContext db, IPagePermissionService permissions)
+    private readonly IProjectCatalogClient? _catalog;
+
+    public UpdateProjectCommandHandler(IRowDbContext db, IPagePermissionService permissions, IProjectCatalogClient? catalog = null)
     {
         _db = db;
         _permissions = permissions;
+        _catalog = catalog;
     }
 
     public async Task<ProjectDto> Handle(UpdateProjectCommand request, CancellationToken ct)
@@ -209,6 +288,7 @@ public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectC
 
         project.Number = number;
         ProjectLoading.Apply(project, request);
+        await ProjectLoading.ApplyLookupsAsync(_db, _catalog, project, request, ct);
         await _db.SaveChangesAsync(ct);
         return project.ToDto();
     }

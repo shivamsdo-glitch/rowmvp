@@ -23,6 +23,15 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         b.Property(x => x.ExceptionType).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.ExceptionReason).HasMaxLength(1000);
         b.Property(x => x.TimeZoneId).HasMaxLength(64);
+        b.Property(x => x.Phase).HasMaxLength(100);
+        b.Property(x => x.Location).HasMaxLength(500);
+        b.Property(x => x.ProjectManagerName).HasMaxLength(250);
+        b.Property(x => x.DocumentFolderStructure).HasMaxLength(100);
+        b.Property(x => x.DocumentProperties).HasMaxLength(100);
+        b.Property(x => x.ConstructionProjectManager).HasMaxLength(200);
+        b.Property(x => x.LinkedSource).HasMaxLength(10);
+        b.Property(x => x.LinkedProjectNumber).HasMaxLength(50);
+        b.Property(x => x.LinkedProjectName).HasMaxLength(250);
         // The project number is unique within a tenant (ROW-001).
         b.HasIndex(x => new { x.TenantId, x.Number }).IsUnique();
         b.HasIndex(x => new { x.TenantId, x.Region, x.District });

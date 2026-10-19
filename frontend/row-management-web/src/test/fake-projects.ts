@@ -68,7 +68,9 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
       description: null, region: null, district: null, oversightType: 'Federal', fundingSource: null, fundingAmount: null,
       designEstimate: null, currentEstimate: null, lettingDate: null, planTurnInDate: null, constructionStartDate: null,
       constructionEndDate: null, nepaDecisionType: null, nepaDecisionDate: null, exceptionType: null, exceptionApprovedOn: null,
-      exceptionReason: null, timeZoneId: null, acquisitionGate: { unlocked: false, reason: 'Blocked', missing: [] }, updatedAt: '2026-01-01T00:00:00Z', ...p,
+      exceptionReason: null, timeZoneId: null, phase: null, location: null, projectManagerUserId: null, projectManagerName: null,
+      documentFolderStructure: null, documentProperties: null, constructionProjectManager: null, rightOfWayClearDate: null,
+      linkedSource: null, linkedProjectNumber: null, linkedProjectName: null, boardApprovedFunds: 0, actualCost: 0, acquisitionGate: { unlocked: false, reason: 'Blocked', missing: [] }, updatedAt: '2026-01-01T00:00:00Z', ...p,
     }
   }
   const state = {
@@ -86,6 +88,23 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
   }
   state.projects.forEach(refresh)
   const find = (id: string) => state.projects.find((p) => p.id === id)
+  const MANAGERS = [{ id: 'u-pm', name: 'ROW Project Manager' }, { id: 'u-design', name: 'ROW Designer' }]
+  const CATALOG = [
+    { source: 'Planned', number: 'PLN-2026-001', name: 'Harbor Corridor Improvements' },
+    { source: 'Planned', number: 'PLN-2026-002', name: 'Maple Avenue Extension' },
+    { source: 'Build', number: 'BLD-2025-017', name: 'Harbor Bridge Replacement' },
+  ] as const
+  // What the server does with the two lookups: names the manager, and finds the linked project in the other module.
+  const resolveLookups = (p: Project): string | null => {
+    const manager = p.projectManagerUserId ? MANAGERS.find((m) => m.id === p.projectManagerUserId) : null
+    if (p.projectManagerUserId && !manager) return 'Choose a project manager from the list.'
+    p.projectManagerName = manager?.name ?? null
+    if (!p.linkedSource) { p.linkedProjectNumber = null; p.linkedProjectName = null; return null }
+    const found = CATALOG.find((c) => c.source === p.linkedSource && c.number === p.linkedProjectNumber)
+    if (!found) return `There is no ${p.linkedSource} project numbered '${p.linkedProjectNumber}'.`
+    p.linkedProjectName = found.name
+    return null
+  }
   const can = (action: 'create' | 'read' | 'update' | 'delete', page = 'projects') =>
     !!opts.rows?.find((r) => r.pageKey === page)?.[`can${action[0].toUpperCase()}${action.slice(1)}` as 'canCreate']
   const forbidden = () => problem(403, 'forbidden', 'Your role does not allow this.')
@@ -146,6 +165,8 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
       if (body.number && state.projects.some((p) => p.number.toLowerCase() === String(body.number).toLowerCase()))
         return problem(409, 'project_number_exists', `A project numbered '${body.number}' already exists.`)
       const p = mk({ ...body, number: body.number ?? undefined })
+      const bad = resolveLookups(p)
+      if (bad) return problem(400, 'unknown_linked_project', bad)
       state.projects.push(p)
       refresh(p)
       return json(p, 201)
@@ -172,6 +193,13 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
       return json(state.settings)
     }
 
+    if (rest[0] === 'managers' && method === 'GET') return can('read') ? json(MANAGERS) : forbidden()
+    if (rest[0] === 'catalog' && method === 'GET') {
+      if (!can('read')) return forbidden()
+      const q = (url.searchParams.get('search') ?? '').toLowerCase()
+      return json(CATALOG.filter((c) => c.source === url.searchParams.get('source') && (!q || `${c.number} ${c.name}`.toLowerCase().includes(q))))
+    }
+
     const project = find(rest[0])
     if (!project || opts.detailMissing) return problem(404, 'not_found', `Project with key '${rest[0]}' was not found.`)
     const sub = rest[1]
@@ -181,7 +209,10 @@ export function fakeProjectsApi(opts: FakeProjectsOptions): FakeProjects {
       if (method === 'PUT') {
         if (!can('update')) return forbidden()
         if (!String(body.name ?? '').trim()) return problem(400, 'validation_failed', 'Validation failed.', { Name: ['Name is required.'] })
-        Object.assign(project, body, { number: body.number || project.number })
+        const draft = { ...project, ...body, number: body.number || project.number } as Project
+        const bad = resolveLookups(draft)
+        if (bad) return problem(400, 'unknown_linked_project', bad)
+        Object.assign(project, draft)
         refresh(project)
         return json(project)
       }

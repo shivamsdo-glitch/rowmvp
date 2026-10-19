@@ -75,5 +75,7 @@ public static class DefaultLibrary
         new("fund_type", "Fund type", CustomFieldType.List, Array.Empty<string>()),
         new("title_company", "Title company", CustomFieldType.List, Array.Empty<string>()),
         new("address_type", "Address type", CustomFieldType.List, Array.Empty<string>()),
+        new("document_folder_structure", "Document folder structure", CustomFieldType.List, Array.Empty<string>()),
+        new("document_properties", "Document properties", CustomFieldType.List, Array.Empty<string>()),
     };
 }

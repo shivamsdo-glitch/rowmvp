@@ -61,6 +61,36 @@ export interface Project {
   exceptionReason: string | null
   acquisitionGate: AcquisitionGate
   updatedAt: string
+  phase: string | null
+  location: string | null
+  projectManagerUserId: string | null
+  projectManagerName: string | null
+  documentFolderStructure: string | null
+  documentProperties: string | null
+  constructionProjectManager: string | null
+  rightOfWayClearDate: string | null
+  /** The Planned or Build project this ROW project is linked to. */
+  linkedSource: CatalogSource | null
+  linkedProjectNumber: string | null
+  linkedProjectName: string | null
+  /** The annual budgets added together. */
+  boardApprovedFunds: number
+  /** 0 until payments exist. */
+  actualCost: number
+}
+
+export const CATALOG_SOURCES = ['Planned', 'Build'] as const
+export type CatalogSource = (typeof CATALOG_SOURCES)[number]
+
+export interface CatalogProject {
+  source: CatalogSource
+  number: string
+  name: string
+}
+
+export interface AssignableManager {
+  id: string
+  name: string
 }
 
 /** What the create and edit forms send. Blank optional fields are null. */
@@ -78,6 +108,15 @@ export interface ProjectInput {
   planTurnInDate: string | null
   constructionStartDate: string | null
   constructionEndDate: string | null
+  phase?: string | null
+  location?: string | null
+  projectManagerUserId?: string | null
+  documentFolderStructure?: string | null
+  documentProperties?: string | null
+  constructionProjectManager?: string | null
+  rightOfWayClearDate?: string | null
+  linkedSource?: CatalogSource | null
+  linkedProjectNumber?: string | null
 }
 
 export interface Paged<T> {
@@ -180,6 +219,8 @@ export const projectsApi = (api: ApiClient) => ({
       pageSize: f.pageSize ?? 25,
     }),
   get: (id: string) => api.get<Project>(`/api/v1/projects/${id}`),
+  managers: () => api.get<AssignableManager[]>('/api/v1/projects/managers'),
+  catalog: (source: CatalogSource, search?: string) => api.get<CatalogProject[]>('/api/v1/projects/catalog', { source, search: search || undefined }),
   create: (body: ProjectInput) => api.post<Project>('/api/v1/projects', body),
   update: (id: string, body: ProjectInput) => api.put<Project>(`/api/v1/projects/${id}`, body),
   import: (rows: Partial<ProjectInput>[]) => api.post<ImportSummary>('/api/v1/projects/import', { rows }),

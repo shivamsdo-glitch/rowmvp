@@ -1887,6 +1887,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("construction_end_date");
 
+                    b.Property<string>("ConstructionProjectManager")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("construction_project_manager");
+
                     b.Property<DateOnly?>("ConstructionStartDate")
                         .HasColumnType("date")
                         .HasColumnName("construction_start_date");
@@ -1913,6 +1918,16 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("district");
+
+                    b.Property<string>("DocumentFolderStructure")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("document_folder_structure");
+
+                    b.Property<string>("DocumentProperties")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("document_properties");
 
                     b.Property<DateOnly?>("ExceptionApprovedOn")
                         .HasColumnType("date")
@@ -1942,6 +1957,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("letting_date");
 
+                    b.Property<string>("LinkedProjectName")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("linked_project_name");
+
+                    b.Property<string>("LinkedProjectNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("linked_project_number");
+
+                    b.Property<string>("LinkedSource")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("linked_source");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("location");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1969,14 +2004,32 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("oversight_type");
 
+                    b.Property<string>("Phase")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("phase");
+
                     b.Property<DateOnly?>("PlanTurnInDate")
                         .HasColumnType("date")
                         .HasColumnName("plan_turn_in_date");
+
+                    b.Property<string>("ProjectManagerName")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("project_manager_name");
+
+                    b.Property<Guid?>("ProjectManagerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_manager_user_id");
 
                     b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("region");
+
+                    b.Property<DateOnly?>("RightOfWayClearDate")
+                        .HasColumnType("date")
+                        .HasColumnName("right_of_way_clear_date");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")

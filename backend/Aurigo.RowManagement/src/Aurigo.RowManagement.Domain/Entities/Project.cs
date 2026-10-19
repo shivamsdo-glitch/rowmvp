@@ -14,6 +14,23 @@ public class Project : EntityBase
     public string? Region { get; set; }
     public string? District { get; set; }
 
+    // Phase 1.5 slice 4 (ADR 0016): the fields of the ROW project details screen.
+    /// <summary>The project's phase ("Phase 1"); free text.</summary>
+    public string? Phase { get; set; }
+    public string? Location { get; set; }
+    /// <summary>The person managing the ROW project (an agency user); the name is kept as it was when chosen so the project stays readable if the person leaves.</summary>
+    public Guid? ProjectManagerUserId { get; set; }
+    public string? ProjectManagerName { get; set; }
+    /// <summary>Values of the Library lists "Document folder structure" and "Document properties" (no document platform behind them yet).</summary>
+    public string? DocumentFolderStructure { get; set; }
+    public string? DocumentProperties { get; set; }
+    public string? ConstructionProjectManager { get; set; }
+    public DateOnly? RightOfWayClearDate { get; set; }
+    /// <summary>The Planned Projects or Build Projects record this ROW project is linked to ("Planned" or "Build"), and its number and name as they were when linked.</summary>
+    public string? LinkedSource { get; set; }
+    public string? LinkedProjectNumber { get; set; }
+    public string? LinkedProjectName { get; set; }
+
     /// <summary>
     /// IANA time zone this project's dates are counted in; null follows the agency's (an agency can span several zones).
     /// </summary>

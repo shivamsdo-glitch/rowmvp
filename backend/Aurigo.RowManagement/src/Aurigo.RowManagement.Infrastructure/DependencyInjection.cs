@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddSingleton<Aurigo.RowManagement.Application.Storage.IFileStorage, LocalDiskFileStorage>();
         services.AddSingleton<IDocMgmtClient, StubDocMgmtClient>();
         services.AddSingleton<INotificationClient, StubNotificationClient>();
+        services.AddSingleton<IProjectCatalogClient, StubProjectCatalogClient>();
 
         return services;
     }
