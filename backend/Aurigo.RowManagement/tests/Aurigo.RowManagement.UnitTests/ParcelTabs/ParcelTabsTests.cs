@@ -227,4 +227,63 @@ public class ParcelTabsTests
         var f = PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.TitleEncumbrances));
         ((f.Create ? "C" : "") + (f.Read ? "R" : "") + (f.Update ? "U" : "") + (f.Delete ? "D" : "")).Should().Be(expected, role);
     }
+
+    // ── Title and Closing (slice 6b) ──
+
+    private static SaveTitleClosingCommand TC(
+        decimal? amount = null, DateOnly? recvd = null, DateOnly? exec = null, DateOnly? subm = null, DateOnly? appr = null, string? gf = null,
+        IReadOnlyList<ConveyanceDocumentInput>? conveyances = null, IReadOnlyList<TitleCommitmentInput>? commitments = null) =>
+        new(Guid.NewGuid(), null, null, null, gf, null, null, null, amount, recvd, exec, false, subm, appr, null, null, null, conveyances, commitments);
+
+    private static bool Valid(SaveTitleClosingCommand c) => new SaveTitleClosingCommandValidator().Validate(c).IsValid;
+
+    [Fact]
+    public void AT_TE_41_An_empty_title_and_closing_record_is_valid_and_the_amount_cannot_be_negative()
+    {
+        Valid(TC()).Should().BeTrue();
+        Valid(TC(amount: 0m)).Should().BeTrue();
+        Valid(TC(amount: -0.01m)).Should().BeFalse();
+        Valid(TC(gf: new string('g', 101))).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AT_TE_41_Closing_dates_must_come_in_order()
+    {
+        var d = new DateOnly(2026, 4, 10);
+        Valid(TC(recvd: d, exec: d.AddDays(-1))).Should().BeFalse();
+        Valid(TC(recvd: d, exec: d)).Should().BeTrue();
+        Valid(TC(subm: d, appr: d.AddDays(-1))).Should().BeFalse();
+        Valid(TC(subm: d, appr: d.AddDays(2))).Should().BeTrue();
+        Valid(TC(subm: null, appr: d)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void AT_TE_41_Conveyances_are_recorded_after_they_are_signed_and_commitments_need_a_vested_owner_name()
+    {
+        var d = new DateOnly(2026, 4, 20);
+        Valid(TC(conveyances: new[] { new ConveyanceDocumentInput("Deed", d, d.AddDays(-1), null) })).Should().BeFalse();
+        Valid(TC(conveyances: new[] { new ConveyanceDocumentInput("Deed", d, d, "2026-1") })).Should().BeTrue();
+        Valid(TC(commitments: new[] { new TitleCommitmentInput("", null, null, null, null, null, null) })).Should().BeFalse();
+        Valid(TC(commitments: new[] { new TitleCommitmentInput("Kamali", null, null, null, null, d, d.AddDays(-1)) })).Should().BeFalse();
+        Valid(TC(commitments: new[] { new TitleCommitmentInput("Kamali", null, null, null, null, d, d) })).Should().BeTrue();
+        Valid(TC(commitments: Enumerable.Range(0, 51).Select(i => new TitleCommitmentInput($"O{i}", null, null, null, null, null, null)).ToList())).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("ProjectManager", "R")]
+    [InlineData("Designer", "R")]
+    [InlineData("DesignApprover", "R")]
+    [InlineData("Surveyor", "R")]
+    [InlineData("TitleResearcher", "CRU")]
+    [InlineData("Appraiser", "R")]
+    [InlineData("AppraisalApprover", "R")]
+    [InlineData("Negotiator", "CRU")]
+    [InlineData("RelocationAgent", "R")]
+    [InlineData("Finance", "R")]
+    [InlineData("Admin", "CRUD")]
+    public void AT_X_50_The_default_access_to_Title_and_Closing_follows_the_approved_matrix(string role, string expected)
+    {
+        var f = PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.TitleClosing));
+        ((f.Create ? "C" : "") + (f.Read ? "R" : "") + (f.Update ? "U" : "") + (f.Delete ? "D" : "")).Should().Be(expected, role);
+    }
 }

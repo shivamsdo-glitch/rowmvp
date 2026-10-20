@@ -40,3 +40,57 @@ public class ParcelEncumbranceLink : EntityBase
     public string? ModuleName { get; set; }
     public string? Notes { get; set; }
 }
+
+/// <summary>
+/// The title and closing record of a parcel (Phase 1.5 Title and Closing tab, ADR 0018): one per parcel, numbered "TC-&lt;parcel number&gt;".
+/// It holds who is handling title and closing, the purchase and sale agreement and closing dates, and two grids: the conveyance documents
+/// and the title commitments.
+/// </summary>
+public class ParcelTitleClosing : EntityBase
+{
+    public Guid ParcelId { get; set; }
+    public string Number { get; set; } = default!;
+    public string? AssignedTo { get; set; }
+    /// <summary>A value of the Library's title company list.</summary>
+    public string? TitleCompany { get; set; }
+    public string? TitleClosingAgent { get; set; }
+    public string? GfNumber { get; set; }
+    public string? FinalTitlePolicyNo { get; set; }
+
+    public DateOnly? PsaSignedByOwnerDate { get; set; }
+    public DateOnly? PsaSignedByAtpDate { get; set; }
+    public decimal? PsaAmount { get; set; }
+    public DateOnly? SettlementReceivedDate { get; set; }
+    public DateOnly? SettlementExecutedDate { get; set; }
+    public bool CurativeItemsCompleted { get; set; }
+    public DateOnly? ClosingPackageSubmittedDate { get; set; }
+    public DateOnly? ClosingPackageApprovedDate { get; set; }
+    public DateOnly? ClosingInstructionDate { get; set; }
+    public DateOnly? AnticipatedClosingDate { get; set; }
+    public DateOnly? ActualClosingDate { get; set; }
+
+    public List<ParcelConveyanceDocument> ConveyanceDocuments { get; set; } = new();
+    public List<ParcelTitleCommitment> TitleCommitments { get; set; } = new();
+}
+
+public class ParcelConveyanceDocument : EntityBase
+{
+    public Guid TitleClosingId { get; set; }
+    /// <summary>A value of the Library's conveyance type list.</summary>
+    public string? ConveyanceType { get; set; }
+    public DateOnly? SignedDate { get; set; }
+    public DateOnly? RecordedDate { get; set; }
+    public string? RecordingNumber { get; set; }
+}
+
+public class ParcelTitleCommitment : EntityBase
+{
+    public Guid TitleClosingId { get; set; }
+    public string VestedOwnerName { get; set; } = default!;
+    public DateOnly? RequestedDate { get; set; }
+    public DateOnly? ReceivedDate { get; set; }
+    public DateOnly? EffectiveDate { get; set; }
+    public DateOnly? IssuedDate { get; set; }
+    public DateOnly? CurativePlanSubmittedDate { get; set; }
+    public DateOnly? CurativePlanApprovedDate { get; set; }
+}

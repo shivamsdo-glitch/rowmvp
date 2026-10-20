@@ -116,6 +116,142 @@ test.describe('Title Researcher · title encumbrances', () => {
   })
 })
 
+/** Agents are people of the Library; the form's "Assigned to" picks from them. Adding the same person twice is refused, which is fine here. */
+async function ensureAgent(request: APIRequestContext, name: string) {
+  const headers = await adminHeaders(request)
+  const res = await request.post('/api/v1/library/agents', { headers, data: { name, agentType: 'Negotiator', company: null, phone: null, email: null, isActive: true } })
+  expect([200, 201, 409]).toContain(res.status())
+}
+
+test.describe('Title Researcher · title and closing', () => {
+  test('AT-TE-41 saves the title and closing record, adds conveyance documents and title commitments, changes it and attaches a file', async ({ page, request }) => {
+    await ensureLibraryValue(request, 'title_company', 'Lone Star Title')
+    await ensureLibraryValue(request, 'conveyance_type', 'Warranty Deed')
+    await ensureAgent(request, 'Casey Closer')
+    const parcel = await makeParcel(request)
+    const admin = await adminHeaders(request)
+    for (const [name, type] of [['Fee Person', 'Fee Owner'], ['Vested Person', 'Vested Owner']])
+      expect((await request.post(`/api/v1/parcels/${parcel.id}/ownerships`, { headers: admin, data: { ownerName: name, ownerType: type } })).status()).toBe(201)
+
+    await signInViaUi(page, 'TitleResearcher')
+    await openTab(page, parcel.id, 'Title and closing')
+    const form = page.getByRole('form', { name: 'Title and closing' })
+    await expect(form).toContainText('Assigned when saved')
+
+    await form.getByLabel(/^Assigned to/).selectOption('Casey Closer')
+    await form.getByLabel(/^Title company/).selectOption('Lone Star Title')
+    await form.getByLabel(/^GF number/).fill('GF-100')
+    await form.getByLabel(/^Final title policy no/).fill('FTP-7')
+    await form.getByLabel(/^Purchase and sale agreement amount/).fill('125000.50')
+    await form.getByLabel(/^Purchase and sale agreement signed by owner date/).fill('2026-03-01')
+    await form.getByLabel(/^Settlement statement received date/).fill('2026-04-05')
+    await form.getByLabel(/^Settlement statement executed date/).fill('2026-04-01')
+    await form.getByRole('button', { name: 'Save title and closing' }).click()
+    await expect(form.getByText('The statement cannot be executed before it is received.')).toBeVisible()
+    await form.getByLabel(/^Settlement statement executed date/).fill('2026-04-08')
+    await form.getByLabel('Curative items completed').check()
+
+    await form.getByLabel(/^Conveyance type/).selectOption('Warranty Deed')
+    await form.getByLabel(/^Conveyance document signed date/).fill('2026-04-20')
+    await form.getByLabel(/^Conveyance document recorded date/).fill('2026-04-25')
+    await form.getByLabel(/^Conveyance document recording number/).fill('2026-0001')
+    await form.getByRole('button', { name: 'Add conveyance document' }).click()
+    await expect(form.getByRole('table', { name: 'Conveyance documents' })).toContainText('2026-0001')
+
+    await form.getByLabel(/^Commitment vested owner name/).fill('Vested Person')
+    await form.getByLabel(/^Title commitment requested date/).fill('2026-02-01')
+    await form.getByLabel(/^Title commitment issued date/).fill('2026-02-11')
+    await form.getByRole('button', { name: 'Add title commitment' }).click()
+    await expect(form.getByRole('table', { name: 'Title commitments' })).toContainText('Vested Person')
+
+    await form.getByRole('button', { name: 'Save title and closing' }).click()
+    await expect(page.getByText('Title and closing saved.')).toBeVisible()
+    await expect(form).toContainText(`TC-${parcel.number}`)
+    await expect(form).toContainText('Vested Person')
+    await expect(form).not.toContainText('Fee Person')
+
+    // Reload: everything is read back from the server.
+    await page.reload()
+    await page.getByRole('tab', { name: 'Title and closing' }).click()
+    const again = page.getByRole('form', { name: 'Title and closing' })
+    await expect(again.getByLabel(/^GF number/)).toHaveValue('GF-100')
+    await expect(again.getByLabel(/^Title company/)).toHaveValue('Lone Star Title')
+    await expect(again.getByLabel('Curative items completed')).toBeChecked()
+    await expect(again.getByRole('table', { name: 'Conveyance documents' })).toContainText('2026-0001')
+
+    await again.getByLabel(/^Actual closing date/).fill('2026-05-02')
+    await again.getByRole('button', { name: 'Remove conveyance document 1' }).click()
+    await again.getByRole('button', { name: 'Save changes' }).click()
+    await expect(page.getByText('Title and closing saved.')).toBeVisible()
+
+    const panel = page.getByRole('region', { name: `Attachments for TC-${parcel.number}` })
+    await panel.getByLabel('Upload document').setInputFiles({ name: 'closing-package.txt', mimeType: 'text/plain', buffer: Buffer.from('closing package') })
+    await expect(panel.getByText('closing-package.txt')).toBeVisible()
+
+    const headers = { Authorization: `Bearer ${await sessionToken(page)}` }
+    const { record } = await (await request.get(`/api/v1/parcels/${parcel.id}/title-closing`, { headers })).json()
+    expect(record).toMatchObject({
+      number: `TC-${parcel.number}`, assignedTo: 'Casey Closer', titleCompany: 'Lone Star Title', psaAmount: 125000.5, actualClosingDate: '2026-05-02',
+      settlementExecutedDate: '2026-04-08', vestedOwnerName: 'Vested Person', conveyanceDocuments: [],
+    })
+    expect(record.titleCommitments).toHaveLength(1)
+  })
+
+  test('AT-NE-41 a negotiator updates the closing dates on a record the title researcher started', async ({ page, request }) => {
+    const parcel = await makeParcel(request)
+    const tr = { Authorization: `Bearer ${await devToken(request, 'TitleResearcher')}` }
+    expect((await request.put(`/api/v1/parcels/${parcel.id}/title-closing`, { headers: tr, data: { gfNumber: 'GF-1', conveyanceDocuments: [], titleCommitments: [] } })).status()).toBe(200)
+
+    await signInViaUi(page, 'Negotiator')
+    await openTab(page, parcel.id, 'Title and closing')
+    const form = page.getByRole('form', { name: 'Title and closing' })
+    await expect(form.getByLabel(/^GF number/)).toHaveValue('GF-1')
+    await form.getByLabel(/^Anticipated closing date/).fill('2026-06-01')
+    await form.getByRole('button', { name: 'Save changes' }).click()
+    await expect(page.getByText('Title and closing saved.')).toBeVisible()
+
+    const headers = { Authorization: `Bearer ${await sessionToken(page)}` }
+    const { record } = await (await request.get(`/api/v1/parcels/${parcel.id}/title-closing`, { headers })).json()
+    expect(record).toMatchObject({ gfNumber: 'GF-1', anticipatedClosingDate: '2026-06-01' })
+    // Negotiators may change the record but not remove it.
+    await expect(page.getByRole('button', { name: 'Remove title and closing record' })).toHaveCount(0)
+    expect((await request.delete(`/api/v1/parcels/${parcel.id}/title-closing`, { headers })).status()).toBe(403)
+  })
+})
+
+test.describe('Everyone · title and closing', () => {
+  for (const role of ROLES) {
+    test(`AT-X-50 ${role}: the Title and closing tab, its buttons and the API follow the access spec`, async ({ page, request }) => {
+      const parcel = await makeParcel(request)
+      const other = await makeParcel(request)
+      const admin = await adminHeaders(request)
+      expect((await request.put(`/api/v1/parcels/${parcel.id}/title-closing`, { headers: admin, data: { gfNumber: 'SEED' } })).status()).toBe(200)
+
+      await signInViaUi(page, role)
+      await page.goto(`/parcels/${parcel.id}`)
+      await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
+
+      const readable = level(role, 'titleclosing') !== null
+      await expect(page.getByRole('tab', { name: 'Title and closing' }), `${role} tab`).toHaveCount(readable ? 1 : 0)
+      if (readable) {
+        await page.getByRole('tab', { name: 'Title and closing' }).click()
+        await expect(page.getByRole('form', { name: 'Title and closing' })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Save changes' }), `${role} save`).toHaveCount(canUpdate(role, 'titleclosing') ? 1 : 0)
+        await expect(page.getByRole('button', { name: 'Remove title and closing record' }), `${role} remove`).toHaveCount(canDelete(role, 'titleclosing') ? 1 : 0)
+      }
+
+      const headers = { Authorization: `Bearer ${await sessionToken(page)}` }
+      const want = (action: 'read' | 'create' | 'update' | 'delete', ok: number) =>
+        ({ read: readable, create: canCreate(role, 'titleclosing'), update: canUpdate(role, 'titleclosing'), delete: canDelete(role, 'titleclosing') })[action] ? ok : 403
+      expect((await request.get(`/api/v1/parcels/${parcel.id}/title-closing`, { headers })).status()).toBe(want('read', 200))
+      // The first save of a parcel's record needs Create, a later one Update.
+      expect((await request.put(`/api/v1/parcels/${other.id}/title-closing`, { headers, data: { gfNumber: `by ${role}` } })).status()).toBe(want('create', 200))
+      expect((await request.put(`/api/v1/parcels/${parcel.id}/title-closing`, { headers, data: { gfNumber: `edited by ${role}` } })).status()).toBe(want('update', 200))
+      expect((await request.delete(`/api/v1/parcels/${parcel.id}/title-closing`, { headers })).status()).toBe(want('delete', 204))
+    })
+  }
+})
+
 test.describe('Everyone · title encumbrances', () => {
   for (const role of ROLES) {
     test(`AT-X-49 ${role}: the Title encumbrances tab, its buttons and the API follow the access spec`, async ({ page, request }) => {

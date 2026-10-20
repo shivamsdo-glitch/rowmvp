@@ -29,8 +29,10 @@
 | AT-NG-23 | Send the agreement through its approval chain and record the signature | 4 | Approvers depend on the amount; "signed" recorded with the uploaded signed document |
 | AT-NG-24 | Complete the closing checklist | 4 | Checklist done and recorded → parcel becomes Closed |
 | AT-NG-25 | Record an impasse | 4 | Parcel status is Impasse with the data for a later condemnation hand-off; closing is blocked |
+| AT-NE-41 | Update the closing dates on a parcel's title and closing record | Open a parcel's Title and closing tab where the title researcher has started the record; set the anticipated closing date; save; look for a way to remove the record | The record shows the title researcher's values; the save says it worked; there is no Remove button | The negotiator may create and change the record but not remove it (403) | ✅ | E2E `AT-NE-41`; API `TitleClosingApiTests`; frontend `parcel-tabs.test.tsx` |
 
 ## Changelog
+- Phase 1.5 slice 6b: AT-NE-41 automated (updating the closing dates). ADR 0018.
 - Phase 1.5 slice 5b: AT-NE-40 automated (the Contact Log tab, with attachments). ADR 0017.
 - Phase 1 slice 3c: AT-NG-26 automated (read-only access to acquisition records).
 - Phase 1 slice 3b: AT-NG-17 automated (negotiation diary).

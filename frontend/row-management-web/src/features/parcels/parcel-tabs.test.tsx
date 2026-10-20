@@ -355,6 +355,101 @@ describe('Title encumbrances (AT-TE-40)', () => {
   })
 })
 
+describe('Title and closing (AT-TE-41)', () => {
+  const TC = [{
+    parcelId: 'pc1', id: 'tc1', number: 'TC-PN-1001', vestedOwnerName: 'Vested One', titleCompany: 'Lone Star Title', gfNumber: 'GF-100', psaAmount: 125000.5,
+    psaSignedByOwnerDate: '2026-03-01', curativeItemsCompleted: true,
+    conveyanceDocuments: [{ id: 'cv1', conveyanceType: 'Warranty Deed', signedDate: '2026-04-20', recordedDate: '2026-04-25', recordingNumber: '2026-0001' }],
+    titleCommitments: [{ id: 'cm1', vestedOwnerName: 'Kamali', requestedDate: '2026-02-01', receivedDate: null, effectiveDate: null, issuedDate: null, curativePlanSubmittedDate: null, curativePlanApprovedDate: null }],
+  }]
+
+  it('shows an empty form with no id yet and creates the record on the first save', async () => {
+    const { fake, user } = open('TitleResearcher')
+    await tab(user, 'Title and closing')
+    const form = await screen.findByRole('form', { name: 'Title and closing' })
+
+    expect(form).toHaveTextContent('Assigned when saved')
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Title company/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Lone Star Title', 'Other Title']))
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Assigned to/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Casey Closer', 'Pat Agent']))
+    await user.selectOptions(within(form).getByLabelText(/^Title company/), 'Lone Star Title')
+    await user.selectOptions(within(form).getByLabelText(/^Assigned to/), 'Casey Closer')
+    await user.type(within(form).getByLabelText(/^GF number/), 'GF-9')
+    await user.type(within(form).getByLabelText(/^Purchase and sale agreement amount/), '125000.5')
+    fireEvent.change(within(form).getByLabelText(/^Anticipated closing date/), { target: { value: '2026-05-01' } })
+    await user.click(within(form).getByLabelText('Curative items completed'))
+    await user.click(within(form).getByRole('button', { name: 'Save title and closing' }))
+
+    expect(await screen.findByText('Title and closing saved.')).toBeInTheDocument()
+    expect(fake.titleClosings).toHaveLength(1)
+    expect(fake.titleClosings[0]).toMatchObject({
+      number: 'TC-PN-1001', titleCompany: 'Lone Star Title', assignedTo: 'Casey Closer', gfNumber: 'GF-9', psaAmount: 125000.5, anticipatedClosingDate: '2026-05-01', curativeItemsCompleted: true,
+    })
+    expect(await screen.findByText('TC-PN-1001')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+  })
+
+  it('loads the saved record, shows the vested owner name read-only, and changes the grids and a date', async () => {
+    const { fake, user } = open('TitleResearcher', { titleClosings: TC })
+    await tab(user, 'Title and closing')
+    const form = await screen.findByRole('form', { name: 'Title and closing' })
+
+    expect(form).toHaveTextContent('Vested One')
+    expect(within(form).getByLabelText(/^GF number/)).toHaveValue('GF-100')
+    expect(within(form).getByLabelText('Curative items completed')).toBeChecked()
+    expect(within(form).getByRole('table', { name: 'Conveyance documents' })).toHaveTextContent('2026-0001')
+    expect(within(form).getByRole('table', { name: 'Title commitments' })).toHaveTextContent('Kamali')
+
+    await user.click(within(form).getByRole('button', { name: 'Add conveyance document' }))
+    expect(await within(form).findByText('Enter at least one detail of the conveyance document.')).toBeInTheDocument()
+    fireEvent.change(within(form).getByLabelText(/^Conveyance document signed date/), { target: { value: '2026-05-10' } })
+    fireEvent.change(within(form).getByLabelText(/^Conveyance document recorded date/), { target: { value: '2026-05-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Add conveyance document' }))
+    expect(await within(form).findByText('A conveyance cannot be recorded before it is signed.')).toBeInTheDocument()
+    fireEvent.change(within(form).getByLabelText(/^Conveyance document recorded date/), { target: { value: '2026-05-11' } })
+    await user.click(within(form).getByRole('button', { name: 'Add conveyance document' }))
+
+    await user.click(within(form).getByRole('button', { name: 'Add title commitment' }))
+    expect(await within(form).findByText('Enter the vested owner name.')).toBeInTheDocument()
+    await user.click(within(form).getByRole('button', { name: 'Remove title commitment Kamali' }))
+    await user.clear(within(form).getByLabelText(/^GF number/))
+    await user.type(within(form).getByLabelText(/^GF number/), 'GF-200')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(fake.titleClosings[0].gfNumber).toBe('GF-200'))
+    expect(fake.titleClosings[0].conveyanceDocuments).toHaveLength(2)
+    expect(fake.titleClosings[0].titleCommitments).toEqual([])
+  })
+
+  it('refuses a settlement statement executed before it was received and a negative amount', async () => {
+    const { fake, user } = open('TitleResearcher')
+    await tab(user, 'Title and closing')
+    const form = await screen.findByRole('form', { name: 'Title and closing' })
+
+    fireEvent.change(within(form).getByLabelText(/^Settlement statement received date/), { target: { value: '2026-04-05' } })
+    fireEvent.change(within(form).getByLabelText(/^Settlement statement executed date/), { target: { value: '2026-04-01' } })
+    await user.type(within(form).getByLabelText(/^Purchase and sale agreement amount/), '-5')
+    await user.click(within(form).getByRole('button', { name: 'Save title and closing' }))
+
+    expect(await within(form).findByText('The statement cannot be executed before it is received.')).toBeInTheDocument()
+    expect(within(form).getByText('The amount must be zero or more.')).toBeInTheDocument()
+    expect(fake.titleClosings).toHaveLength(0)
+  })
+
+  it('attaches a file once the record exists, and removes the record', async () => {
+    const { fake, user } = open('Admin', { titleClosings: TC })
+    await tab(user, 'Title and closing')
+    const panel = await screen.findByRole('region', { name: 'Attachments for TC-PN-1001' })
+
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'policy.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('policy.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'TitleClosing', entityId: 'tc1' })
+
+    await user.click(screen.getByRole('button', { name: 'Remove title and closing record' }))
+    await waitFor(() => expect(fake.titleClosings).toHaveLength(0))
+    expect(await screen.findByText('Assigned when saved')).toBeInTheDocument()
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -394,6 +489,28 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     expect(!!screen.queryByRole('form', { name: 'Add an encumbrance' })).toBe(can(role, 'titleencumbrances', 'create'))
     expect(!!screen.queryByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' })).toBe(can(role, 'titleencumbrances', 'update'))
     expect(!!screen.queryByRole('button', { name: 'Remove encumbrance ENC-PN-1001-001' })).toBe(can(role, 'titleencumbrances', 'delete'))
+  })
+
+  it('shows the Title and closing tab and its controls exactly as the Title and Closing page allows', async () => {
+    const withRecord = open(role, { titleClosings: [{ parcelId: 'pc1', id: 'tc1', number: 'TC-PN-1001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Title and closing' })).toBe(can(role, 'titleclosing', 'read'))
+    if (!can(role, 'titleclosing', 'read')) return
+    await tab(withRecord.user, 'Title and closing')
+    await screen.findByRole('form', { name: 'Title and closing' })
+    expect(!!screen.queryByRole('button', { name: 'Save changes' })).toBe(can(role, 'titleclosing', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove title and closing record' })).toBe(can(role, 'titleclosing', 'delete'))
+  })
+
+  it('offers the first save of the Title and closing record only to roles that may create it', async () => {
+    const { user } = open(role)
+    await screen.findByRole('heading', { name: /PN-1001/ })
+    if (!can(role, 'titleclosing', 'read')) return
+    await tab(user, 'Title and closing')
+    await screen.findByRole('form', { name: 'Title and closing' })
+
+    expect(!!screen.queryByRole('button', { name: 'Save title and closing' })).toBe(can(role, 'titleclosing', 'create'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

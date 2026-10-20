@@ -19,7 +19,14 @@ public sealed record EncumbranceBody(
     string? Grantor, string? Grantee, DateOnly? ExceptionSubmittedDate, DateOnly? ExceptionApprovedDate, string? ImpactAnalysis, string? RecommendedCure,
     string? CureStatus, string? ReviewNotes, List<ContactLogLinkInput>? Links);
 
-/// <summary>The Contact Log, Easements, Ownership Details and Title Encumbrances tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+public sealed record TitleClosingEnvelope(TitleClosingDto? Record);
+public sealed record TitleClosingBody(
+    string? AssignedTo, string? TitleCompany, string? TitleClosingAgent, string? GfNumber, string? FinalTitlePolicyNo, DateOnly? PsaSignedByOwnerDate,
+    DateOnly? PsaSignedByAtpDate, decimal? PsaAmount, DateOnly? SettlementReceivedDate, DateOnly? SettlementExecutedDate, bool CurativeItemsCompleted,
+    DateOnly? ClosingPackageSubmittedDate, DateOnly? ClosingPackageApprovedDate, DateOnly? ClosingInstructionDate, DateOnly? AnticipatedClosingDate,
+    DateOnly? ActualClosingDate, List<ConveyanceDocumentInput>? ConveyanceDocuments, List<TitleCommitmentInput>? TitleCommitments);
+
+/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances and Title and Closing tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -69,6 +76,28 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveOwnership(Guid parcelId, Guid ownershipId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveOwnershipCommand(parcelId, ownershipId), ct);
+        return NoContent();
+    }
+
+    /// <summary>The parcel's title and closing record: <c>{ "record": null }</c> when none has been saved yet.</summary>
+    [HttpGet("title-closing")]
+    [ProducesResponseType(typeof(TitleClosingEnvelope), StatusCodes.Status200OK)]
+    public async Task<IActionResult> TitleClosing(Guid parcelId, CancellationToken ct) => Ok(new TitleClosingEnvelope(await _mediator.Send(new GetTitleClosingQuery(parcelId), ct)));
+
+    /// <summary>Saves the record: the first save creates it (needs Create), later saves change it (need Update).</summary>
+    [HttpPut("title-closing")]
+    [ProducesResponseType(typeof(TitleClosingDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SaveTitleClosing(Guid parcelId, [FromBody] TitleClosingBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SaveTitleClosingCommand(
+            parcelId, b.AssignedTo, b.TitleCompany, b.TitleClosingAgent, b.GfNumber, b.FinalTitlePolicyNo, b.PsaSignedByOwnerDate, b.PsaSignedByAtpDate, b.PsaAmount,
+            b.SettlementReceivedDate, b.SettlementExecutedDate, b.CurativeItemsCompleted, b.ClosingPackageSubmittedDate, b.ClosingPackageApprovedDate,
+            b.ClosingInstructionDate, b.AnticipatedClosingDate, b.ActualClosingDate, b.ConveyanceDocuments, b.TitleCommitments), ct));
+
+    [HttpDelete("title-closing")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveTitleClosing(Guid parcelId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveTitleClosingCommand(parcelId), ct);
         return NoContent();
     }
 

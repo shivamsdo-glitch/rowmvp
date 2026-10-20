@@ -1,4 +1,4 @@
-import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact } from '@/api/parcel-tabs'
+import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing } from '@/api/parcel-tabs'
 import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
 
 function json(body: unknown, status = 200) {
@@ -12,6 +12,7 @@ export interface FakeTabsOptions extends FakeRecordsOptions {
   documents?: Partial<DocumentInfo>[]
   ownerships?: (Partial<Ownership> & { parcelId: string; ownerName: string })[]
   encumbrances?: (Partial<Encumbrance> & { parcelId: string })[]
+  titleClosings?: (Partial<TitleClosing> & { parcelId: string })[]
 }
 
 export interface FakeTabs extends FakeRecords {
@@ -20,6 +21,7 @@ export interface FakeTabs extends FakeRecords {
   documents: DocumentInfo[]
   ownerships: Ownership[]
   encumbrances: Encumbrance[]
+  titleClosings: TitleClosing[]
 }
 
 /** An in-memory stand-in for a parcel's Contact Log, Easements and the attachments on them, with the server's rules and page permissions. */
@@ -56,8 +58,14 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     documentNumber: null, isUnrecorded: false, grantor: 'Grantor', grantee: 'Grantee', exceptionSubmittedDate: null, exceptionApprovedDate: null, impactAnalysis: null,
     recommendedCure: null, cureStatus: null, reviewNotes: null, links: [], updatedAt: '2026-01-01T00:00:00Z', ...e,
   }))
+  const titleClosings: TitleClosing[] = (opts.titleClosings ?? []).map((t) => ({
+    id: id('tc'), number: 'TC-001', parcelNumber: '001', vestedOwnerName: null, assignedTo: null, titleCompany: null, titleClosingAgent: null, gfNumber: null,
+    finalTitlePolicyNo: null, psaSignedByOwnerDate: null, psaSignedByAtpDate: null, psaAmount: null, settlementReceivedDate: null, settlementExecutedDate: null,
+    curativeItemsCompleted: false, closingPackageSubmittedDate: null, closingPackageApprovedDate: null, closingInstructionDate: null, anticipatedClosingDate: null,
+    actualClosingDate: null, conveyanceDocuments: [], titleCommitments: [], updatedAt: '2026-01-01T00:00:00Z', ...t,
+  }))
   const pageOf = (entityType: string) =>
-    entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
+    entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
 
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://x')
@@ -92,18 +100,41 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
-    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances)(?:\/([^/]+))?$/.exec(url.pathname)
+    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing)(?:\/([^/]+))?$/.exec(url.pathname)
     if (!m) return base.fetch(input, init)
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     base.calls.push({ key: `${method} ${url.pathname}`, body })
     const [, parcelId, part, rid] = m
-    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : 'easements'
-    const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? 'update' : 'delete'
+    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : 'easements'
+    const existingTc = titleClosings.find((x) => x.parcelId === parcelId)
+    const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? (part === 'title-closing' && !existingTc ? 'create' : 'update') : 'delete'
     if (!can(page, act)) return forbidden()
     const parcel = base.parcels.find((p) => p.id === parcelId)
     if (!parcel) return problem(404, 'not_found', 'Parcel was not found.')
     if (method !== 'GET' && parcel.state !== 'Active') return problem(409, 'parcel_not_active', `Parcel ${parcel.number} can no longer be changed.`)
+
+    if (part === 'title-closing') {
+      if (method === 'GET') return json({ record: existingTc ?? null })
+      if (method === 'DELETE') {
+        if (!existingTc) return problem(404, 'not_found', 'Title and closing record was not found.')
+        titleClosings.splice(titleClosings.indexOf(existingTc), 1)
+        return new Response(null, { status: 204 })
+      }
+      const errors: Record<string, string[]> = {}
+      if (body?.psaAmount !== null && body?.psaAmount !== undefined && body.psaAmount < 0) errors.PsaAmount = ['The amount must be zero or more.']
+      if (body?.settlementReceivedDate && body?.settlementExecutedDate && body.settlementExecutedDate < body.settlementReceivedDate) errors.SettlementExecutedDate = ['The statement cannot be executed before it is received.']
+      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
+      const withIds = <T extends object>(rows: T[] | undefined): (T & { id: string })[] => (rows ?? []).map((r) => ({ id: id('x'), ...r }))
+      const { conveyanceDocuments, titleCommitments, ...rest } = body
+      const fields = { ...rest, conveyanceDocuments: withIds(conveyanceDocuments), titleCommitments: withIds(titleCommitments), updatedAt: `2026-10-14T00:00:${String(seq % 60).padStart(2, '0')}Z` }
+      const vestedNames = ownerships.filter((o) => o.parcelId === parcelId && o.ownerType === 'Vested Owner').sort((a, b) => a.ownershipNumber - b.ownershipNumber).map((o) => o.ownerName)
+      const vested = vestedNames.length ? vestedNames.join('; ') : null
+      if (existingTc) { Object.assign(existingTc, fields); return json(existingTc) }
+      const tc: TitleClosing = { id: id('tc'), parcelId, number: `TC-${parcel.number}`, parcelNumber: parcel.number, vestedOwnerName: vested, ...fields }
+      titleClosings.push(tc)
+      return json(tc)
+    }
 
     if (part === 'encumbrances') {
       if (method === 'GET') return json(encumbrances.filter((e) => e.parcelId === parcelId))
@@ -221,5 +252,5 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     return json(e, 201)
   }
 
-  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances }
+  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings }
 }

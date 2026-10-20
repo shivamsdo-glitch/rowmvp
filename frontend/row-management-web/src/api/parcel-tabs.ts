@@ -180,3 +180,58 @@ export const encumbrancesApi = (api: ApiClient) => ({
   update: (parcelId: string, id: string, body: EncumbranceInput) => api.put<Encumbrance>(`/api/v1/parcels/${parcelId}/encumbrances/${id}`, body),
   remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/encumbrances/${id}`),
 })
+
+export interface ConveyanceDocument {
+  id?: string
+  conveyanceType: string | null
+  signedDate: string | null
+  recordedDate: string | null
+  recordingNumber: string | null
+}
+
+export interface TitleCommitment {
+  id?: string
+  vestedOwnerName: string
+  requestedDate: string | null
+  receivedDate: string | null
+  effectiveDate: string | null
+  issuedDate: string | null
+  curativePlanSubmittedDate: string | null
+  curativePlanApprovedDate: string | null
+}
+
+export interface TitleClosing {
+  id: string
+  parcelId: string
+  number: string
+  parcelNumber: string
+  /** Read-only: the parcel's ownerships of type "Vested Owner". */
+  vestedOwnerName: string | null
+  assignedTo: string | null
+  titleCompany: string | null
+  titleClosingAgent: string | null
+  gfNumber: string | null
+  finalTitlePolicyNo: string | null
+  psaSignedByOwnerDate: string | null
+  psaSignedByAtpDate: string | null
+  psaAmount: number | null
+  settlementReceivedDate: string | null
+  settlementExecutedDate: string | null
+  curativeItemsCompleted: boolean
+  closingPackageSubmittedDate: string | null
+  closingPackageApprovedDate: string | null
+  closingInstructionDate: string | null
+  anticipatedClosingDate: string | null
+  actualClosingDate: string | null
+  conveyanceDocuments: ConveyanceDocument[]
+  titleCommitments: TitleCommitment[]
+  updatedAt: string
+}
+
+export type TitleClosingInput = Omit<TitleClosing, 'id' | 'parcelId' | 'number' | 'parcelNumber' | 'vestedOwnerName' | 'updatedAt'>
+
+export const titleClosingApi = (api: ApiClient) => ({
+  get: (parcelId: string) => api.get<{ record: TitleClosing | null }>(`/api/v1/parcels/${parcelId}/title-closing`),
+  save: (parcelId: string, body: TitleClosingInput) => api.put<TitleClosing>(`/api/v1/parcels/${parcelId}/title-closing`, body),
+  remove: (parcelId: string) => api.delete(`/api/v1/parcels/${parcelId}/title-closing`),
+})

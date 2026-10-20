@@ -20,3 +20,11 @@ export function optionsWith(values: string[], current?: string | null): { value:
   const all = current && !values.includes(current) ? [...values, current] : values
   return all.map((v) => ({ value: v, label: v }))
 }
+
+/** The names of the active people in the Library's Agents list (designers, surveyors, negotiators, title agents...), for "assigned to" selects. */
+export function useAgentNames(enabled = true): string[] {
+  const { manager } = useAuth()
+  const api = libraryApi(manager.api)
+  const agents = useQuery({ queryKey: ['library', 'agents'], queryFn: () => api.agents(), enabled, retry: false })
+  return (agents.data ?? []).filter((a) => a.isActive).map((a) => a.name)
+}

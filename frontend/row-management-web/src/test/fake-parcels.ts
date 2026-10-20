@@ -32,6 +32,8 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['possession_type', 'Possession type', ['PUA', 'Closing']],
   ['mode_of_contact', 'Mode of contact', ['Phone', 'In person', 'Letter']],
   ['easement_type', 'Easement type', ['Sidewalk Easement', 'Drainage Easement']],
+  ['title_company', 'Title company', ['Lone Star Title', 'Other Title']],
+  ['conveyance_type', 'Conveyance type', ['Warranty Deed', 'Easement Deed']],
   ['encumbrance_type', 'Encumbrance type', ['Mortgage Lien', 'Easement - Access', 'Judgment']],
   ['cure_status', 'Cure status', ['In progress', 'Cured']],
   ['owner_type', 'Owner type', ['CAD Owner', 'Fee Owner', 'Vested Owner']],
@@ -167,7 +169,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     const url = new URL(String(input), 'http://x')
     const path = url.pathname
     const structure = /^\/api\/v1\/projects\/([^/]+)\/(groups|tracts|parcel-rollup)(?:\/([^/]+))?$/.exec(path)
-    const mine = path.startsWith('/api/v1/parcels') || path.startsWith('/api/v1/parcel-rules') || path.startsWith('/api/v1/reminders') || path.startsWith('/api/v1/library/fields') || !!structure
+    const mine = path.startsWith('/api/v1/parcels') || path.startsWith('/api/v1/parcel-rules') || path.startsWith('/api/v1/reminders') || path.startsWith('/api/v1/library/fields') || path === '/api/v1/library/agents' || !!structure
     if (!mine) return base.fetch(input, init)
 
     const headers = (init?.headers ?? {}) as Record<string, string>
@@ -228,6 +230,13 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     }
 
     // ── library lists the parcel forms pick from ──
+    if (path === '/api/v1/library/agents' && method === 'GET') {
+      return json([
+        { id: 'ag1', name: 'Casey Closer', agentType: 'Negotiator', company: null, phone: null, email: null, isActive: true },
+        { id: 'ag2', name: 'Pat Agent', agentType: 'Broker', company: null, phone: null, email: null, isActive: true },
+        { id: 'ag3', name: 'Old Hand', agentType: 'Broker', company: null, phone: null, email: null, isActive: false },
+      ])
+    }
     if (path.startsWith('/api/v1/library/fields') && method === 'GET') {
       const lists = LIBRARY_LISTS.map(([key, label, values], i) => ({
         id: `lf-${key}`, key, label, fieldType: 'List', isSystem: true, isLibraryDriven: true,

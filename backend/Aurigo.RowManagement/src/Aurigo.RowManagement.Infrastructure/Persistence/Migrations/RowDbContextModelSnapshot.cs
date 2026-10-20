@@ -1071,6 +1071,64 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("parcel_contact_log_links", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelConveyanceDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConveyanceType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("conveyance_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly?>("RecordedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("recorded_date");
+
+                    b.Property<string>("RecordingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("recording_number");
+
+                    b.Property<DateOnly?>("SignedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("signed_date");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TitleClosingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("title_closing_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_conveyance_documents");
+
+                    b.HasIndex("TitleClosingId")
+                        .HasDatabaseName("ix_parcel_conveyance_documents_title_closing_id");
+
+                    b.ToTable("parcel_conveyance_documents", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelDiaryEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2231,6 +2289,193 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_parcel_team_members_parcel_id_role_name_key");
 
                     b.ToTable("parcel_team_members", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly?>("ActualClosingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("actual_closing_date");
+
+                    b.Property<DateOnly?>("AnticipatedClosingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("anticipated_closing_date");
+
+                    b.Property<string>("AssignedTo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("assigned_to");
+
+                    b.Property<DateOnly?>("ClosingInstructionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("closing_instruction_date");
+
+                    b.Property<DateOnly?>("ClosingPackageApprovedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("closing_package_approved_date");
+
+                    b.Property<DateOnly?>("ClosingPackageSubmittedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("closing_package_submitted_date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("CurativeItemsCompleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("curative_items_completed");
+
+                    b.Property<string>("FinalTitlePolicyNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("final_title_policy_no");
+
+                    b.Property<string>("GfNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("gf_number");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("ParcelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parcel_id");
+
+                    b.Property<decimal?>("PsaAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("psa_amount");
+
+                    b.Property<DateOnly?>("PsaSignedByAtpDate")
+                        .HasColumnType("date")
+                        .HasColumnName("psa_signed_by_atp_date");
+
+                    b.Property<DateOnly?>("PsaSignedByOwnerDate")
+                        .HasColumnType("date")
+                        .HasColumnName("psa_signed_by_owner_date");
+
+                    b.Property<DateOnly?>("SettlementExecutedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("settlement_executed_date");
+
+                    b.Property<DateOnly?>("SettlementReceivedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("settlement_received_date");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TitleClosingAgent")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title_closing_agent");
+
+                    b.Property<string>("TitleCompany")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title_company");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_title_closings");
+
+                    b.HasIndex("ParcelId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_parcel_title_closings_parcel_id");
+
+                    b.ToTable("parcel_title_closings", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleCommitment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly?>("CurativePlanApprovedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("curative_plan_approved_date");
+
+                    b.Property<DateOnly?>("CurativePlanSubmittedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("curative_plan_submitted_date");
+
+                    b.Property<DateOnly?>("EffectiveDate")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_date");
+
+                    b.Property<DateOnly?>("IssuedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("issued_date");
+
+                    b.Property<DateOnly?>("ReceivedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("received_date");
+
+                    b.Property<DateOnly?>("RequestedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("requested_date");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TitleClosingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("title_closing_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("VestedOwnerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("vested_owner_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_title_commitments");
+
+                    b.HasIndex("TitleClosingId")
+                        .HasDatabaseName("ix_parcel_title_commitments_title_closing_id");
+
+                    b.ToTable("parcel_title_commitments", (string)null);
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParentTract", b =>
@@ -3616,6 +3861,16 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_parcel_contact_log_links_parcel_contact_log_entries_contact");
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelConveyanceDocument", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", null)
+                        .WithMany("ConveyanceDocuments")
+                        .HasForeignKey("TitleClosingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_conveyance_documents_parcel_title_closings_title_clo");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelDiaryEntry", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
@@ -3782,6 +4037,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_parcel_team_members_parcels_parcel_id");
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
+                        .WithMany()
+                        .HasForeignKey("ParcelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_title_closings_parcels_parcel_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleCommitment", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", null)
+                        .WithMany("TitleCommitments")
+                        .HasForeignKey("TitleClosingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_title_commitments_parcel_title_closings_title_closin");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParentTract", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Project", null)
@@ -3933,6 +4208,13 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("Addresses");
 
                     b.Navigation("Contacts");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", b =>
+                {
+                    b.Navigation("ConveyanceDocuments");
+
+                    b.Navigation("TitleCommitments");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Project", b =>
