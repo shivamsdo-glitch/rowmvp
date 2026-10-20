@@ -29,8 +29,14 @@ export const NAV = [
 
 /** Signs in through the real login screen, exactly as a person would. */
 export async function signInViaUi(page: Page, role: string) {
-  await page.goto('/login')
-  await page.getByRole('button', { name: role, exact: true }).click()
+  // The Vite dev server can answer a page load with a blank page while it re-optimises dependencies under load; load again
+  // (up to three times) instead of failing a test that is about something else. A page that never renders still fails below.
+  const pick = page.getByRole('button', { name: role, exact: true })
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto('/login')
+    if (await pick.waitFor({ timeout: attempt < 3 ? 20_000 : 60_000 }).then(() => true, () => false)) break
+  }
+  await pick.click()
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
 }
 

@@ -27,7 +27,9 @@
     "closing",
     "payments",
     "administration",
-    "library"
+    "library",
+    "contactlog",
+    "easements"
   ],
   "matrix": {
     "ProjectManager": {
@@ -44,7 +46,9 @@
       "closing": "B",
       "payments": "B",
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "B",
+      "easements": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -60,7 +64,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "S",
+      "easements": "S"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -76,7 +82,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "B",
+      "easements": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -92,7 +100,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "S",
+      "easements": "P"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -108,7 +118,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "S",
+      "easements": "B"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -124,7 +136,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "S",
+      "easements": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -140,7 +154,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "B",
+      "easements": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -156,7 +172,9 @@
       "closing": "S",
       "payments": "S",
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "P",
+      "easements": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -172,7 +190,9 @@
       "closing": null,
       "payments": null,
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "P",
+      "easements": "B"
     },
     "Finance": {
       "dashboard": "B",
@@ -188,7 +208,9 @@
       "closing": "B",
       "payments": "P",
       "administration": null,
-      "library": "B"
+      "library": "B",
+      "contactlog": "B",
+      "easements": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -204,7 +226,9 @@
       "closing": "P",
       "payments": "P",
       "administration": "P",
-      "library": "P"
+      "library": "P",
+      "contactlog": "P",
+      "easements": "P"
     }
   },
   "attachmentPages": {
@@ -217,6 +241,8 @@
     "Offer": "negotiations",
     "Agreement": "agreements",
     "ClosingRecord": "closing",
-    "Payment": "payments"
+    "Payment": "payments",
+    "ContactLog": "contactlog",
+    "Easement": "easements"
   }
 }

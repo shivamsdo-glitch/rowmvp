@@ -18,23 +18,23 @@ public static class Spec
     public static readonly string[] Pages =
     {
         "dashboard", "projects", "parcels", "parties", "title", "survey", "appraisals",
-        "approvals", "negotiations", "agreements", "closing", "payments", "administration", "library",
+        "approvals", "negotiations", "agreements", "closing", "payments", "administration", "library", "contactlog", "easements",
     };
 
-    //                                  dash proj parc part titl surv appr aprv negt agrm clos paym admn libr
+    //                                  dash proj parc part titl surv appr aprv negt agrm clos paym admn libr cont ease
     private static readonly Dictionary<string, string> Rows = new()
     {
-        ["ProjectManager"] = "B P P P B B B S B B B B - B",
-        ["Designer"]       = "B B P P - - - - - - - - - B",
-        ["DesignApprover"] = "B B U B - - - S - - - - - B",
-        ["Surveyor"]       = "B B B B - P - - - - - - - B",
-        ["AppraisalApprover"] = "B B B B B B S S - - - - - B",
-        ["RelocationAgent"] = "B B B S - - - - - - - - - B",
-        ["TitleResearcher"]  = "B B B B P P B - - - - - - B",
-        ["Appraiser"]      = "B B B B B B P S - - - - - B",
-        ["Negotiator"]     = "B B B P B - B B P P S S - B",
-        ["Finance"]        = "B B B B - - - S B B B P - B",
-        ["Admin"]          = "P P P P P P P P P P P P P P",
+        ["ProjectManager"] = "B P P P B B B S B B B B - B B B",
+        ["Designer"]       = "B B P P - - - - - - - - - B S S",
+        ["DesignApprover"] = "B B U B - - - S - - - - - B B B",
+        ["Surveyor"]       = "B B B B - P - - - - - - - B S P",
+        ["AppraisalApprover"] = "B B B B B B S S - - - - - B B B",
+        ["RelocationAgent"] = "B B B S - - - - - - - - - B P B",
+        ["TitleResearcher"]  = "B B B B P P B - - - - - - B S B",
+        ["Appraiser"]      = "B B B B B B P S - - - - - B S B",
+        ["Negotiator"]     = "B B B P B - B B P P S S - B P B",
+        ["Finance"]        = "B B B B - - - S B B B P - B B B",
+        ["Admin"]          = "P P P P P P P P P P P P P P P P",
     };
 
     public static char Level(string role, string page) => Rows[role].Split(' ')[Array.IndexOf(Pages, page)][0];
@@ -54,6 +54,7 @@ public static class Spec
         ["Project"] = "projects", ["Parcel"] = "parcels", ["Party"] = "parties", ["TitleRecord"] = "title",
         ["SurveyRequest"] = "survey", ["Appraisal"] = "appraisals", ["Offer"] = "negotiations",
         ["Agreement"] = "agreements", ["ClosingRecord"] = "closing", ["Payment"] = "payments",
+        ["ContactLog"] = "contactlog", ["Easement"] = "easements",
     };
 
     public static IEnumerable<object[]> RoleAndEntityType() =>

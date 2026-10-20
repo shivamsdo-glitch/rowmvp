@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { devToken, documents, newId, savedFilters, sessionToken, signInViaUi } from './support'
+import { devToken, documents, newId, PAGES, savedFilters, sessionToken, signInViaUi } from './support'
 
 /**
  * Per-role job journeys that exist today. Each signs in through the real screen, then does that role's
@@ -278,7 +278,7 @@ test.describe('Administrator', () => {
     const token = await as(page, 'Admin')
     const perms = await (await request.get('/api/v1/auth/permissions', { headers: { Authorization: `Bearer ${token}` } })).json()
 
-    expect(perms).toHaveLength(14)
+    expect(perms).toHaveLength(PAGES.length)
     for (const p of perms) expect([p.pageKey, p.canCreate, p.canRead, p.canUpdate, p.canDelete]).toEqual([p.pageKey, true, true, true, true])
   })
 })

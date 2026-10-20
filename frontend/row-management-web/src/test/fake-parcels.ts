@@ -30,6 +30,8 @@ const ASSIGNABLE = ['TitleResearcher', 'Appraiser', 'Negotiator', 'Finance']
 export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['interest_type', 'Interest type', ['Permanent Easement', 'Temporary Construction Easement', 'Full Fee']],
   ['possession_type', 'Possession type', ['PUA', 'Closing']],
+  ['mode_of_contact', 'Mode of contact', ['Phone', 'In person', 'Letter']],
+  ['easement_type', 'Easement type', ['Sidewalk Easement', 'Drainage Easement']],
 ]
 
 export interface FakeParcelsOptions extends FakeProjectsOptions {

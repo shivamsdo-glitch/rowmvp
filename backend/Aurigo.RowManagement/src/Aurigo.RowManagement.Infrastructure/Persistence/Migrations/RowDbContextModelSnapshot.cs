@@ -937,6 +937,140 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("parcels", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelContactLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_person");
+
+                    b.Property<DateTime>("ContactedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("contacted_at");
+
+                    b.Property<string>("ContactedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contacted_by");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Mode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("mode");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("ParcelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parcel_id");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_contact_log_entries");
+
+                    b.HasIndex("ParcelId", "ContactedAt")
+                        .HasDatabaseName("ix_parcel_contact_log_entries_parcel_id_contacted_at");
+
+                    b.HasIndex("ParcelId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ix_parcel_contact_log_entries_parcel_id_sequence");
+
+                    b.ToTable("parcel_contact_log_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelContactLogLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContactLogEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contact_log_entry_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("ModuleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("module_name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("RecordIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("record_identifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_contact_log_links");
+
+                    b.HasIndex("ContactLogEntryId")
+                        .HasDatabaseName("ix_parcel_contact_log_links_contact_log_entry_id");
+
+                    b.ToTable("parcel_contact_log_links", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelDiaryEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1015,6 +1149,81 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_parcel_diary_entries_parcel_id_occurred_on");
 
                     b.ToTable("parcel_diary_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEasement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EasementType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("easement_type");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("EndStation")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("end_station");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("ParcelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parcel_id");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("StartStation")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("start_station");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_easements");
+
+                    b.HasIndex("ParcelId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_parcel_easements_parcel_id_number");
+
+                    b.ToTable("parcel_easements", (string)null);
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelGroup", b =>
@@ -3011,6 +3220,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_parcels_parcel_statuses_status_id");
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelContactLogEntry", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
+                        .WithMany()
+                        .HasForeignKey("ParcelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_contact_log_entries_parcels_parcel_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelContactLogLink", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelContactLogEntry", null)
+                        .WithMany("Links")
+                        .HasForeignKey("ContactLogEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_contact_log_links_parcel_contact_log_entries_contact");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelDiaryEntry", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
@@ -3025,6 +3254,16 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PartyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_parcel_diary_entries_parties_party_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEasement", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
+                        .WithMany()
+                        .HasForeignKey("ParcelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_easements_parcels_parcel_id");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelGroup", b =>
@@ -3251,6 +3490,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("SiteVisits");
 
                     b.Navigation("StepEvents");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelContactLogEntry", b =>
+                {
+                    b.Navigation("Links");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Project", b =>

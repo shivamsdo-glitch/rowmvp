@@ -18,12 +18,14 @@ import { PartyLinksPanel } from '../parties/PartyLinksPanel'
 import { RightOfEntryTab, ReviewsReportsTab } from './AcquisitionTabs'
 import { DiaryTab, NotesTab, TeamTab } from './ParcelRecordTabs'
 import { ParcelForm } from './ParcelForm'
+import { ContactLogTab, EasementsTab } from './ParcelTabs'
 import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from './parcel-kit'
 
 const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
   ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['roe', 'Right of entry'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
+  ['contactlog', 'Contact log'], ['easements', 'Easements'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 
@@ -124,7 +126,7 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
 
       <Tabs>
         <TabsList role="tablist" aria-label="Parcel sections">
-          {TABS.map(([key, label]) => (
+          {TABS.filter(([key]) => key !== 'contactlog' && key !== 'easements' || manager.can(key)).map(([key, label]) => (
             <TabsTrigger key={key} role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls={`panel-${key}`} active={tab === key} onClick={() => setTab(key)}>
               {label}
             </TabsTrigger>
@@ -142,6 +144,8 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
           {tab === 'milestones' && <MilestonesTab parcel={p} editable={live} />}
           {tab === 'workflow' && <WorkflowTab parcel={p} editable={live} />}
           {tab === 'visits' && <VisitsTab parcel={p} editable={live} />}
+          {tab === 'contactlog' && <ContactLogTab parcelId={p.id} editable={live} />}
+          {tab === 'easements' && <EasementsTab parcelId={p.id} editable={live} />}
         </TabsContent>
       </Tabs>
     </>

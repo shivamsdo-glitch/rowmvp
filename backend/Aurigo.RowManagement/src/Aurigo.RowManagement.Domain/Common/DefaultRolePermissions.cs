@@ -81,6 +81,25 @@ public static class DefaultRolePermissions
             [RoleNames.Admin] = PageKeys.All.ToDictionary(k => k, _ => P),
         };
 
+    // The parcel tabs added in Phase 1.5, from the approved matrix: (Contact Log, Easements). Roles not listed read both.
+    private static readonly IReadOnlyDictionary<string, (string ContactLog, string Easements)> TabMatrix = new Dictionary<string, (string, string)>
+    {
+        [RoleNames.Designer] = (S, S),
+        [RoleNames.Surveyor] = (S, P),
+        [RoleNames.TitleResearcher] = (S, B),
+        [RoleNames.Appraiser] = (S, B),
+        [RoleNames.Negotiator] = (P, B),
+        [RoleNames.RelocationAgent] = (P, B),
+        [RoleNames.Admin] = (P, P),
+    };
+
+    private static string? TabTemplateFor(string role, string pageKey)
+    {
+        if (!Matrix.ContainsKey(role)) return null;
+        if (!TabMatrix.TryGetValue(role, out var t)) return B;
+        return pageKey == PageKeys.ContactLog ? t.ContactLog : t.Easements;
+    }
+
     private static readonly IReadOnlyDictionary<string, string> RoleDescriptions = new Dictionary<string, string>
     {
         [RoleNames.ProjectManager] = "Creates projects and parcels, sets budget, team and milestones; approves at project level.",
@@ -99,6 +118,7 @@ public static class DefaultRolePermissions
     /// <summary>The template for a role on a page, or null when the role has no access to it.</summary>
     public static string? TemplateFor(string role, string pageKey) =>
         pageKey == PageKeys.Library && Matrix.ContainsKey(role) ? (role == RoleNames.Admin ? P : B) :
+        pageKey is PageKeys.ContactLog or PageKeys.Easements ? TabTemplateFor(role, pageKey) :
         Matrix.TryGetValue(role, out var pages) && pages.TryGetValue(pageKey, out var t) ? t : null;
 
     public static string DescriptionFor(string role) =>

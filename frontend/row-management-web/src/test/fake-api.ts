@@ -2,7 +2,7 @@ import type { PagePermission } from '@/api/auth'
 
 const ALL_PAGES = [
   'dashboard', 'projects', 'parcels', 'parties', 'title', 'survey', 'appraisals',
-  'approvals', 'negotiations', 'agreements', 'closing', 'payments', 'administration', 'library',
+  'approvals', 'negotiations', 'agreements', 'closing', 'payments', 'administration', 'library', 'contactlog', 'easements',
 ]
 
 /** Permission rows for a user who can read `readable` pages and nothing else. */

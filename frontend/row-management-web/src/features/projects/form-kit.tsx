@@ -43,7 +43,7 @@ export function TextField({
   required?: boolean
   hint?: string
   error?: string
-  type?: 'text' | 'date' | 'number' | 'password'
+  type?: 'text' | 'date' | 'datetime-local' | 'number' | 'password'
   placeholder?: string
   maxLength?: number
   disabled?: boolean

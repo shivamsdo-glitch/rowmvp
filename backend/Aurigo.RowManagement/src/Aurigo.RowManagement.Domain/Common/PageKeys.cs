@@ -19,12 +19,14 @@ public static class PageKeys
     public const string Closing = "closing";
     public const string Payments = "payments";
     public const string Administration = "administration";
+    public const string ContactLog = "contactlog";    // a parcel's Contact Log tab
+    public const string Easements = "easements";      // a parcel's Easements tab
     public const string Library = "library";          // the Library: everyone reads it (form dropdowns); administrators edit it
 
     public static readonly IReadOnlyList<string> All = new[]
     {
         Dashboard, Projects, Parcels, Parties, Title, Survey, Appraisals,
-        Approvals, Negotiations, Agreements, Closing, Payments, Administration, Library,
+        Approvals, Negotiations, Agreements, Closing, Payments, Administration, Library, ContactLog, Easements,
     };
 
     public static bool IsKnown(string? key) => key is not null && All.Contains(key, StringComparer.Ordinal);
