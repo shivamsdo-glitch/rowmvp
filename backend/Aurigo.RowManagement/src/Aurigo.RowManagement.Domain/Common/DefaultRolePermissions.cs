@@ -106,6 +106,10 @@ public static class DefaultRolePermissions
             {
                 [RoleNames.TitleResearcher] = S, [RoleNames.Negotiator] = S, [RoleNames.Admin] = P,
             },
+            [PageKeys.ParcelNegotiation] = new Dictionary<string, string>
+            {
+                [RoleNames.Negotiator] = P, [RoleNames.Admin] = P,
+            },
             [PageKeys.ParcelAppraisal] = new Dictionary<string, string>
             {
                 [RoleNames.Appraiser] = P, [RoleNames.AppraisalApprover] = RU, [RoleNames.Admin] = P,

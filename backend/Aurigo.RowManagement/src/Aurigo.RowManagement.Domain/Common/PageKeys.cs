@@ -22,6 +22,7 @@ public static class PageKeys
     public const string TitleEncumbrances = "titleencumbrances"; // a parcel's Title Encumbrances tab
     public const string TitleClosing = "titleclosing";       // a parcel's Title and Closing tab
     public const string ParcelAppraisal = "parcelappraisal";   // a parcel's Appraisal tab
+    public const string ParcelNegotiation = "parcelnegotiation";   // a parcel's Negotiation tab
     public const string Ownership = "ownership";      // a parcel's Ownership Details tab
     public const string ParcelLocation = "parcellocation"; // a parcel's Parcel Location tab (read-only grid)
     public const string ContactLog = "contactlog";    // a parcel's Contact Log tab
@@ -31,7 +32,7 @@ public static class PageKeys
     public static readonly IReadOnlyList<string> All = new[]
     {
         Dashboard, Projects, Parcels, Parties, Title, Survey, Appraisals,
-        Approvals, Negotiations, Agreements, Closing, Payments, Administration, Library, ContactLog, Easements, Ownership, ParcelLocation, TitleEncumbrances, TitleClosing, ParcelAppraisal,
+        Approvals, Negotiations, Agreements, Closing, Payments, Administration, Library, ContactLog, Easements, Ownership, ParcelLocation, TitleEncumbrances, TitleClosing, ParcelAppraisal, ParcelNegotiation,
     };
 
     public static bool IsKnown(string? key) => key is not null && All.Contains(key, StringComparer.Ordinal);

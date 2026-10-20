@@ -1,10 +1,12 @@
-import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing, Appraisal } from '@/api/parcel-tabs'
+import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing, Appraisal, Negotiation } from '@/api/parcel-tabs'
 import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 const problem = (status: number, title: string, detail: string, errors?: Record<string, string[]>) => json({ title, status, detail, errors }, status)
+
+type NegotiationAgentLike = { agentType: string | null; company: string | null; phone: string | null; email: string | null }
 
 export interface FakeTabsOptions extends FakeRecordsOptions {
   contactLog?: (Partial<ContactLogEntry> & { parcelId: string })[]
@@ -14,6 +16,7 @@ export interface FakeTabsOptions extends FakeRecordsOptions {
   encumbrances?: (Partial<Encumbrance> & { parcelId: string })[]
   titleClosings?: (Partial<TitleClosing> & { parcelId: string })[]
   appraisals?: (Partial<Appraisal> & { parcelId: string })[]
+  negotiations?: (Partial<Negotiation> & { parcelId: string })[]
 }
 
 export interface FakeTabs extends FakeRecords {
@@ -24,6 +27,7 @@ export interface FakeTabs extends FakeRecords {
   encumbrances: Encumbrance[]
   titleClosings: TitleClosing[]
   appraisals: Appraisal[]
+  negotiations: Negotiation[]
 }
 
 /** An in-memory stand-in for a parcel's Contact Log, Easements and the attachments on them, with the server's rules and page permissions. */
@@ -72,8 +76,13 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     reviewAppraiser: null, reviewType: null, appraisalReceivedDate: null, approvedJustCompensation: null, reviewCompletedDate: null, reviewSubmittedDate: null,
     reviewRecommendation: null, reviewRecommendedValue: null, submittedToJatDate: null, approvedByJatDate: null, ftaConcurrenceNeeded: false, updatedAt: '2026-01-01T00:00:00Z', ...a,
   }))
+  const negotiations: Negotiation[] = (opts.negotiations ?? []).map((n) => ({
+    id: id('ng'), number: 'NEG-001', parcelNumber: '001', assignedTo: null, totalAgreementAmount: null, notes: null, counterofferSubmittedToJatDate: null,
+    counterofferResponseFromJatDate: null, jatResponse: null, ftaApprovalRequiredForCounteroffer: false, puaRequestedDate: null, puaApprovedDate: null, puaApprovedAmount: null,
+    puaExecutedDate: null, puaClosedDate: null, statusNotes: [], agents: [], rightsOfEntry: [], offers: [], settlements: [], updatedAt: '2026-01-01T00:00:00Z', ...n,
+  }))
   const pageOf = (entityType: string) =>
-    entityType === 'ParcelAppraisal' ? 'parcelappraisal' : entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
+    entityType === 'ParcelNegotiation' ? 'parcelnegotiation' : entityType === 'ParcelAppraisal' ? 'parcelappraisal' : entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
 
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://x')
@@ -108,15 +117,16 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
-    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing|appraisals)(?:\/([^/]+))?$/.exec(url.pathname)
+    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing|appraisals|negotiation)(?:\/([^/]+))?$/.exec(url.pathname)
     if (!m) return base.fetch(input, init)
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     base.calls.push({ key: `${method} ${url.pathname}`, body })
     const [, parcelId, part, rid] = m
-    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : part === 'appraisals' ? 'parcelappraisal' : 'easements'
+    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : part === 'appraisals' ? 'parcelappraisal' : part === 'negotiation' ? 'parcelnegotiation' : 'easements'
     const existingTc = titleClosings.find((x) => x.parcelId === parcelId)
-    const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? (part === 'title-closing' && !existingTc ? 'create' : 'update') : 'delete'
+    const existingNg = negotiations.find((x) => x.parcelId === parcelId)
+    const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? ((part === 'title-closing' && !existingTc) || (part === 'negotiation' && !existingNg) ? 'create' : 'update') : 'delete'
     if (!can(page, act)) return forbidden()
     const parcel = base.parcels.find((p) => p.id === parcelId)
     if (!parcel) return problem(404, 'not_found', 'Parcel was not found.')
@@ -142,6 +152,32 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       const tc: TitleClosing = { id: id('tc'), parcelId, number: `TC-${parcel.number}`, parcelNumber: parcel.number, vestedOwnerName: vested, ...fields }
       titleClosings.push(tc)
       return json(tc)
+    }
+
+    if (part === 'negotiation') {
+      if (method === 'GET') return json({ record: existingNg ?? null })
+      if (method === 'DELETE') {
+        if (!existingNg) return problem(404, 'not_found', 'Negotiation record was not found.')
+        negotiations.splice(negotiations.indexOf(existingNg), 1)
+        return new Response(null, { status: 204 })
+      }
+      const errors: Record<string, string[]> = {}
+      const neg = (v: unknown) => v !== null && v !== undefined && (v as number) < 0
+      if (neg(body?.totalAgreementAmount)) errors.TotalAgreementAmount = ['The amount must be zero or more.']
+      if (body?.puaApprovedDate && body?.puaRequestedDate && body.puaApprovedDate < body.puaRequestedDate) errors.PuaApprovedDate = ['The PUA cannot be approved before it is requested.']
+      if ((body?.offers ?? []).some((o: { amount: number | null }) => neg(o.amount))) errors.Offers = ['The amount must be zero or more.']
+      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
+      const withIds = <T extends object>(rows: T[] | undefined): (T & { id: string })[] => (rows ?? []).map((r) => ({ id: id('x'), ...r }))
+      const libraryAgents: Record<string, Partial<NegotiationAgentLike>> = { 'Pat Agent': { agentType: 'Broker', company: 'Acme Realty', phone: '555-0100', email: 'pat@example.com' } }
+      const agents = (body?.agents ?? []).map((a: { agentName: string }) => ({ id: id('x'), agentType: null, company: null, phone: null, email: null, ...libraryAgents[a.agentName], agentName: a.agentName }))
+      const fields = {
+        ...body, statusNotes: withIds(body?.statusNotes), agents, rightsOfEntry: withIds(body?.rightsOfEntry), offers: withIds(body?.offers), settlements: withIds(body?.settlements),
+        updatedAt: `2026-10-14T00:00:${String(seq % 60).padStart(2, '0')}Z`,
+      }
+      if (existingNg) { Object.assign(existingNg, fields); return json(existingNg) }
+      const ng: Negotiation = { id: id('ng'), parcelId, number: `NEG-${parcel.number}`, parcelNumber: parcel.number, ...fields }
+      negotiations.push(ng)
+      return json(ng)
     }
 
     if (part === 'appraisals') {
@@ -289,5 +325,5 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     return json(e, 201)
   }
 
-  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings, appraisals }
+  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings, appraisals, negotiations }
 }

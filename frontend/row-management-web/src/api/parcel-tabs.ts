@@ -285,3 +285,61 @@ export const appraisalsApi = (api: ApiClient) => ({
   update: (parcelId: string, id: string, body: AppraisalInput) => api.put<Appraisal>(`/api/v1/parcels/${parcelId}/appraisals/${id}`, body),
   remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/appraisals/${id}`),
 })
+
+export interface NegotiationNote { id?: string; noteDate: string; text: string }
+/** Type, company, phone and email are read-only: they come from the Library agent of that name. */
+export interface NegotiationAgent { id?: string; agentName: string; agentType: string | null; company: string | null; phone: string | null; email: string | null }
+export interface NegotiationRightOfEntry {
+  id?: string
+  letterMailedDate: string | null
+  letterDeliveredDate: string | null
+  signedReceivedDate: string | null
+  sentToAtpDate: string | null
+  expirationDate: string | null
+  specialInstructions: string | null
+}
+export interface NegotiationOffer { id?: string; offerType: string | null; mailedDate: string | null; deliveredDate: string | null; amount: number | null; notes: string | null }
+export interface NegotiationSettlement {
+  id?: string
+  settlementType: string | null
+  counterofferAmount: number | null
+  dateReceived: string | null
+  dateSubmitted: string | null
+  counterofferResponse: string | null
+  responseDateFromAtp: string | null
+  responseDateToOwner: string | null
+  settlementNotes: string | null
+}
+
+export interface Negotiation {
+  id: string
+  parcelId: string
+  number: string
+  parcelNumber: string
+  assignedTo: string | null
+  totalAgreementAmount: number | null
+  notes: string | null
+  counterofferSubmittedToJatDate: string | null
+  counterofferResponseFromJatDate: string | null
+  jatResponse: string | null
+  ftaApprovalRequiredForCounteroffer: boolean
+  puaRequestedDate: string | null
+  puaApprovedDate: string | null
+  puaApprovedAmount: number | null
+  puaExecutedDate: string | null
+  puaClosedDate: string | null
+  statusNotes: NegotiationNote[]
+  agents: NegotiationAgent[]
+  rightsOfEntry: NegotiationRightOfEntry[]
+  offers: NegotiationOffer[]
+  settlements: NegotiationSettlement[]
+  updatedAt: string
+}
+
+export type NegotiationInput = Omit<Negotiation, 'id' | 'parcelId' | 'number' | 'parcelNumber' | 'updatedAt' | 'agents'> & { agents: { agentName: string }[] }
+
+export const negotiationApi = (api: ApiClient) => ({
+  get: (parcelId: string) => api.get<{ record: Negotiation | null }>(`/api/v1/parcels/${parcelId}/negotiation`),
+  save: (parcelId: string, body: NegotiationInput) => api.put<Negotiation>(`/api/v1/parcels/${parcelId}/negotiation`, body),
+  remove: (parcelId: string) => api.delete(`/api/v1/parcels/${parcelId}/negotiation`),
+})

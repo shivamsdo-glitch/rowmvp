@@ -540,6 +540,105 @@ describe('Appraisal (AT-AP-40, AT-AA-40)', () => {
   })
 })
 
+const NG = [{ parcelId: 'pc1', id: 'ng1', number: 'NEG-PN-1001', totalAgreementAmount: 5000 }]
+
+describe('Negotiation (AT-NE-42)', () => {
+  it('shows the parcel facts read-only and saves a first negotiation with its grids', async () => {
+    const { fake, user } = open('Negotiator')
+    await tab(user, 'Negotiation')
+    const form = await screen.findByRole('form', { name: 'Negotiation' })
+
+    expect(form).toHaveTextContent('PN-1001')
+    expect(form).toHaveTextContent('1 Oak St')
+    expect(form).toHaveTextContent('Assigned when saved')
+
+    await user.click(within(form).getByRole('button', { name: 'Add status note' }))
+    expect(await within(form).findByText('Enter the status note.')).toBeInTheDocument()
+    await user.type(within(form).getByLabelText('Status note'), 'Owner called back.')
+    await user.click(within(form).getByRole('button', { name: 'Add status note' }))
+    expect(within(form).getByRole('table', { name: 'Negotiation status notes' })).toHaveTextContent('Owner called back.')
+
+    await user.click(within(form).getByRole('button', { name: 'Add agent' }))
+    expect(await within(form).findByText('Choose the agent.')).toBeInTheDocument()
+    await user.selectOptions(within(form).getByLabelText('Agent'), 'Pat Agent')
+    await user.click(within(form).getByRole('button', { name: 'Add agent' }))
+
+    await waitFor(() => expect(within(within(form).getByLabelText('Offer type')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Initial Offer', 'Final Offer']))
+    await user.selectOptions(within(form).getByLabelText('Offer type'), 'Initial Offer')
+    await user.type(within(form).getByLabelText('Offer amount'), '-5')
+    await user.click(within(form).getByRole('button', { name: 'Add offer' }))
+    expect(await within(form).findByText('The amount must be zero or more.')).toBeInTheDocument()
+    await user.clear(within(form).getByLabelText('Offer amount'))
+    await user.type(within(form).getByLabelText('Offer amount'), '200000')
+    await user.click(within(form).getByRole('button', { name: 'Add offer' }))
+    expect(within(form).getByRole('table', { name: 'Offers' })).toHaveTextContent('$200,000.00')
+
+    await user.selectOptions(within(form).getByLabelText('Settlement type'), 'Administrative')
+    await user.type(within(form).getByLabelText('Counteroffer amount'), '260000')
+    await user.click(within(form).getByRole('button', { name: 'Add settlement' }))
+    await user.type(within(form).getByLabelText('Total agreement amount'), '250000')
+    await user.click(within(form).getByRole('button', { name: 'Save negotiation' }))
+
+    await waitFor(() => expect(fake.negotiations).toHaveLength(1))
+    expect(fake.negotiations[0]).toMatchObject({ number: 'NEG-PN-1001', totalAgreementAmount: 250000 })
+    expect(fake.negotiations[0].statusNotes.map((n) => n.text)).toEqual(['Owner called back.'])
+    expect(fake.negotiations[0].offers).toHaveLength(1)
+    expect(fake.negotiations[0].settlements[0]).toMatchObject({ settlementType: 'Administrative', counterofferAmount: 260000 })
+    expect(await within(form).findByText('Acme Realty')).toBeInTheDocument()
+    expect(await screen.findByText('Negotiation saved.')).toBeInTheDocument()
+  })
+
+  it('refuses dates that go backwards before saving anything', async () => {
+    const { fake, user } = open('Negotiator')
+    await tab(user, 'Negotiation')
+    const form = await screen.findByRole('form', { name: 'Negotiation' })
+
+    fireEvent.change(within(form).getByLabelText('Counteroffer submitted to JAT'), { target: { value: '2026-06-10' } })
+    fireEvent.change(within(form).getByLabelText('Counteroffer response from JAT'), { target: { value: '2026-06-01' } })
+    fireEvent.change(within(form).getByLabelText('PUA executed'), { target: { value: '2026-07-10' } })
+    fireEvent.change(within(form).getByLabelText('PUA closed'), { target: { value: '2026-07-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Save negotiation' }))
+
+    expect(await within(form).findByText('The JAT cannot respond before the counteroffer is submitted.')).toBeInTheDocument()
+    expect(within(form).getByText('The PUA cannot be closed before it is executed.')).toBeInTheDocument()
+    expect(fake.negotiations).toHaveLength(0)
+
+    await user.click(within(form).getByRole('button', { name: 'Add right of entry' }))
+    expect(await within(form).findByText('Enter at least one detail of the right of entry.')).toBeInTheDocument()
+  })
+
+  it('changes a saved record and removes a row from a grid', async () => {
+    const { fake, user } = open('Negotiator', {
+      negotiations: [{ parcelId: 'pc1', id: 'ng1', number: 'NEG-PN-1001', offers: [{ id: 'o1', offerType: 'Initial Offer', mailedDate: null, deliveredDate: null, amount: 100, notes: null }] }],
+    })
+    await tab(user, 'Negotiation')
+    const form = await screen.findByRole('form', { name: 'Negotiation' })
+
+    expect(within(form).getByRole('table', { name: 'Offers' })).toHaveTextContent('$100.00')
+    await user.click(within(form).getByRole('button', { name: 'Remove offer 1' }))
+    await user.type(within(form).getByLabelText('Notes'), 'Spoke to owner.')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(fake.negotiations[0].notes).toBe('Spoke to owner.'))
+    expect(fake.negotiations[0].offers).toEqual([])
+    expect(within(form).queryByRole('button', { name: 'Save negotiation' })).toBeNull()
+  })
+
+  it('attaches a file once the record exists, and removes the record', async () => {
+    const { fake, user } = open('Admin', { negotiations: NG })
+    await tab(user, 'Negotiation')
+    const panel = await screen.findByRole('region', { name: 'Attachments for NEG-PN-1001' })
+
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'offer.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('offer.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelNegotiation', entityId: 'ng1' })
+
+    await user.click(screen.getByRole('button', { name: 'Remove negotiation record' }))
+    await waitFor(() => expect(fake.negotiations).toHaveLength(0))
+    expect(await screen.findByText('Assigned when saved')).toBeInTheDocument()
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -614,6 +713,28 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     expect(!!screen.queryByRole('form', { name: 'Add an appraisal' })).toBe(can(role, 'parcelappraisal', 'create'))
     expect(!!screen.queryByRole('button', { name: 'Edit appraisal APR-PN-1001-001' })).toBe(can(role, 'parcelappraisal', 'update'))
     expect(!!screen.queryByRole('button', { name: 'Remove appraisal APR-PN-1001-001' })).toBe(can(role, 'parcelappraisal', 'delete'))
+  })
+
+  it('shows the Negotiation tab and its controls exactly as the Negotiation page allows (AT-X-52)', async () => {
+    const withRecord = open(role, { negotiations: [{ parcelId: 'pc1', id: 'ng1', number: 'NEG-PN-1001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Negotiation' })).toBe(can(role, 'parcelnegotiation', 'read'))
+    if (!can(role, 'parcelnegotiation', 'read')) return
+    await tab(withRecord.user, 'Negotiation')
+    await screen.findByRole('form', { name: 'Negotiation' })
+    expect(!!screen.queryByRole('button', { name: 'Save changes' })).toBe(can(role, 'parcelnegotiation', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove negotiation record' })).toBe(can(role, 'parcelnegotiation', 'delete'))
+  })
+
+  it('offers the first save of the Negotiation record only to roles that may create it', async () => {
+    const { user } = open(role)
+    await screen.findByRole('heading', { name: /PN-1001/ })
+    if (!can(role, 'parcelnegotiation', 'read')) return
+    await tab(user, 'Negotiation')
+    await screen.findByRole('form', { name: 'Negotiation' })
+
+    expect(!!screen.queryByRole('button', { name: 'Save negotiation' })).toBe(can(role, 'parcelnegotiation', 'create'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

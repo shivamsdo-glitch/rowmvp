@@ -27,6 +27,7 @@ public static class AttachmentTargets
         ["Encumbrance"] = PageKeys.TitleEncumbrances,
         ["TitleClosing"] = PageKeys.TitleClosing,
         ["ParcelAppraisal"] = PageKeys.ParcelAppraisal,
+        ["ParcelNegotiation"] = PageKeys.ParcelNegotiation,
     };
 
     public static IReadOnlyCollection<string> EntityTypes => PageByType.Keys.ToArray();

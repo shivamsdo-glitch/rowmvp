@@ -32,7 +32,14 @@ public sealed record AppraisalBody(
     DateOnly? AppraisalReceivedDate, decimal? ApprovedJustCompensation, DateOnly? ReviewCompletedDate, DateOnly? ReviewSubmittedDate, string? ReviewRecommendation,
     decimal? ReviewRecommendedValue, DateOnly? SubmittedToJatDate, DateOnly? ApprovedByJatDate, bool FtaConcurrenceNeeded);
 
-/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing and Appraisal tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+public sealed record NegotiationEnvelope(NegotiationDto? Record);
+public sealed record NegotiationBody(
+    string? AssignedTo, decimal? TotalAgreementAmount, string? Notes, DateOnly? CounterofferSubmittedToJatDate, DateOnly? CounterofferResponseFromJatDate, string? JatResponse,
+    bool FtaApprovalRequiredForCounteroffer, DateOnly? PuaRequestedDate, DateOnly? PuaApprovedDate, decimal? PuaApprovedAmount, DateOnly? PuaExecutedDate, DateOnly? PuaClosedDate,
+    List<NegotiationNoteInput>? StatusNotes, List<NegotiationAgentInput>? Agents, List<NegotiationRightOfEntryInput>? RightsOfEntry, List<NegotiationOfferInput>? Offers,
+    List<NegotiationSettlementInput>? Settlements);
+
+/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing, Appraisal and Negotiation tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -112,6 +119,27 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveAppraisal(Guid parcelId, Guid appraisalId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveAppraisalCommand(parcelId, appraisalId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("negotiation")]
+    [ProducesResponseType(typeof(NegotiationEnvelope), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Negotiation(Guid parcelId, CancellationToken ct) => Ok(new NegotiationEnvelope(await _mediator.Send(new GetNegotiationQuery(parcelId), ct)));
+
+    /// <summary>Saves the parcel's one negotiation record: the first save creates it (needs Create), later saves change it (need Update). The grids are replaced as sent.</summary>
+    [HttpPut("negotiation")]
+    [ProducesResponseType(typeof(NegotiationDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SaveNegotiation(Guid parcelId, [FromBody] NegotiationBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SaveNegotiationCommand(
+            parcelId, b.AssignedTo, b.TotalAgreementAmount, b.Notes, b.CounterofferSubmittedToJatDate, b.CounterofferResponseFromJatDate, b.JatResponse,
+            b.FtaApprovalRequiredForCounteroffer, b.PuaRequestedDate, b.PuaApprovedDate, b.PuaApprovedAmount, b.PuaExecutedDate, b.PuaClosedDate,
+            b.StatusNotes, b.Agents, b.RightsOfEntry, b.Offers, b.Settlements), ct));
+
+    [HttpDelete("negotiation")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveNegotiation(Guid parcelId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveNegotiationCommand(parcelId), ct);
         return NoContent();
     }
 
