@@ -10,7 +10,8 @@ This is the contract for "it works". Every case is written as a **job a person d
 | Designer | ROW Designer: adds and updates parcels and their details from the plans | [Designer.md](Designer.md) |
 | Surveyor | Right-of-way limits, field data and easements | [Surveyor.md](Surveyor.md) |
 | Title Researcher | Title research (was Title Examiner; Surveyor is now its own role) | [TitleExaminer.md](TitleExaminer.md) |
-| Appraiser | Appraisal team and approving official: appraise, review, establish just compensation | [Appraiser.md](Appraiser.md) |
+| Appraiser | Appraisal team and approving official: appraise, review, establish just compensation | [Appraiser.md](Appraiser.md) |
+| Appraisal Approver | Approving official for appraisals: reviews and sets the approved just compensation | [AppraisalApprover.md](AppraisalApprover.md) |
 | Negotiator | ROW Agent: offers, negotiation, agreements, closing | [Negotiator.md](Negotiator.md) |
 | Finance | Finance / Accounts Payable: payments and expenditure | [Finance.md](Finance.md) |
 | Administrator | System Administrator: configures rules, roles, approvals, users | [Administrator.md](Administrator.md) |

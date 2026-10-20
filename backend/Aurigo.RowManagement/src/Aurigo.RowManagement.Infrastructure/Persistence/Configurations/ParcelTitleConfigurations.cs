@@ -79,3 +79,36 @@ public class ParcelTitleCommitmentConfiguration : IEntityTypeConfiguration<Parce
         b.Property(x => x.VestedOwnerName).IsRequired().HasMaxLength(200);
     }
 }
+
+public class ParcelAppraisalConfiguration : IEntityTypeConfiguration<ParcelAppraisal>
+{
+    public void Configure(EntityTypeBuilder<ParcelAppraisal> b)
+    {
+        b.ToTable("parcel_appraisals");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Number).IsRequired().HasMaxLength(80);
+        b.Property(x => x.AppraisalType).HasMaxLength(100);
+        b.Property(x => x.Appraiser).HasMaxLength(200);
+        b.Property(x => x.AssignedTo).HasMaxLength(200);
+        b.Property(x => x.ReviewAppraiser).HasMaxLength(200);
+        b.Property(x => x.ReviewType).HasMaxLength(100);
+        b.Property(x => x.ReviewRecommendation).HasMaxLength(100);
+        b.Property(x => x.ApprovedJustCompensation).HasPrecision(18, 2);
+        b.Property(x => x.ReviewRecommendedValue).HasPrecision(18, 2);
+        b.HasOne<Parcel>().WithMany().HasForeignKey(x => x.ParcelId).OnDelete(DeleteBehavior.Restrict);
+        b.HasMany(x => x.Amounts).WithOne().HasForeignKey(a => a.AppraisalId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => new { x.ParcelId, x.Sequence }).IsUnique();
+    }
+}
+
+public class ParcelAppraisalAmountConfiguration : IEntityTypeConfiguration<ParcelAppraisalAmount>
+{
+    public void Configure(EntityTypeBuilder<ParcelAppraisalAmount> b)
+    {
+        b.ToTable("parcel_appraisal_amounts");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.AmountType).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Description).HasMaxLength(500);
+        b.Property(x => x.Amount).HasPrecision(18, 2);
+    }
+}

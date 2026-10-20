@@ -14,6 +14,7 @@
 | AT-AP-13 | A title examiner can see my outcome | The title examiner opens my appraisal documents | – | Readable; not removable | ✅ | API `RoleAcceptanceApiTests` |
 | AT-AP-15 | See who owns a parcel and whether a tax ID is on file, without being able to change it | Open Parties, search, open a party; open a parcel's Parties tab and a tract's owners panel as the Appraiser | The people are listed; "On file" and the masked number show; no New party, Edit, tax form, Add, Remove or Delete controls | Every create, edit, tax-info, clear, delete and link call is refused (403) and the data is unchanged; the number never appears in any response | ✅ | E2E `AT-AP-15`; API `PartyApiTests` role matrix |
 | AT-AP-25 | Approve a request or a staff report entered by someone else | Open Requests and approve one; open a parcel's Reviews & reports and approve a submitted staff report | Approve works; there is no form to enter a request | The Approvals page allows it; submitting a request is a Projects job (403) | ✅ | E2E `AT-AP-25`; API `AcquisitionApiTests` (role matrix) |
+| AT-AP-40 | Keep the appraisals of a parcel | Open a parcel's Appraisal tab. Pick the type and appraiser, enter the dates (try a received date before the requested date), add amounts by type, add the appraisal, attach the report, change a date, remove an appraisal | Each appraisal gets an ID and the total of its amounts; the appraiser's company is shown from the Library; the review block is read-only; the attachments panel appears on the edit form | Dates that go backwards, a negative or missing amount type and more than 50 amounts are refused (400); ten adds at once are numbered one to ten without a gap or repeat; the appraiser cannot set the approved just compensation (403) | ✅ | E2E `AT-AP-40`, `AT-AA-40`; API `AppraisalApiTests`; frontend `parcel-tabs.test.tsx`; unit `AppraisalTests` |
 
 ## Jobs that arrive with later phases
 
@@ -26,6 +27,7 @@
 | AT-AP-24 | Protect an approved value | 3 | An approved appraisal cannot be edited; a revision creates a new version and the old one stays visible |
 
 ## Changelog
+- Phase 1.5 slice 6c: AT-AP-40 automated (the Appraisal tab). ADR 0018.
 - Phase 1 slice 3c: AT-AP-25 automated (approvals).
 - Phase 1 slice 3a: AT-AP-15 automated (read-only access to parties).
 - Initial: AT-AP-10..13 automated; 20..24 specified.

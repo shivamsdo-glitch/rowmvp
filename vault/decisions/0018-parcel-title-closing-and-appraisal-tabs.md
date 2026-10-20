@@ -16,5 +16,11 @@
 - **Access:** the `titleclosing` page: Title Researcher and Negotiator create, read and update; Admin full; everyone else read. Only Admin can remove the record. Attachments use entity type `TitleClosing`, shown once the record exists.
 - Closing and recording as a process (Diagram 4's closing steps, payments) is not changed by this tab: these are the fields the agency keeps; nothing here moves a parcel through its workflow.
 
-## 6c
-Recorded below as it lands.
+## 6c — Appraisal (U)
+- **Many per parcel**, numbered `APR-<parcel number>-<sequence>` (same per-parcel lock and unique index as the Contact Log and Encumbrances). Page key `parcelappraisal` (the older `appraisals` key stays for the document type "Appraisal"); attachments use entity type `ParcelAppraisal` and are shown on the edit form.
+- **Appraisal block:** type (Library *Appraisal type*), appraiser and assigned to (people from the Library *Agents* list, stored by name), land planner required, and the requested, received (not before requested), report, due, submitted-to-ATP and effective dates. **Appraiser company is read-only**: looked up from the Library agent by name, never stored.
+- **Amounts grid:** rows of amount type (Library *Appraisal amount type*), description and an amount of zero or more, at most 50, replaced as sent. **Appraisal total is the amounts added up** and is computed, never stored.
+- **Review block (judgement call 2):** review appraiser, review type, appraisal received date, **approved just compensation**, review completed and submitted dates, recommendation and recommended value. Only the **Appraisal Approver** (and Admin) may change these. Anyone else with update access may save the appraisal while sending the review back as it is (blank text counts as nothing); a different review value is refused with 403 `appraisal_review_restricted`, and a new appraisal may only start with an empty review unless the author is a review role. The screen shows the section read-only to everyone else. The rule is the pure `AppraisalReviewAccess` calculation.
+- **Concurrence:** submitted to JAT date, approved by JAT date (not before submitted) and FTA concurrence needed. These are open to the Appraiser.
+- **Access:** Appraiser and Admin create, read, update and delete; Appraisal Approver reads and updates (so they can review, not add or remove); the Project Manager and everyone else read.
+- **Not built:** the Land Planner collapsed section of the document. It does not say what it records, so it is flagged rather than guessed.

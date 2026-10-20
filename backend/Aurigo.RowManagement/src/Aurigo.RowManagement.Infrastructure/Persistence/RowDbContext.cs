@@ -87,6 +87,8 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<ParcelTitleClosing> ParcelTitleClosings => Set<ParcelTitleClosing>();
     public DbSet<ParcelConveyanceDocument> ParcelConveyanceDocuments => Set<ParcelConveyanceDocument>();
     public DbSet<ParcelTitleCommitment> ParcelTitleCommitments => Set<ParcelTitleCommitment>();
+    public DbSet<ParcelAppraisal> ParcelAppraisals => Set<ParcelAppraisal>();
+    public DbSet<ParcelAppraisalAmount> ParcelAppraisalAmounts => Set<ParcelAppraisalAmount>();
     public DbSet<RightOfEntry> RightsOfEntry => Set<RightOfEntry>();
     public DbSet<AcquisitionRequest> AcquisitionRequests => Set<AcquisitionRequest>();
     public DbSet<ParcelPlanReview> ParcelPlanReviews => Set<ParcelPlanReview>();

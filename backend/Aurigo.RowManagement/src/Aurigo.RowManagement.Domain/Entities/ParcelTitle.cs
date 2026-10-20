@@ -94,3 +94,52 @@ public class ParcelTitleCommitment : EntityBase
     public DateOnly? CurativePlanSubmittedDate { get; set; }
     public DateOnly? CurativePlanApprovedDate { get; set; }
 }
+
+/// <summary>
+/// An appraisal of a parcel (Phase 1.5 Appraisal tab, ADR 0018): who appraises it and when, the amounts, its review and the concurrence it
+/// needs. Many per parcel, numbered "APR-&lt;parcel number&gt;-&lt;sequence&gt;". The review fields are the Appraisal Approver's to write.
+/// </summary>
+public class ParcelAppraisal : EntityBase
+{
+    public Guid ParcelId { get; set; }
+    public int Sequence { get; set; }
+    public string Number { get; set; } = default!;
+    /// <summary>A value of the Library's appraisal type list.</summary>
+    public string? AppraisalType { get; set; }
+    /// <summary>The name of a person in the Library's Agents list.</summary>
+    public string? Appraiser { get; set; }
+    public bool LandPlannerRequired { get; set; }
+    public string? AssignedTo { get; set; }
+    public DateOnly? RequestedDate { get; set; }
+    public DateOnly? ReceivedDate { get; set; }
+    public DateOnly? ReportDate { get; set; }
+    public DateOnly? DueDate { get; set; }
+    public DateOnly? SubmittedToAtpDate { get; set; }
+    public DateOnly? EffectiveDate { get; set; }
+
+    // ── review: written by the review roles only ──
+    public string? ReviewAppraiser { get; set; }
+    public string? ReviewType { get; set; }
+    public DateOnly? AppraisalReceivedDate { get; set; }
+    public decimal? ApprovedJustCompensation { get; set; }
+    public DateOnly? ReviewCompletedDate { get; set; }
+    public DateOnly? ReviewSubmittedDate { get; set; }
+    public string? ReviewRecommendation { get; set; }
+    public decimal? ReviewRecommendedValue { get; set; }
+
+    // ── concurrence, if required ──
+    public DateOnly? SubmittedToJatDate { get; set; }
+    public DateOnly? ApprovedByJatDate { get; set; }
+    public bool FtaConcurrenceNeeded { get; set; }
+
+    public List<ParcelAppraisalAmount> Amounts { get; set; } = new();
+}
+
+public class ParcelAppraisalAmount : EntityBase
+{
+    public Guid AppraisalId { get; set; }
+    /// <summary>A value of the Library's appraisal amount type list.</summary>
+    public string AmountType { get; set; } = default!;
+    public string? Description { get; set; }
+    public decimal Amount { get; set; }
+}

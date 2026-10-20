@@ -450,6 +450,96 @@ describe('Title and closing (AT-TE-41)', () => {
   })
 })
 
+const AP = [{ parcelId: 'pc1', id: 'ap1', number: 'APR-PN-1001-001', appraisalType: 'Full Appraisal', appraiser: 'Pat Agent', appraiserCompany: 'Acme', appraisalTotal: 1500,
+  amounts: [{ id: 'am0', amountType: 'Land', description: null, amount: 1500 }], approvedJustCompensation: 1400, reviewAppraiser: 'Casey Closer' }]
+
+describe('Appraisal (AT-AP-40, AT-AA-40)', () => {
+  it('lists appraisals with their company, total and approved just compensation', async () => {
+    const { user } = open('Appraiser', { appraisals: AP })
+    await tab(user, 'Appraisal')
+
+    const row = within(await screen.findByRole('table', { name: 'Appraisals' })).getAllByRole('row')[1]
+    expect(row).toHaveTextContent('APR-PN-1001-001')
+    expect(row).toHaveTextContent('Acme')
+    expect(row).toHaveTextContent('$1,500.00')
+    expect(row).toHaveTextContent('$1,400.00')
+  })
+
+  it('adds an appraisal with amounts whose total is shown, and refuses a date that goes backwards', async () => {
+    const { fake, user } = open('Appraiser')
+    await tab(user, 'Appraisal')
+    const form = await screen.findByRole('form', { name: 'Add an appraisal' })
+
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Appraisal type/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Full Appraisal', 'Review']))
+    await user.selectOptions(within(form).getByLabelText(/^Appraisal type/), 'Full Appraisal')
+    await user.click(within(form).getByRole('button', { name: 'Add amount' }))
+    expect(await within(form).findByText('Choose the amount type.')).toBeInTheDocument()
+    await user.selectOptions(within(form).getByLabelText(/^Amount type/), 'Land')
+    await user.type(within(form).getByLabelText(/^Amount$/), '100.5')
+    await user.click(within(form).getByRole('button', { name: 'Add amount' }))
+    await user.selectOptions(within(form).getByLabelText(/^Amount type/), 'Damages')
+    await user.type(within(form).getByLabelText(/^Amount$/), '20')
+    await user.click(within(form).getByRole('button', { name: 'Add amount' }))
+    expect(within(form).getByText('$120.50')).toBeInTheDocument()
+
+    fireEvent.change(within(form).getByLabelText(/^Appraisal requested date/), { target: { value: '2026-03-01' } })
+    fireEvent.change(within(form).getByLabelText(/^Appraisal received date$/), { target: { value: '2026-02-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Add appraisal' }))
+    expect(await within(form).findByText('The appraisal cannot be received before it is requested.')).toBeInTheDocument()
+    expect(fake.appraisals).toHaveLength(0)
+
+    fireEvent.change(within(form).getByLabelText(/^Appraisal received date$/), { target: { value: '2026-03-10' } })
+    await user.click(within(form).getByRole('button', { name: 'Add appraisal' }))
+    await waitFor(() => expect(fake.appraisals).toHaveLength(1))
+    expect(fake.appraisals[0]).toMatchObject({ number: 'APR-PN-1001-001', appraisalType: 'Full Appraisal', appraisalTotal: 120.5, receivedDate: '2026-03-10' })
+    expect(fake.appraisals[0].amounts.map((a) => a.amountType)).toEqual(['Land', 'Damages'])
+  })
+
+  it('shows the review section read-only to the Appraiser, who can still save the appraisal', async () => {
+    const { fake, user } = open('Appraiser', { appraisals: AP })
+    await tab(user, 'Appraisal')
+    await user.click(await screen.findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
+    const form = await screen.findByRole('form', { name: 'Change appraisal' })
+
+    expect(within(form).getByLabelText(/^Approved just compensation/)).toBeDisabled()
+    expect(within(form).getByLabelText(/^Approved just compensation/)).toHaveValue(1400)
+    expect(within(form).getByLabelText(/^Review type/)).toBeDisabled()
+    await user.click(within(form).getByRole('checkbox', { name: 'FTA concurrence needed' }))
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(fake.appraisals[0].ftaConcurrenceNeeded).toBe(true))
+    expect(fake.appraisals[0].approvedJustCompensation).toBe(1400)
+  })
+
+  it('lets the Appraisal Approver set the approved just compensation', async () => {
+    const { fake, user } = open('AppraisalApprover', { appraisals: AP })
+    await tab(user, 'Appraisal')
+    await user.click(await screen.findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
+    const form = await screen.findByRole('form', { name: 'Change appraisal' })
+
+    expect(within(form).getByLabelText(/^Approved just compensation/)).toBeEnabled()
+    await user.clear(within(form).getByLabelText(/^Approved just compensation/))
+    await user.type(within(form).getByLabelText(/^Approved just compensation/), '1600')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(fake.appraisals[0].approvedJustCompensation).toBe(1600))
+  })
+
+  it('attaches a file to an appraisal and removes the appraisal', async () => {
+    const { fake, user } = open('Admin', { appraisals: AP })
+    await tab(user, 'Appraisal')
+    await user.click(await screen.findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
+    const panel = await screen.findByRole('region', { name: 'Attachments for APR-PN-1001-001' })
+
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'report.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('report.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelAppraisal', entityId: 'ap1' })
+
+    await user.click(screen.getByRole('button', { name: 'Remove appraisal APR-PN-1001-001' }))
+    await waitFor(() => expect(fake.appraisals).toHaveLength(0))
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -511,6 +601,19 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     await screen.findByRole('form', { name: 'Title and closing' })
 
     expect(!!screen.queryByRole('button', { name: 'Save title and closing' })).toBe(can(role, 'titleclosing', 'create'))
+  })
+
+  it('shows the Appraisal tab and its controls exactly as the Appraisal page allows (AT-X-51)', async () => {
+    const { user } = open(role, { appraisals: [{ parcelId: 'pc1', id: 'ap1', number: 'APR-PN-1001-001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Appraisal' })).toBe(can(role, 'parcelappraisal', 'read'))
+    if (!can(role, 'parcelappraisal', 'read')) return
+    await tab(user, 'Appraisal')
+    await screen.findByRole('table', { name: 'Appraisals' })
+    expect(!!screen.queryByRole('form', { name: 'Add an appraisal' })).toBe(can(role, 'parcelappraisal', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Edit appraisal APR-PN-1001-001' })).toBe(can(role, 'parcelappraisal', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove appraisal APR-PN-1001-001' })).toBe(can(role, 'parcelappraisal', 'delete'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

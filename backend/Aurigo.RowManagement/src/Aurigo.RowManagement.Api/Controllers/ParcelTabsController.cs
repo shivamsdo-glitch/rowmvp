@@ -26,7 +26,13 @@ public sealed record TitleClosingBody(
     DateOnly? ClosingPackageSubmittedDate, DateOnly? ClosingPackageApprovedDate, DateOnly? ClosingInstructionDate, DateOnly? AnticipatedClosingDate,
     DateOnly? ActualClosingDate, List<ConveyanceDocumentInput>? ConveyanceDocuments, List<TitleCommitmentInput>? TitleCommitments);
 
-/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances and Title and Closing tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+public sealed record AppraisalBody(
+    string? AppraisalType, string? Appraiser, bool LandPlannerRequired, string? AssignedTo, DateOnly? RequestedDate, DateOnly? ReceivedDate, DateOnly? ReportDate,
+    DateOnly? DueDate, DateOnly? SubmittedToAtpDate, DateOnly? EffectiveDate, List<AppraisalAmountInput>? Amounts, string? ReviewAppraiser, string? ReviewType,
+    DateOnly? AppraisalReceivedDate, decimal? ApprovedJustCompensation, DateOnly? ReviewCompletedDate, DateOnly? ReviewSubmittedDate, string? ReviewRecommendation,
+    decimal? ReviewRecommendedValue, DateOnly? SubmittedToJatDate, DateOnly? ApprovedByJatDate, bool FtaConcurrenceNeeded);
+
+/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing and Appraisal tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -80,6 +86,35 @@ public sealed class ParcelTabsController : ControllerBase
     }
 
     /// <summary>The parcel's title and closing record: <c>{ "record": null }</c> when none has been saved yet.</summary>
+    [HttpGet("appraisals")]
+    [ProducesResponseType(typeof(IReadOnlyList<AppraisalDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Appraisals(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new ListAppraisalsQuery(parcelId), ct));
+
+    [HttpPost("appraisals")]
+    [ProducesResponseType(typeof(AppraisalDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddAppraisal(Guid parcelId, [FromBody] AppraisalBody b, CancellationToken ct) =>
+        Created($"/api/v1/parcels/{parcelId}/appraisals", await _mediator.Send(new AddAppraisalCommand(
+            parcelId, b.AppraisalType, b.Appraiser, b.LandPlannerRequired, b.AssignedTo, b.RequestedDate, b.ReceivedDate, b.ReportDate, b.DueDate, b.SubmittedToAtpDate,
+            b.EffectiveDate, b.Amounts, b.ReviewAppraiser, b.ReviewType, b.AppraisalReceivedDate, b.ApprovedJustCompensation, b.ReviewCompletedDate, b.ReviewSubmittedDate,
+            b.ReviewRecommendation, b.ReviewRecommendedValue, b.SubmittedToJatDate, b.ApprovedByJatDate, b.FtaConcurrenceNeeded), ct));
+
+    /// <summary>Changes an appraisal. Only the Appraisal Approver (and Admin) may change the review fields; anyone else may send them back unchanged.</summary>
+    [HttpPut("appraisals/{appraisalId:guid}")]
+    [ProducesResponseType(typeof(AppraisalDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateAppraisal(Guid parcelId, Guid appraisalId, [FromBody] AppraisalBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new UpdateAppraisalCommand(
+            parcelId, appraisalId, b.AppraisalType, b.Appraiser, b.LandPlannerRequired, b.AssignedTo, b.RequestedDate, b.ReceivedDate, b.ReportDate, b.DueDate, b.SubmittedToAtpDate,
+            b.EffectiveDate, b.Amounts, b.ReviewAppraiser, b.ReviewType, b.AppraisalReceivedDate, b.ApprovedJustCompensation, b.ReviewCompletedDate, b.ReviewSubmittedDate,
+            b.ReviewRecommendation, b.ReviewRecommendedValue, b.SubmittedToJatDate, b.ApprovedByJatDate, b.FtaConcurrenceNeeded), ct));
+
+    [HttpDelete("appraisals/{appraisalId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveAppraisal(Guid parcelId, Guid appraisalId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveAppraisalCommand(parcelId, appraisalId), ct);
+        return NoContent();
+    }
+
     [HttpGet("title-closing")]
     [ProducesResponseType(typeof(TitleClosingEnvelope), StatusCodes.Status200OK)]
     public async Task<IActionResult> TitleClosing(Guid parcelId, CancellationToken ct) => Ok(new TitleClosingEnvelope(await _mediator.Send(new GetTitleClosingQuery(parcelId), ct)));

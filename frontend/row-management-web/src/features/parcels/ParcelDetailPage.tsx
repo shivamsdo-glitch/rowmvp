@@ -22,17 +22,18 @@ import { ContactLogTab, EasementsTab } from './ParcelTabs'
 import { OwnershipTab, ParcelLocationTab } from './OwnershipTabs'
 import { EncumbrancesTab } from './TitleTabs'
 import { TitleClosingTab } from './TitleClosingTab'
+import { AppraisalTab } from './AppraisalTab'
 import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from './parcel-kit'
 
 const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
   ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['roe', 'Right of entry'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
-  ['ownership', 'Ownership details'], ['parcellocation', 'Parcel location'], ['titleencumbrances', 'Title encumbrances'], ['titleclosing', 'Title and closing'], ['contactlog', 'Contact log'], ['easements', 'Easements'],
+  ['ownership', 'Ownership details'], ['parcellocation', 'Parcel location'], ['titleencumbrances', 'Title encumbrances'], ['titleclosing', 'Title and closing'], ['parcelappraisal', 'Appraisal'], ['contactlog', 'Contact log'], ['easements', 'Easements'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 /** Tabs with their own page permission: shown only to roles that can read that page. */
-const PAGE_TABS: readonly string[] = ['ownership', 'parcellocation', 'contactlog', 'easements', 'titleencumbrances', 'titleclosing']
+const PAGE_TABS: readonly string[] = ['ownership', 'parcellocation', 'contactlog', 'easements', 'titleencumbrances', 'titleclosing', 'parcelappraisal']
 
 /** Runs a save or delete, keeping the screen's error and busy state and refreshing what depends on the parcel. */
 function useParcelActions(parcelId: string) {
@@ -154,6 +155,7 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
           {tab === 'ownership' && <OwnershipTab parcelId={p.id} editable={live} />}
           {tab === 'titleencumbrances' && <EncumbrancesTab parcelId={p.id} editable={live} />}
           {tab === 'titleclosing' && <TitleClosingTab parcelId={p.id} editable={live} />}
+          {tab === 'parcelappraisal' && <AppraisalTab parcelId={p.id} editable={live} />}
           {tab === 'parcellocation' && <ParcelLocationTab parcel={p} />}
         </TabsContent>
       </Tabs>

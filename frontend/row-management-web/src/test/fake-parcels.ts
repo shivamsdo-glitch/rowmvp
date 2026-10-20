@@ -39,6 +39,10 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['owner_type', 'Owner type', ['CAD Owner', 'Fee Owner', 'Vested Owner']],
   ['address_type', 'Address type', ['Tax Card Mailing Address']],
   ['contact_type', 'Contact type', ['Broker']],
+  ['appraisal_type', 'Appraisal type', ['Full Appraisal', 'Review']],
+  ['appraisal_amount_type', 'Appraisal amount type', ['Land', 'Damages']],
+  ['review_type', 'Review type', ['Desk Review']],
+  ['review_recommendation', 'Review recommendation', ['Approve', 'Reject']],
 ]
 
 export interface FakeParcelsOptions extends FakeProjectsOptions {

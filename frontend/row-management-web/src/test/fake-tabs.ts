@@ -1,4 +1,4 @@
-import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing } from '@/api/parcel-tabs'
+import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing, Appraisal } from '@/api/parcel-tabs'
 import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
 
 function json(body: unknown, status = 200) {
@@ -13,6 +13,7 @@ export interface FakeTabsOptions extends FakeRecordsOptions {
   ownerships?: (Partial<Ownership> & { parcelId: string; ownerName: string })[]
   encumbrances?: (Partial<Encumbrance> & { parcelId: string })[]
   titleClosings?: (Partial<TitleClosing> & { parcelId: string })[]
+  appraisals?: (Partial<Appraisal> & { parcelId: string })[]
 }
 
 export interface FakeTabs extends FakeRecords {
@@ -22,6 +23,7 @@ export interface FakeTabs extends FakeRecords {
   ownerships: Ownership[]
   encumbrances: Encumbrance[]
   titleClosings: TitleClosing[]
+  appraisals: Appraisal[]
 }
 
 /** An in-memory stand-in for a parcel's Contact Log, Easements and the attachments on them, with the server's rules and page permissions. */
@@ -64,8 +66,14 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     curativeItemsCompleted: false, closingPackageSubmittedDate: null, closingPackageApprovedDate: null, closingInstructionDate: null, anticipatedClosingDate: null,
     actualClosingDate: null, conveyanceDocuments: [], titleCommitments: [], updatedAt: '2026-01-01T00:00:00Z', ...t,
   }))
+  const appraisals: Appraisal[] = (opts.appraisals ?? []).map((a, i) => ({
+    id: id('ap'), number: `APR-001-${String(i + 1).padStart(3, '0')}`, parcelNumber: '001', appraisalType: null, appraiser: null, appraiserCompany: null, landPlannerRequired: false,
+    assignedTo: null, requestedDate: null, receivedDate: null, reportDate: null, dueDate: null, submittedToAtpDate: null, effectiveDate: null, amounts: [], appraisalTotal: 0,
+    reviewAppraiser: null, reviewType: null, appraisalReceivedDate: null, approvedJustCompensation: null, reviewCompletedDate: null, reviewSubmittedDate: null,
+    reviewRecommendation: null, reviewRecommendedValue: null, submittedToJatDate: null, approvedByJatDate: null, ftaConcurrenceNeeded: false, updatedAt: '2026-01-01T00:00:00Z', ...a,
+  }))
   const pageOf = (entityType: string) =>
-    entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
+    entityType === 'ParcelAppraisal' ? 'parcelappraisal' : entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
 
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://x')
@@ -100,13 +108,13 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
-    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing)(?:\/([^/]+))?$/.exec(url.pathname)
+    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing|appraisals)(?:\/([^/]+))?$/.exec(url.pathname)
     if (!m) return base.fetch(input, init)
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     base.calls.push({ key: `${method} ${url.pathname}`, body })
     const [, parcelId, part, rid] = m
-    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : 'easements'
+    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : part === 'appraisals' ? 'parcelappraisal' : 'easements'
     const existingTc = titleClosings.find((x) => x.parcelId === parcelId)
     const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? (part === 'title-closing' && !existingTc ? 'create' : 'update') : 'delete'
     if (!can(page, act)) return forbidden()
@@ -134,6 +142,35 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       const tc: TitleClosing = { id: id('tc'), parcelId, number: `TC-${parcel.number}`, parcelNumber: parcel.number, vestedOwnerName: vested, ...fields }
       titleClosings.push(tc)
       return json(tc)
+    }
+
+    if (part === 'appraisals') {
+      const REVIEW = ['reviewAppraiser', 'reviewType', 'appraisalReceivedDate', 'approvedJustCompensation', 'reviewCompletedDate', 'reviewSubmittedDate', 'reviewRecommendation', 'reviewRecommendedValue'] as const
+      const mayReview = opts.role === 'AppraisalApprover' || opts.role === 'Admin'
+      const clean = (v: unknown) => (typeof v === 'string' ? (v.trim() || null) : (v ?? null))
+      if (method === 'GET') return json(appraisals.filter((a) => a.parcelId === parcelId))
+      if (method === 'DELETE') {
+        const i = appraisals.findIndex((a) => a.id === rid && a.parcelId === parcelId)
+        if (i < 0) return problem(404, 'not_found', 'Appraisal was not found.')
+        appraisals.splice(i, 1)
+        return new Response(null, { status: 204 })
+      }
+      const errors: Record<string, string[]> = {}
+      if (body?.requestedDate && body?.receivedDate && body.receivedDate < body.requestedDate) errors.ReceivedDate = ['The appraisal cannot be received before it is requested.']
+      if (body?.submittedToJatDate && body?.approvedByJatDate && body.approvedByJatDate < body.submittedToJatDate) errors.ApprovedByJatDate = ['The appraisal cannot be approved by the JAT before it is submitted.']
+      if ((body?.amounts ?? []).some((a: { amountType: string; amount: number }) => !a.amountType || a.amount < 0)) errors.Amounts = ['Each amount needs a type and an amount of zero or more.']
+      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
+      const existing = method === 'PUT' ? appraisals.find((x) => x.id === rid && x.parcelId === parcelId) : undefined
+      if (method === 'PUT' && !existing) return problem(404, 'not_found', 'Appraisal was not found.')
+      const before = existing ?? ({} as Partial<Appraisal>)
+      if (!mayReview && REVIEW.some((k) => clean(body?.[k]) !== clean((before as Record<string, unknown>)[k]))) return problem(403, 'appraisal_review_restricted', 'Only the Appraisal Approver can change the appraisal review.')
+      const amounts = (body.amounts ?? []).map((a: object) => ({ id: id('am'), ...a }))
+      const fields = { ...body, amounts, appraisalTotal: amounts.reduce((s: number, a: { amount: number }) => s + a.amount, 0), updatedAt: `2026-10-14T00:00:${String(seq % 60).padStart(2, '0')}Z` }
+      if (existing) { Object.assign(existing, fields); return json(existing) }
+      const next = Math.max(0, ...appraisals.filter((a) => a.parcelId === parcelId).map((a) => Number(a.number.split('-').pop()))) + 1
+      const a: Appraisal = { id: id('ap'), parcelId, number: `APR-${parcel.number}-${String(next).padStart(3, '0')}`, parcelNumber: parcel.number, appraiserCompany: null, ...fields }
+      appraisals.push(a)
+      return json(a, 201)
     }
 
     if (part === 'encumbrances') {
@@ -252,5 +289,5 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     return json(e, 201)
   }
 
-  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings }
+  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings, appraisals }
 }

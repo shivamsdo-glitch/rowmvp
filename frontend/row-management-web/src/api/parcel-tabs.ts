@@ -235,3 +235,53 @@ export const titleClosingApi = (api: ApiClient) => ({
   save: (parcelId: string, body: TitleClosingInput) => api.put<TitleClosing>(`/api/v1/parcels/${parcelId}/title-closing`, body),
   remove: (parcelId: string) => api.delete(`/api/v1/parcels/${parcelId}/title-closing`),
 })
+
+export interface AppraisalAmount {
+  id?: string
+  amountType: string
+  description: string | null
+  amount: number
+}
+
+export interface Appraisal {
+  id: string
+  parcelId: string
+  number: string
+  parcelNumber: string
+  appraisalType: string | null
+  appraiser: string | null
+  /** Read-only: the appraiser's company in the Library's Agents list. */
+  appraiserCompany: string | null
+  landPlannerRequired: boolean
+  assignedTo: string | null
+  requestedDate: string | null
+  receivedDate: string | null
+  reportDate: string | null
+  dueDate: string | null
+  submittedToAtpDate: string | null
+  effectiveDate: string | null
+  amounts: AppraisalAmount[]
+  /** Read-only: the amounts added up. */
+  appraisalTotal: number
+  reviewAppraiser: string | null
+  reviewType: string | null
+  appraisalReceivedDate: string | null
+  approvedJustCompensation: number | null
+  reviewCompletedDate: string | null
+  reviewSubmittedDate: string | null
+  reviewRecommendation: string | null
+  reviewRecommendedValue: number | null
+  submittedToJatDate: string | null
+  approvedByJatDate: string | null
+  ftaConcurrenceNeeded: boolean
+  updatedAt: string
+}
+
+export type AppraisalInput = Omit<Appraisal, 'id' | 'parcelId' | 'number' | 'parcelNumber' | 'appraiserCompany' | 'appraisalTotal' | 'updatedAt'>
+
+export const appraisalsApi = (api: ApiClient) => ({
+  list: (parcelId: string) => api.get<Appraisal[]>(`/api/v1/parcels/${parcelId}/appraisals`),
+  add: (parcelId: string, body: AppraisalInput) => api.post<Appraisal>(`/api/v1/parcels/${parcelId}/appraisals`, body),
+  update: (parcelId: string, id: string, body: AppraisalInput) => api.put<Appraisal>(`/api/v1/parcels/${parcelId}/appraisals/${id}`, body),
+  remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/appraisals/${id}`),
+})
