@@ -65,6 +65,9 @@ public interface IRowDbContext
     DbSet<NegotiationRightOfEntry> NegotiationRightsOfEntry { get; }
     DbSet<NegotiationOffer> NegotiationOffers { get; }
     DbSet<NegotiationSettlement> NegotiationSettlements { get; }
+    DbSet<ParcelQuestionnaire> ParcelQuestionnaires { get; }
+    DbSet<QuestionnaireInterest> QuestionnaireInterests { get; }
+    DbSet<QuestionnaireQuestion> QuestionnaireQuestions { get; }
     DbSet<RightOfEntry> RightsOfEntry { get; }
     DbSet<AcquisitionRequest> AcquisitionRequests { get; }
     DbSet<ParcelPlanReview> ParcelPlanReviews { get; }

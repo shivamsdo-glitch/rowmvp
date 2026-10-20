@@ -639,6 +639,69 @@ describe('Negotiation (AT-NE-42)', () => {
   })
 })
 
+const QS = [{ parcelId: 'pc1', id: 'qs1', number: 'QST-PN-1001-001', relocationType: 'Residential', dueByDate: '2026-08-01',
+  questions: [{ id: 'q1', question: 'Do you rent?', answer: 'No', notes: null }] }]
+
+describe('Questionnaire (AT-RA-40)', () => {
+  it('lists questionnaires with their type, dates and number of questions', async () => {
+    const { user } = open('RelocationAgent', { questionnaires: QS })
+    await tab(user, 'Questionnaire')
+
+    const row = within(await screen.findByRole('table', { name: 'Questionnaires' })).getAllByRole('row')[1]
+    expect(row).toHaveTextContent('QST-PN-1001-001')
+    expect(row).toHaveTextContent('Residential')
+    expect(row).toHaveTextContent('1')
+  })
+
+  it('adds a questionnaire with interests and questions, and requires a relocation type', async () => {
+    const { fake, user } = open('RelocationAgent')
+    await tab(user, 'Questionnaire')
+    const form = await screen.findByRole('form', { name: 'Add a questionnaire' })
+
+    await user.click(within(form).getByRole('button', { name: 'Add questionnaire' }))
+    expect(await within(form).findByText('Relocation type is required.')).toBeInTheDocument()
+    expect(fake.questionnaires).toHaveLength(0)
+
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Relocation type/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Residential', 'Non-residential', 'Personal Property only']))
+    await user.selectOptions(within(form).getByLabelText(/^Relocation type/), 'Non-residential')
+    await user.click(within(form).getByRole('button', { name: 'Add ownership interest' }))
+    expect(await within(form).findByText('Enter the name of the owner or interest holder.')).toBeInTheDocument()
+    await user.type(within(form).getByLabelText('Interest holder name'), 'Kamali')
+    await user.click(within(form).getByRole('button', { name: 'Add ownership interest' }))
+    await user.click(within(form).getByRole('button', { name: 'Add question' }))
+    expect(await within(form).findByText('Enter the question.')).toBeInTheDocument()
+    await user.type(within(form).getByLabelText('Question', { selector: 'input' }), 'Do you rent?')
+    await user.type(within(form).getByLabelText('Answer'), 'No')
+    await user.click(within(form).getByRole('button', { name: 'Add question' }))
+    await user.click(within(form).getByRole('button', { name: 'Add questionnaire' }))
+
+    await waitFor(() => expect(fake.questionnaires).toHaveLength(1))
+    expect(fake.questionnaires[0]).toMatchObject({ number: 'QST-PN-1001-001', relocationType: 'Non-residential' })
+    expect(fake.questionnaires[0].interests.map((i) => i.name)).toEqual(['Kamali'])
+    expect(fake.questionnaires[0].questions).toMatchObject([{ question: 'Do you rent?', answer: 'No' }])
+  })
+
+  it('changes a questionnaire, attaches a file and removes it', async () => {
+    const { fake, user } = open('Admin', { questionnaires: QS })
+    await tab(user, 'Questionnaire')
+    await user.click(await screen.findByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' }))
+    const form = await screen.findByRole('form', { name: 'Change questionnaire' })
+
+    await user.click(within(form).getByRole('button', { name: 'Remove question 1' }))
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(fake.questionnaires[0].questions).toEqual([]))
+
+    await user.click(await screen.findByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' }))
+    const panel = await screen.findByRole('region', { name: 'Attachments for QST-PN-1001-001' })
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'answers.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('answers.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelQuestionnaire', entityId: 'qs1' })
+
+    await user.click(screen.getByRole('button', { name: 'Remove questionnaire QST-PN-1001-001' }))
+    await waitFor(() => expect(fake.questionnaires).toHaveLength(0))
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -735,6 +798,19 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     await screen.findByRole('form', { name: 'Negotiation' })
 
     expect(!!screen.queryByRole('button', { name: 'Save negotiation' })).toBe(can(role, 'parcelnegotiation', 'create'))
+  })
+
+  it('shows the Questionnaire tab and its controls exactly as the Questionnaire page allows (AT-X-53)', async () => {
+    const { user } = open(role, { questionnaires: [{ parcelId: 'pc1', id: 'qs1', number: 'QST-PN-1001-001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Questionnaire' })).toBe(can(role, 'parcelquestionnaire', 'read'))
+    if (!can(role, 'parcelquestionnaire', 'read')) return
+    await tab(user, 'Questionnaire')
+    await screen.findByRole('table', { name: 'Questionnaires' })
+    expect(!!screen.queryByRole('form', { name: 'Add a questionnaire' })).toBe(can(role, 'parcelquestionnaire', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' })).toBe(can(role, 'parcelquestionnaire', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove questionnaire QST-PN-1001-001' })).toBe(can(role, 'parcelquestionnaire', 'delete'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

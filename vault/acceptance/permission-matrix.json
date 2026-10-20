@@ -35,7 +35,8 @@
     "titleencumbrances",
     "titleclosing",
     "parcelappraisal",
-    "parcelnegotiation"
+    "parcelnegotiation",
+    "parcelquestionnaire"
   ],
   "matrix": {
     "ProjectManager": {
@@ -60,7 +61,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -84,7 +86,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -108,7 +111,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -132,7 +136,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -156,7 +161,8 @@
       "titleencumbrances": "P",
       "titleclosing": "S",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -180,7 +186,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "P",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -204,7 +211,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "U",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -228,7 +236,8 @@
       "titleencumbrances": "B",
       "titleclosing": "S",
       "parcelappraisal": "B",
-      "parcelnegotiation": "P"
+      "parcelnegotiation": "P",
+      "parcelquestionnaire": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -252,7 +261,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "P"
     },
     "Finance": {
       "dashboard": "B",
@@ -276,7 +286,8 @@
       "titleencumbrances": "B",
       "titleclosing": "B",
       "parcelappraisal": "B",
-      "parcelnegotiation": "B"
+      "parcelnegotiation": "B",
+      "parcelquestionnaire": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -300,7 +311,8 @@
       "titleencumbrances": "P",
       "titleclosing": "P",
       "parcelappraisal": "P",
-      "parcelnegotiation": "P"
+      "parcelnegotiation": "P",
+      "parcelquestionnaire": "P"
     }
   },
   "attachmentPages": {
@@ -320,6 +332,7 @@
     "Encumbrance": "titleencumbrances",
     "TitleClosing": "titleclosing",
     "ParcelAppraisal": "parcelappraisal",
-    "ParcelNegotiation": "parcelnegotiation"
+    "ParcelNegotiation": "parcelnegotiation",
+    "ParcelQuestionnaire": "parcelquestionnaire"
   }
 }

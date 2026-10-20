@@ -11,5 +11,9 @@
 - **Access:** Negotiator and Admin create, read, update and delete; everyone else reads.
 - **Not built:** the paperclip column on the right-of-entry and settlement rows (a file per row). Files attach to the record as a whole; the document does not say what a per-row file should be tied to, so it is flagged rather than guessed. Workflow, Select Actions, Save & Continue and Link Document are skipped as in every other tab.
 
-## 7b
-Recorded below as it lands.
+## 7b — Questionnaire (U)
+- **Many per parcel**, numbered `QST-<parcel number>-<sequence>` (same per-parcel lock and unique index as the Contact Log). Page key `parcelquestionnaire`; attachments use entity type `ParcelQuestionnaire`, shown on the edit form.
+- **Questionnaire block:** relocation type (required, Library *Relocation type*: Residential, Non-residential, Personal Property only), due by and sent to owner (both dates).
+- **Two grids, replaced as sent** (at most 50 rows each): *ownership interest* (name, phone, contact, email, address, entered as written, not linked to Ownership Details) and *questionnaire section* (question, answer, notes).
+- **Access:** Relocation Agent and Admin create, read, update and delete; everyone else reads.
+- **Flagged, not guessed:** in the document's screenshot the *Sent to owner* control is hidden behind the open dropdown and one ownership-interest column between *Name* and *Contact* is not visible. *Sent to owner* is built as a date (it sits beside *Due by*) and the hidden column as *Phone*; both are one-line changes if the agency meant otherwise. The dropdown's stray fourth entry "true" is a data glitch in the screenshot and is not carried over.

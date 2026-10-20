@@ -45,7 +45,7 @@ function fromRecord(n: Negotiation) {
 }
 
 /** A grid that is edited in the form and saved with the record: its table, a remove button per row, and (for roles that may save) the add inputs. */
-function Grid<T>({ title, caption, headers, rows, cells, rowLabel, onRemove, adding, onAdd, addLabel, error, canSave }: {
+export function Grid<T>({ title, caption, headers, rows, cells, rowLabel, onRemove, adding, onAdd, addLabel, error, canSave }: {
   title: string; caption: string; headers: string[]; rows: T[]; cells: (r: T) => ReactNode[]; rowLabel: (r: T, i: number) => string
   onRemove: (i: number) => void; adding: ReactNode; onAdd: () => void; addLabel: string; error?: string; canSave: boolean
 }) {

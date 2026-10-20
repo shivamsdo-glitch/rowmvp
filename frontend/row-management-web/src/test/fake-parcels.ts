@@ -43,6 +43,7 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['appraisal_amount_type', 'Appraisal amount type', ['Land', 'Damages']],
   ['review_type', 'Review type', ['Desk Review']],
   ['review_recommendation', 'Review recommendation', ['Approve', 'Reject']],
+  ['relocation_type', 'Relocation type', ['Residential', 'Non-residential', 'Personal Property only']],
   ['offer_type', 'Offer type', ['Initial Offer', 'Final Offer']],
   ['settlement_type', 'Settlement type', ['Administrative']],
   ['counteroffer_response', 'Counteroffer response', ['Accepted', 'Declined']],

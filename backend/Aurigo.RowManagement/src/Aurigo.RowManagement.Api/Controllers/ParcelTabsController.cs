@@ -32,6 +32,9 @@ public sealed record AppraisalBody(
     DateOnly? AppraisalReceivedDate, decimal? ApprovedJustCompensation, DateOnly? ReviewCompletedDate, DateOnly? ReviewSubmittedDate, string? ReviewRecommendation,
     decimal? ReviewRecommendedValue, DateOnly? SubmittedToJatDate, DateOnly? ApprovedByJatDate, bool FtaConcurrenceNeeded);
 
+public sealed record QuestionnaireBody(
+    string? RelocationType, DateOnly? DueByDate, DateOnly? SentToOwnerDate, List<QuestionnaireInterestInput>? Interests, List<QuestionnaireQuestionInput>? Questions);
+
 public sealed record NegotiationEnvelope(NegotiationDto? Record);
 public sealed record NegotiationBody(
     string? AssignedTo, decimal? TotalAgreementAmount, string? Notes, DateOnly? CounterofferSubmittedToJatDate, DateOnly? CounterofferResponseFromJatDate, string? JatResponse,
@@ -39,7 +42,7 @@ public sealed record NegotiationBody(
     List<NegotiationNoteInput>? StatusNotes, List<NegotiationAgentInput>? Agents, List<NegotiationRightOfEntryInput>? RightsOfEntry, List<NegotiationOfferInput>? Offers,
     List<NegotiationSettlementInput>? Settlements);
 
-/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing, Appraisal and Negotiation tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing, Appraisal, Negotiation and Questionnaire tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -119,6 +122,28 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveAppraisal(Guid parcelId, Guid appraisalId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveAppraisalCommand(parcelId, appraisalId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("questionnaires")]
+    [ProducesResponseType(typeof(IReadOnlyList<QuestionnaireDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Questionnaires(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new ListQuestionnairesQuery(parcelId), ct));
+
+    [HttpPost("questionnaires")]
+    [ProducesResponseType(typeof(QuestionnaireDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddQuestionnaire(Guid parcelId, [FromBody] QuestionnaireBody b, CancellationToken ct) =>
+        Created($"/api/v1/parcels/{parcelId}/questionnaires", await _mediator.Send(new AddQuestionnaireCommand(parcelId, b.RelocationType ?? "", b.DueByDate, b.SentToOwnerDate, b.Interests, b.Questions), ct));
+
+    [HttpPut("questionnaires/{questionnaireId:guid}")]
+    [ProducesResponseType(typeof(QuestionnaireDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateQuestionnaire(Guid parcelId, Guid questionnaireId, [FromBody] QuestionnaireBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new UpdateQuestionnaireCommand(parcelId, questionnaireId, b.RelocationType ?? "", b.DueByDate, b.SentToOwnerDate, b.Interests, b.Questions), ct));
+
+    [HttpDelete("questionnaires/{questionnaireId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveQuestionnaire(Guid parcelId, Guid questionnaireId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveQuestionnaireCommand(parcelId, questionnaireId), ct);
         return NoContent();
     }
 

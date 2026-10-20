@@ -95,6 +95,9 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<NegotiationRightOfEntry> NegotiationRightsOfEntry => Set<NegotiationRightOfEntry>();
     public DbSet<NegotiationOffer> NegotiationOffers => Set<NegotiationOffer>();
     public DbSet<NegotiationSettlement> NegotiationSettlements => Set<NegotiationSettlement>();
+    public DbSet<ParcelQuestionnaire> ParcelQuestionnaires => Set<ParcelQuestionnaire>();
+    public DbSet<QuestionnaireInterest> QuestionnaireInterests => Set<QuestionnaireInterest>();
+    public DbSet<QuestionnaireQuestion> QuestionnaireQuestions => Set<QuestionnaireQuestion>();
     public DbSet<RightOfEntry> RightsOfEntry => Set<RightOfEntry>();
     public DbSet<AcquisitionRequest> AcquisitionRequests => Set<AcquisitionRequest>();
     public DbSet<ParcelPlanReview> ParcelPlanReviews => Set<ParcelPlanReview>();

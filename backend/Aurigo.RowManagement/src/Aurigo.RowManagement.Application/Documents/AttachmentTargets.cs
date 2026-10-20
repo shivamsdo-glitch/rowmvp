@@ -28,6 +28,7 @@ public static class AttachmentTargets
         ["TitleClosing"] = PageKeys.TitleClosing,
         ["ParcelAppraisal"] = PageKeys.ParcelAppraisal,
         ["ParcelNegotiation"] = PageKeys.ParcelNegotiation,
+        ["ParcelQuestionnaire"] = PageKeys.ParcelQuestionnaire,
     };
 
     public static IReadOnlyCollection<string> EntityTypes => PageByType.Keys.ToArray();

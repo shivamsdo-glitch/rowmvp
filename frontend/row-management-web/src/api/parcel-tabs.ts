@@ -343,3 +343,28 @@ export const negotiationApi = (api: ApiClient) => ({
   save: (parcelId: string, body: NegotiationInput) => api.put<Negotiation>(`/api/v1/parcels/${parcelId}/negotiation`, body),
   remove: (parcelId: string) => api.delete(`/api/v1/parcels/${parcelId}/negotiation`),
 })
+
+export interface QuestionnaireInterest { id?: string; name: string; phone: string | null; contact: string | null; email: string | null; address: string | null }
+export interface QuestionnaireQuestion { id?: string; question: string; answer: string | null; notes: string | null }
+
+export interface Questionnaire {
+  id: string
+  parcelId: string
+  number: string
+  parcelNumber: string
+  relocationType: string
+  dueByDate: string | null
+  sentToOwnerDate: string | null
+  interests: QuestionnaireInterest[]
+  questions: QuestionnaireQuestion[]
+  updatedAt: string
+}
+
+export type QuestionnaireInput = Omit<Questionnaire, 'id' | 'parcelId' | 'number' | 'parcelNumber' | 'updatedAt'>
+
+export const questionnairesApi = (api: ApiClient) => ({
+  list: (parcelId: string) => api.get<Questionnaire[]>(`/api/v1/parcels/${parcelId}/questionnaires`),
+  add: (parcelId: string, body: QuestionnaireInput) => api.post<Questionnaire>(`/api/v1/parcels/${parcelId}/questionnaires`, body),
+  update: (parcelId: string, id: string, body: QuestionnaireInput) => api.put<Questionnaire>(`/api/v1/parcels/${parcelId}/questionnaires/${id}`, body),
+  remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/questionnaires/${id}`),
+})

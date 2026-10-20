@@ -2540,6 +2540,71 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("parcel_plan_reviews", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelQuestionnaire", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly?>("DueByDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_by_date");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("ParcelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parcel_id");
+
+                    b.Property<string>("RelocationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("relocation_type");
+
+                    b.Property<DateOnly?>("SentToOwnerDate")
+                        .HasColumnType("date")
+                        .HasColumnName("sent_to_owner_date");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_questionnaires");
+
+                    b.HasIndex("ParcelId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ix_parcel_questionnaires_parcel_id_sequence");
+
+                    b.ToTable("parcel_questionnaires", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelSiteVisit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3762,6 +3827,128 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("project_number_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.QuestionnaireInterest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("Contact")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("phone");
+
+                    b.Property<Guid>("QuestionnaireId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("questionnaire_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_questionnaire_interests");
+
+                    b.HasIndex("QuestionnaireId")
+                        .HasDatabaseName("ix_questionnaire_interests_questionnaire_id");
+
+                    b.ToTable("questionnaire_interests", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.QuestionnaireQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Answer")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("answer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("question");
+
+                    b.Property<Guid>("QuestionnaireId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("questionnaire_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_questionnaire_questions");
+
+                    b.HasIndex("QuestionnaireId")
+                        .HasDatabaseName("ix_questionnaire_questions_questionnaire_id");
+
+                    b.ToTable("questionnaire_questions", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RightOfEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4676,6 +4863,16 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_parcel_plan_reviews_parcels_parcel_id");
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelQuestionnaire", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
+                        .WithMany()
+                        .HasForeignKey("ParcelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_questionnaires_parcels_parcel_id");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelSiteVisit", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
@@ -4786,6 +4983,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_project_cost_estimates_projects_project_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.QuestionnaireInterest", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelQuestionnaire", null)
+                        .WithMany("Interests")
+                        .HasForeignKey("QuestionnaireId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_questionnaire_interests_parcel_questionnaires_questionnaire");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.QuestionnaireQuestion", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelQuestionnaire", null)
+                        .WithMany("Questions")
+                        .HasForeignKey("QuestionnaireId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_questionnaire_questions_parcel_questionnaires_questionnaire");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RightOfEntry", b =>
@@ -4905,6 +5122,13 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("Addresses");
 
                     b.Navigation("Contacts");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelQuestionnaire", b =>
+                {
+                    b.Navigation("Interests");
+
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", b =>
