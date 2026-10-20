@@ -49,6 +49,9 @@ public interface IRowDbContext
     DbSet<ParcelContactLogEntry> ParcelContactLogEntries { get; }
     DbSet<ParcelContactLogLink> ParcelContactLogLinks { get; }
     DbSet<ParcelEasement> ParcelEasements { get; }
+    DbSet<ParcelOwnership> ParcelOwnerships { get; }
+    DbSet<ParcelOwnershipAddress> ParcelOwnershipAddresses { get; }
+    DbSet<ParcelOwnershipContact> ParcelOwnershipContacts { get; }
     DbSet<RightOfEntry> RightsOfEntry { get; }
     DbSet<AcquisitionRequest> AcquisitionRequests { get; }
     DbSet<ParcelPlanReview> ParcelPlanReviews { get; }

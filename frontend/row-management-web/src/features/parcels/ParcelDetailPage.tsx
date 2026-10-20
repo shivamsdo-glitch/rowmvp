@@ -19,15 +19,18 @@ import { RightOfEntryTab, ReviewsReportsTab } from './AcquisitionTabs'
 import { DiaryTab, NotesTab, TeamTab } from './ParcelRecordTabs'
 import { ParcelForm } from './ParcelForm'
 import { ContactLogTab, EasementsTab } from './ParcelTabs'
+import { OwnershipTab, ParcelLocationTab } from './OwnershipTabs'
 import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from './parcel-kit'
 
 const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
   ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['roe', 'Right of entry'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
-  ['contactlog', 'Contact log'], ['easements', 'Easements'],
+  ['ownership', 'Ownership details'], ['parcellocation', 'Parcel location'], ['contactlog', 'Contact log'], ['easements', 'Easements'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
+/** Tabs with their own page permission: shown only to roles that can read that page. */
+const PAGE_TABS: readonly string[] = ['ownership', 'parcellocation', 'contactlog', 'easements']
 
 /** Runs a save or delete, keeping the screen's error and busy state and refreshing what depends on the parcel. */
 function useParcelActions(parcelId: string) {
@@ -126,7 +129,7 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
 
       <Tabs>
         <TabsList role="tablist" aria-label="Parcel sections">
-          {TABS.filter(([key]) => key !== 'contactlog' && key !== 'easements' || manager.can(key)).map(([key, label]) => (
+          {TABS.filter(([key]) => !PAGE_TABS.includes(key) || manager.can(key)).map(([key, label]) => (
             <TabsTrigger key={key} role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls={`panel-${key}`} active={tab === key} onClick={() => setTab(key)}>
               {label}
             </TabsTrigger>
@@ -146,6 +149,8 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
           {tab === 'visits' && <VisitsTab parcel={p} editable={live} />}
           {tab === 'contactlog' && <ContactLogTab parcelId={p.id} editable={live} />}
           {tab === 'easements' && <EasementsTab parcelId={p.id} editable={live} />}
+          {tab === 'ownership' && <OwnershipTab parcelId={p.id} editable={live} />}
+          {tab === 'parcellocation' && <ParcelLocationTab parcel={p} />}
         </TabsContent>
       </Tabs>
     </>
@@ -198,6 +203,7 @@ function SummaryTab({ parcel: p }: { parcel: Parcel }) {
           <Fact label="Tax parcel numbers">{p.taxParcelNumbers.length ? p.taxParcelNumbers.join(', ') : '—'}</Fact>
           <Fact label="Workflow step">{p.workflow.steps.find((s) => s.key === p.workflow.currentKey)?.label ?? p.workflow.currentKey}</Fact>
           <Fact label="Notice to owner">{p.noticeIssuedOn ? `${dateText(p.noticeIssuedOn)}${p.noticeMethod ? ` by ${NOTICE_LABEL[p.noticeMethod].toLowerCase()}` : ''}` : 'Not issued'}</Fact>
+          <Fact label="Owner name">{p.ownerName ?? '—'}</Fact>
           <Fact label="CAD number">{p.cadNumber ?? '—'}</Fact>
           <Fact label="Acquisition interest type">{p.acquisitionInterestType ?? '—'}</Fact>
           <Fact label="Possession type">{p.possessionType ?? '—'}</Fact>

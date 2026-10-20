@@ -44,7 +44,9 @@ public sealed record ParcelDto(
     /// <summary>The time zone this parcel's dates are counted in: its project's, else the agency's.</summary>
     string TimeZoneId = "UTC",
     string? CadNumber = null, string? AcquisitionInterestType = null, DateOnly? PossessionDate = null, DateOnly? ProposedPossessionDate = null,
-    string? Segment = null, string? Priority = null, string? PossessionType = null, string? ParcelLocation = null, bool IsActiveParcel = true);
+    string? Segment = null, string? Priority = null, string? PossessionType = null, string? ParcelLocation = null, bool IsActiveParcel = true,
+    /// <summary>The names of the parcel's ownerships (Ownership Details), joined; read-only.</summary>
+    string? OwnerName = null);
 
 public sealed record RollupBucketDto(Guid? Id, string Name, string? Color, int Count, decimal AreaSqFt, decimal Acres);
 

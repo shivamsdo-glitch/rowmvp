@@ -211,6 +211,9 @@ public sealed class ParcelService
                 m.CompletedOn is null && m.DueOn is { } due && due < today))
             .ToList();
 
+        var owners = await _db.ParcelOwnerships.Where(o => o.ParcelId == p.Id).OrderBy(o => o.Sequence).Select(o => o.OwnerName).ToListAsync(ct);
+        var ownerName = owners.Count == 0 ? null : string.Join("; ", owners);
+
         return new ParcelDto(
             p.Id, p.ProjectId, project.Number, project.Name, p.Number, p.LegalDescription, p.Address, p.AreaSqFt, p.PropertyType,
             p.StatusId, status?.Name ?? "Unknown", status?.Color ?? "#64748b", p.GroupId, group?.Name, p.ParentTractId, tract?.Number,
@@ -222,6 +225,6 @@ public sealed class ParcelService
             deadlines, workflow,
             p.StepEvents.OrderByDescending(e => e.CreatedAt).Select(e => new ParcelStepEventDto(e.Id, e.FromStepKey, e.ToStepKey, e.IsOverride, e.Reason, e.CreatedAt, e.CreatedBy)).ToList(),
             p.UpdatedAt, zone, p.CadNumber, p.AcquisitionInterestType, p.PossessionDate, p.ProposedPossessionDate, p.Segment, p.Priority,
-            p.PossessionType, p.ParcelLocation, p.IsActiveParcel);
+            p.PossessionType, p.ParcelLocation, p.IsActiveParcel, ownerName);
     }
 }

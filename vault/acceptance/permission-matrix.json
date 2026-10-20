@@ -29,7 +29,9 @@
     "administration",
     "library",
     "contactlog",
-    "easements"
+    "easements",
+    "ownership",
+    "parcellocation"
   ],
   "matrix": {
     "ProjectManager": {
@@ -48,7 +50,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "B",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "B",
+      "parcellocation": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -66,7 +70,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "S",
-      "easements": "S"
+      "easements": "S",
+      "ownership": "P",
+      "parcellocation": "P"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -84,7 +90,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "B",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "B",
+      "parcellocation": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -102,7 +110,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "S",
-      "easements": "P"
+      "easements": "P",
+      "ownership": "B",
+      "parcellocation": "S"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -120,7 +130,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "S",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "U",
+      "parcellocation": "B"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -138,7 +150,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "S",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "B",
+      "parcellocation": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -156,7 +170,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "B",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "B",
+      "parcellocation": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -174,7 +190,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "P",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "S",
+      "parcellocation": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -192,7 +210,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "P",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "B",
+      "parcellocation": "B"
     },
     "Finance": {
       "dashboard": "B",
@@ -210,7 +230,9 @@
       "administration": null,
       "library": "B",
       "contactlog": "B",
-      "easements": "B"
+      "easements": "B",
+      "ownership": "B",
+      "parcellocation": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -228,7 +250,9 @@
       "administration": "P",
       "library": "P",
       "contactlog": "P",
-      "easements": "P"
+      "easements": "P",
+      "ownership": "P",
+      "parcellocation": "P"
     }
   },
   "attachmentPages": {
@@ -243,6 +267,7 @@
     "ClosingRecord": "closing",
     "Payment": "payments",
     "ContactLog": "contactlog",
-    "Easement": "easements"
+    "Easement": "easements",
+    "Ownership": "ownership"
   }
 }

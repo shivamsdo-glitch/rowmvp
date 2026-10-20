@@ -23,6 +23,7 @@ public static class AttachmentTargets
         ["Payment"] = PageKeys.Payments,
         ["ContactLog"] = PageKeys.ContactLog,
         ["Easement"] = PageKeys.Easements,
+        ["Ownership"] = PageKeys.Ownership,
     };
 
     public static IReadOnlyCollection<string> EntityTypes => PageByType.Keys.ToArray();

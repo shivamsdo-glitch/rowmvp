@@ -32,6 +32,9 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['possession_type', 'Possession type', ['PUA', 'Closing']],
   ['mode_of_contact', 'Mode of contact', ['Phone', 'In person', 'Letter']],
   ['easement_type', 'Easement type', ['Sidewalk Easement', 'Drainage Easement']],
+  ['owner_type', 'Owner type', ['CAD Owner', 'Fee Owner', 'Vested Owner']],
+  ['address_type', 'Address type', ['Tax Card Mailing Address']],
+  ['contact_type', 'Contact type', ['Broker']],
 ]
 
 export interface FakeParcelsOptions extends FakeProjectsOptions {
@@ -99,7 +102,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
       state: 'Active', supersededOn: null, sourceParcelIds: [], isRemnant: false, customValues: {}, noticeIssuedOn: null, noticeMethod: null, interests: [],
       milestones: mkMilestones(), siteVisits: [], deadlines: [], stepHistory: [], updatedAt: '2026-01-01T00:00:00Z', timeZoneId: 'UTC',
       cadNumber: null, acquisitionInterestType: null, possessionDate: null, proposedPossessionDate: null, segment: null, priority: null,
-      possessionType: null, parcelLocation: null, isActiveParcel: true,
+      possessionType: null, parcelLocation: null, isActiveParcel: true, ownerName: null,
       workflow: { steps: STEPS, currentKey: 'setup', nextKey: 'title_survey', acquisitionGateOpen: false, canOverride: false },
       ...g, statusId: status.id, statusName: status.name, statusColor: status.color,
     }

@@ -86,3 +86,50 @@ export const documentsApi = (api: ApiClient) => ({
   },
   remove: (id: string) => api.delete(`/api/v1/documents/${id}`),
 })
+
+export interface OwnershipAddress {
+  id?: string
+  addressType: string | null
+  address: string | null
+  contactPerson: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+}
+
+export interface OwnershipContact {
+  id?: string
+  contactType: string | null
+  name: string
+  phone: string | null
+  email: string | null
+  address: string | null
+  isActive: boolean
+  isPrimary: boolean
+}
+
+export interface Ownership {
+  id: string
+  parcelId: string
+  ownershipNumber: number
+  parcelNumber: string
+  ownerName: string
+  ownerType: string | null
+  addresses: OwnershipAddress[]
+  contacts: OwnershipContact[]
+  updatedAt: string
+}
+
+export interface OwnershipInput {
+  ownerName: string
+  ownerType: string | null
+  addresses: OwnershipAddress[]
+  contacts: OwnershipContact[]
+}
+
+export const ownershipApi = (api: ApiClient) => ({
+  list: (parcelId: string) => api.get<Ownership[]>(`/api/v1/parcels/${parcelId}/ownerships`),
+  add: (parcelId: string, body: OwnershipInput) => api.post<Ownership>(`/api/v1/parcels/${parcelId}/ownerships`, body),
+  update: (parcelId: string, id: string, body: OwnershipInput) => api.put<Ownership>(`/api/v1/parcels/${parcelId}/ownerships/${id}`, body),
+  remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/ownerships/${id}`),
+})

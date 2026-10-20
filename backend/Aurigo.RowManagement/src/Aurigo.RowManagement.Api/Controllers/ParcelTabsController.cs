@@ -11,7 +11,10 @@ public sealed record ContactLogBody(
 public sealed record EasementBody(
     string? Number, string? EasementType, string? Description, DateOnly? StartDate, DateOnly? EndDate, string? StartStation, string? EndStation);
 
-/// <summary>The Contact Log and Easements tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+public sealed record OwnershipBody(
+    string? OwnerName, string? OwnerType, List<OwnershipAddressInput>? Addresses, List<OwnershipContactInput>? Contacts);
+
+/// <summary>The Contact Log, Easements and Ownership Details tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -39,6 +42,28 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveContactLog(Guid parcelId, Guid entryId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveContactLogEntryCommand(parcelId, entryId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("ownerships")]
+    [ProducesResponseType(typeof(IReadOnlyList<OwnershipDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Ownerships(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new ListOwnershipsQuery(parcelId), ct));
+
+    [HttpPost("ownerships")]
+    [ProducesResponseType(typeof(OwnershipDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddOwnership(Guid parcelId, [FromBody] OwnershipBody b, CancellationToken ct) =>
+        Created($"/api/v1/parcels/{parcelId}/ownerships", await _mediator.Send(new AddOwnershipCommand(parcelId, b.OwnerName ?? "", b.OwnerType, b.Addresses, b.Contacts), ct));
+
+    [HttpPut("ownerships/{ownershipId:guid}")]
+    [ProducesResponseType(typeof(OwnershipDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateOwnership(Guid parcelId, Guid ownershipId, [FromBody] OwnershipBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new UpdateOwnershipCommand(parcelId, ownershipId, b.OwnerName ?? "", b.OwnerType, b.Addresses, b.Contacts), ct));
+
+    [HttpDelete("ownerships/{ownershipId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveOwnership(Guid parcelId, Guid ownershipId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveOwnershipCommand(parcelId, ownershipId), ct);
         return NoContent();
     }
 

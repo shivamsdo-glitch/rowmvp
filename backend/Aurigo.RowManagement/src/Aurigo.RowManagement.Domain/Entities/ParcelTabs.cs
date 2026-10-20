@@ -45,3 +45,45 @@ public class ParcelEasement : EntityBase
     public string? StartStation { get; set; }
     public string? EndStation { get; set; }
 }
+
+/// <summary>
+/// One ownership on a parcel (Phase 1.5 Ownership Details tab, ADR 0017): who owns it and how, with their addresses and contacts.
+/// Separate from the Parties module, which keeps the owners of record and their tax details; the parcel's read-only "Owner name" is
+/// the names of its ownerships.
+/// </summary>
+public class ParcelOwnership : EntityBase
+{
+    public Guid ParcelId { get; set; }
+    /// <summary>1, 2, 3... within the parcel: the screen's "Ownership Number".</summary>
+    public int Sequence { get; set; }
+    public string OwnerName { get; set; } = default!;
+    /// <summary>A value of the Library's owner type list.</summary>
+    public string? OwnerType { get; set; }
+    public List<ParcelOwnershipAddress> Addresses { get; set; } = new();
+    public List<ParcelOwnershipContact> Contacts { get; set; } = new();
+}
+
+public class ParcelOwnershipAddress : EntityBase
+{
+    public Guid OwnershipId { get; set; }
+    /// <summary>A value of the Library's address type list.</summary>
+    public string? AddressType { get; set; }
+    public string? Address { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? Zip { get; set; }
+}
+
+public class ParcelOwnershipContact : EntityBase
+{
+    public Guid OwnershipId { get; set; }
+    /// <summary>A value of the Library's contact type list.</summary>
+    public string? ContactType { get; set; }
+    public string Name { get; set; } = default!;
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool IsPrimary { get; set; }
+}

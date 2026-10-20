@@ -171,6 +171,8 @@ export interface Parcel {
   possessionType: string | null
   parcelLocation: string | null
   isActiveParcel: boolean
+  /** The names of the parcel's ownerships (Ownership Details), read-only. */
+  ownerName: string | null
 }
 
 export interface ParcelInput {

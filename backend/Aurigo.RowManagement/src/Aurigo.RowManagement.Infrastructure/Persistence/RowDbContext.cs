@@ -79,6 +79,9 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<ParcelContactLogEntry> ParcelContactLogEntries => Set<ParcelContactLogEntry>();
     public DbSet<ParcelContactLogLink> ParcelContactLogLinks => Set<ParcelContactLogLink>();
     public DbSet<ParcelEasement> ParcelEasements => Set<ParcelEasement>();
+    public DbSet<ParcelOwnership> ParcelOwnerships => Set<ParcelOwnership>();
+    public DbSet<ParcelOwnershipAddress> ParcelOwnershipAddresses => Set<ParcelOwnershipAddress>();
+    public DbSet<ParcelOwnershipContact> ParcelOwnershipContacts => Set<ParcelOwnershipContact>();
     public DbSet<RightOfEntry> RightsOfEntry => Set<RightOfEntry>();
     public DbSet<AcquisitionRequest> AcquisitionRequests => Set<AcquisitionRequest>();
     public DbSet<ParcelPlanReview> ParcelPlanReviews => Set<ParcelPlanReview>();

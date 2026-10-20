@@ -50,3 +50,47 @@ public class ParcelEasementConfiguration : IEntityTypeConfiguration<ParcelEaseme
         b.HasIndex(x => new { x.ParcelId, x.Number }).IsUnique();
     }
 }
+
+public class ParcelOwnershipConfiguration : IEntityTypeConfiguration<ParcelOwnership>
+{
+    public void Configure(EntityTypeBuilder<ParcelOwnership> b)
+    {
+        b.ToTable("parcel_ownerships");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.OwnerName).IsRequired().HasMaxLength(200);
+        b.Property(x => x.OwnerType).HasMaxLength(100);
+        b.HasOne<Parcel>().WithMany().HasForeignKey(x => x.ParcelId).OnDelete(DeleteBehavior.Restrict);
+        b.HasMany(x => x.Addresses).WithOne().HasForeignKey(a => a.OwnershipId).OnDelete(DeleteBehavior.Restrict);
+        b.HasMany(x => x.Contacts).WithOne().HasForeignKey(c => c.OwnershipId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => new { x.ParcelId, x.Sequence }).IsUnique();
+    }
+}
+
+public class ParcelOwnershipAddressConfiguration : IEntityTypeConfiguration<ParcelOwnershipAddress>
+{
+    public void Configure(EntityTypeBuilder<ParcelOwnershipAddress> b)
+    {
+        b.ToTable("parcel_ownership_addresses");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.AddressType).HasMaxLength(100);
+        b.Property(x => x.Address).HasMaxLength(300);
+        b.Property(x => x.ContactPerson).HasMaxLength(200);
+        b.Property(x => x.City).HasMaxLength(100);
+        b.Property(x => x.State).HasMaxLength(50);
+        b.Property(x => x.Zip).HasMaxLength(20);
+    }
+}
+
+public class ParcelOwnershipContactConfiguration : IEntityTypeConfiguration<ParcelOwnershipContact>
+{
+    public void Configure(EntityTypeBuilder<ParcelOwnershipContact> b)
+    {
+        b.ToTable("parcel_ownership_contacts");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.ContactType).HasMaxLength(100);
+        b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+        b.Property(x => x.Phone).HasMaxLength(40);
+        b.Property(x => x.Email).HasMaxLength(200);
+        b.Property(x => x.Address).HasMaxLength(300);
+    }
+}

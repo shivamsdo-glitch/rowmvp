@@ -123,6 +123,7 @@ export function ParcelForm({
       </div>
       <fieldset className="grid gap-4 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <legend className="px-1 text-xs font-medium text-muted-foreground">Parcel details</legend>
+        {parcel && <TextField label="Owner name" value={parcel.ownerName ?? ''} onChange={() => {}} disabled hint="Comes from the Ownership details tab." />}
         <TextField label="CAD number" value={cad} onChange={setCad} error={errors.cadNumber} maxLength={100} />
         <SelectField label="Acquisition interest type" value={interestType} onChange={setInterestType} options={optionsWith(interestValues, interestType)}
           blankLabel="Select one" error={errors.acquisitionInterestType} />

@@ -175,6 +175,113 @@ describe('Easements (AT-SU-40)', () => {
   })
 })
 
+describe('Ownership details (AT-DE-42)', () => {
+  const OWN = [
+    { parcelId: 'pc1', id: 'ow1', ownershipNumber: 1, ownerName: 'Kamali', ownerType: 'Fee Owner',
+      addresses: [{ id: 'a1', addressType: 'Tax Card Mailing Address', address: '1 Main St', contactPerson: 'Kamali, Devanshi', city: 'Austin', state: 'TX', zip: '78701' }],
+      contacts: [{ id: 'c1', contactType: 'Broker', name: 'Dev Kamali', phone: '(112) 345-6789', email: 'k@example.com', address: null, isActive: true, isPrimary: true }] },
+  ]
+
+  it('lists each ownership with its number, type and how many addresses and contacts it has, and the parcel shows the owner name', async () => {
+    const { user } = open('Designer', { ownerships: OWN })
+    expect(await screen.findByRole('region', { name: 'Parcel synopsis' })).toHaveTextContent('Kamali')
+    await tab(user, 'Ownership details')
+
+    const row = await screen.findByRole('row', { name: /Fee Owner/ })
+    expect(row).toHaveTextContent('Kamali')
+    expect(within(row).getAllByRole('cell')[0]).toHaveTextContent('1')
+    expect(within(row).getAllByRole('cell')[3]).toHaveTextContent('1')
+    expect(within(row).getAllByRole('cell')[4]).toHaveTextContent('1')
+  })
+
+  it('adds an ownership with an address and contacts, refusing a missing owner name and a second primary contact', async () => {
+    const { fake, user } = open('Designer', { ownerships: OWN })
+    await tab(user, 'Ownership details')
+    const form = await screen.findByRole('form', { name: 'Add an ownership' })
+
+    await user.click(within(form).getByRole('button', { name: 'Add ownership' }))
+    expect(await within(form).findByText('Owner name is required.')).toBeInTheDocument()
+
+    await user.type(within(form).getByLabelText(/^Owner name/), 'Okafor Holdings')
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Owner type/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'CAD Owner', 'Fee Owner', 'Vested Owner']))
+    await user.selectOptions(within(form).getByLabelText(/^Owner type/), 'Vested Owner')
+
+    await user.click(within(form).getByRole('button', { name: 'Add address' }))
+    expect(await within(form).findByText('Enter at least part of the address.')).toBeInTheDocument()
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Address type/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Tax Card Mailing Address']))
+    await user.selectOptions(within(form).getByLabelText(/^Address type/), 'Tax Card Mailing Address')
+    await user.type(within(form).getByLabelText(/^Address$/), '9 Elm St')
+    await user.type(within(form).getByLabelText(/^City/), 'Dallas')
+    await user.click(within(form).getByRole('button', { name: 'Add address' }))
+    expect(within(form).getByRole('table', { name: 'Addresses' })).toHaveTextContent('9 Elm St')
+
+    await user.click(within(form).getByRole('button', { name: 'Add contact' }))
+    expect(await within(form).findByText('Enter the contact name.')).toBeInTheDocument()
+    await user.type(within(form).getByLabelText(/^Contact name/), 'Pat Primary')
+    await user.click(within(form).getByLabelText('Is primary'))
+    await user.click(within(form).getByRole('button', { name: 'Add contact' }))
+    await user.type(within(form).getByLabelText(/^Contact name/), 'Second Primary')
+    await user.click(within(form).getByLabelText('Is primary'))
+    await user.click(within(form).getByRole('button', { name: 'Add contact' }))
+    expect(await within(form).findByText('Only one contact can be the primary contact.')).toBeInTheDocument()
+
+    await user.click(within(form).getByRole('button', { name: 'Add ownership' }))
+    expect(await screen.findByRole('row', { name: /Okafor Holdings/ })).toBeInTheDocument()
+    expect(fake.ownerships.find((o) => o.ownerName === 'Okafor Holdings')).toMatchObject({
+      ownershipNumber: 2, ownerType: 'Vested Owner',
+      addresses: [{ addressType: 'Tax Card Mailing Address', address: '9 Elm St', city: 'Dallas' }], contacts: [{ name: 'Pat Primary', isPrimary: true, isActive: true }],
+    })
+    expect(fake.parcels.find((p) => p.id === 'pc1')!.ownerName).toBe('Kamali; Okafor Holdings')
+  })
+
+  it('changes an ownership, replacing its addresses and contacts, and removes it so the owner name goes with it', async () => {
+    const { fake, user } = open('Designer', { ownerships: OWN })
+    await tab(user, 'Ownership details')
+    await user.click(await screen.findByRole('button', { name: 'Edit ownership 1' }))
+    const form = await screen.findByRole('form', { name: 'Change ownership' })
+
+    expect(within(form).getByLabelText(/^Owner name/)).toHaveValue('Kamali')
+    await user.click(within(form).getByRole('button', { name: 'Remove address 1' }))
+    await user.click(within(form).getByRole('button', { name: 'Remove contact Dev Kamali' }))
+    await user.clear(within(form).getByLabelText(/^Owner name/))
+    await user.type(within(form).getByLabelText(/^Owner name/), 'Kamali Family Trust')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(fake.ownerships[0].ownerName).toBe('Kamali Family Trust'))
+    expect(fake.ownerships[0].addresses).toEqual([])
+    expect(fake.ownerships[0].contacts).toEqual([])
+    expect(fake.parcels.find((p) => p.id === 'pc1')!.ownerName).toBe('Kamali Family Trust')
+
+    await user.click(await screen.findByRole('button', { name: 'Remove ownership 1' }))
+    await waitFor(() => expect(fake.ownerships).toHaveLength(0))
+    expect(await screen.findByText('No ownerships recorded')).toBeInTheDocument()
+    expect(fake.parcels.find((p) => p.id === 'pc1')!.ownerName).toBeNull()
+  })
+
+  it('shows the owner name read-only on the parcel form', async () => {
+    const { user } = open('Designer', { ownerships: OWN })
+    await user.click(await screen.findByRole('button', { name: 'Edit parcel' }))
+    const form = await screen.findByRole('form', { name: 'Edit parcel' })
+
+    expect(within(form).getByLabelText(/^Owner name/)).toBeDisabled()
+    expect(within(form).getByLabelText(/^Owner name/)).toHaveValue('Kamali')
+  })
+})
+
+describe('Parcel location (AT-DE-43)', () => {
+  it('shows the parcel id, its CAD number and that nothing has been saved to ESRI', async () => {
+    const { user } = open('Designer', { parcels: [{ id: 'pc1', projectId: 'p1', number: 'PN-1001', cadNumber: 'CAD-77' }] })
+    await tab(user, 'Parcel location')
+
+    const table = await screen.findByRole('table', { name: 'Parcel location' })
+    const row = within(table).getAllByRole('row')[1]
+    expect(row).toHaveTextContent('PN-1001')
+    expect(row).toHaveTextContent('CAD-77')
+    expect(row).toHaveTextContent('Not saved')
+    expect(screen.getByRole('button', { name: 'Export to CSV' })).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: /parcel location/i })).not.toBeInTheDocument()
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -187,6 +294,20 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     expect(!!screen.queryByRole('form', { name: 'Log a contact' })).toBe(can(role, 'contactlog', 'create'))
     expect(!!screen.queryByRole('button', { name: 'Edit contact CL-PN-1001-001' })).toBe(can(role, 'contactlog', 'update'))
     expect(!!screen.queryByRole('button', { name: 'Remove contact CL-PN-1001-001' })).toBe(can(role, 'contactlog', 'delete'))
+  })
+
+  it('shows the Ownership details and Parcel location tabs exactly as their pages allow', async () => {
+    const { user } = open(role, { ownerships: [{ parcelId: 'pc1', id: 'ow1', ownershipNumber: 1, ownerName: 'Kamali' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Parcel location' })).toBe(can(role, 'parcellocation', 'read'))
+    expect(!!screen.queryByRole('tab', { name: 'Ownership details' })).toBe(can(role, 'ownership', 'read'))
+    if (!can(role, 'ownership', 'read')) return
+    await tab(user, 'Ownership details')
+    await screen.findByRole('table', { name: 'Ownership details' })
+    expect(!!screen.queryByRole('form', { name: 'Add an ownership' })).toBe(can(role, 'ownership', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Edit ownership 1' })).toBe(can(role, 'ownership', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove ownership 1' })).toBe(can(role, 'ownership', 'delete'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

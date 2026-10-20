@@ -1,4 +1,4 @@
-import type { ContactLogEntry, DocumentInfo, Easement } from '@/api/parcel-tabs'
+import type { ContactLogEntry, DocumentInfo, Easement, Ownership, OwnershipAddress, OwnershipContact } from '@/api/parcel-tabs'
 import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
 
 function json(body: unknown, status = 200) {
@@ -10,12 +10,14 @@ export interface FakeTabsOptions extends FakeRecordsOptions {
   contactLog?: (Partial<ContactLogEntry> & { parcelId: string })[]
   easements?: (Partial<Easement> & { parcelId: string; number: string })[]
   documents?: Partial<DocumentInfo>[]
+  ownerships?: (Partial<Ownership> & { parcelId: string; ownerName: string })[]
 }
 
 export interface FakeTabs extends FakeRecords {
   contactLog: ContactLogEntry[]
   easements: Easement[]
   documents: DocumentInfo[]
+  ownerships: Ownership[]
 }
 
 /** An in-memory stand-in for a parcel's Contact Log, Easements and the attachments on them, with the server's rules and page permissions. */
@@ -38,7 +40,17 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     id: id('doc'), entityType: 'ContactLog', entityId: 'x', fileName: 'file.pdf', contentType: 'application/pdf', sizeBytes: 2048, docType: null, description: null,
     uploadedAt: '2026-10-01T00:00:00Z', uploadedBy: 'u1', ...d,
   }))
-  const pageOf = (entityType: string) => (entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : 'parcels')
+  const ownerships: Ownership[] = (opts.ownerships ?? []).map((o, i) => ({
+    id: id('ow'), ownershipNumber: i + 1, parcelNumber: '001', ownerType: null, addresses: [], contacts: [], updatedAt: '2026-01-01T00:00:00Z', ...o,
+  }))
+  const syncOwnerName = (parcelId: string) => {
+    const parcel = base.parcels.find((p) => p.id === parcelId)
+    const names = ownerships.filter((o) => o.parcelId === parcelId).sort((a, b) => a.ownershipNumber - b.ownershipNumber).map((o) => o.ownerName)
+    if (parcel) parcel.ownerName = names.length ? names.join('; ') : null
+  }
+  for (const p of base.parcels) syncOwnerName(p.id)
+  const pageOf = (entityType: string) =>
+    entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
 
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://x')
@@ -73,18 +85,47 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
-    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements)(?:\/([^/]+))?$/.exec(url.pathname)
+    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships)(?:\/([^/]+))?$/.exec(url.pathname)
     if (!m) return base.fetch(input, init)
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     base.calls.push({ key: `${method} ${url.pathname}`, body })
     const [, parcelId, part, rid] = m
-    const page = part === 'contact-log' ? 'contactlog' : 'easements'
+    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : 'easements'
     const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? 'update' : 'delete'
     if (!can(page, act)) return forbidden()
     const parcel = base.parcels.find((p) => p.id === parcelId)
     if (!parcel) return problem(404, 'not_found', 'Parcel was not found.')
     if (method !== 'GET' && parcel.state !== 'Active') return problem(409, 'parcel_not_active', `Parcel ${parcel.number} can no longer be changed.`)
+
+    if (part === 'ownerships') {
+      if (method === 'GET') return json(ownerships.filter((o) => o.parcelId === parcelId).sort((a, b) => a.ownershipNumber - b.ownershipNumber))
+      if (method === 'DELETE') {
+        const i = ownerships.findIndex((o) => o.id === rid && o.parcelId === parcelId)
+        if (i < 0) return problem(404, 'not_found', 'Ownership was not found.')
+        ownerships.splice(i, 1)
+        syncOwnerName(parcelId)
+        return new Response(null, { status: 204 })
+      }
+      const errors: Record<string, string[]> = {}
+      if (!String(body?.ownerName ?? '').trim()) errors.OwnerName = ['Owner name is required.']
+      if ((body?.contacts ?? []).filter((c: { isPrimary: boolean }) => c.isPrimary).length > 1) errors.Contacts = ['Only one contact can be the primary contact.']
+      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
+      const withIds = <T extends object>(rows: T[] | undefined): (T & { id: string })[] => (rows ?? []).map((r) => ({ id: id('x'), ...r }))
+      const fields = { ownerName: body.ownerName.trim(), ownerType: body.ownerType ?? null, addresses: withIds<OwnershipAddress>(body.addresses), contacts: withIds<OwnershipContact>(body.contacts) }
+      if (method === 'PUT') {
+        const o = ownerships.find((x) => x.id === rid && x.parcelId === parcelId)
+        if (!o) return problem(404, 'not_found', 'Ownership was not found.')
+        Object.assign(o, fields)
+        syncOwnerName(parcelId)
+        return json(o)
+      }
+      const next = Math.max(0, ...ownerships.filter((o) => o.parcelId === parcelId).map((o) => o.ownershipNumber)) + 1
+      const o: Ownership = { id: id('ow'), parcelId, ownershipNumber: next, parcelNumber: parcel.number, updatedAt: '2026-10-14T00:00:00Z', ...fields }
+      ownerships.push(o)
+      syncOwnerName(parcelId)
+      return json(o, 201)
+    }
 
     if (part === 'contact-log') {
       if (method === 'GET') return json(contactLog.filter((e) => e.parcelId === parcelId).sort((a, b) => b.contactedAt.localeCompare(a.contactedAt)))
@@ -139,5 +180,5 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     return json(e, 201)
   }
 
-  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents }
+  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships }
 }
