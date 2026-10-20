@@ -282,6 +282,79 @@ describe('Parcel location (AT-DE-43)', () => {
   })
 })
 
+describe('Title encumbrances (AT-TE-40)', () => {
+  const ENC = [{ parcelId: 'pc1', id: 'en1', number: 'ENC-PN-1001-001', encumbranceType: 'Mortgage Lien', documentTitle: 'Deed of Trust 2019', grantor: 'Kamali Family', grantee: 'First Bank', cureStatus: 'In progress', dateRecorded: '2019-03-15' }]
+
+  it('lists the encumbrances with their id, type, document, parties and cure status', async () => {
+    const { user } = open('TitleResearcher', { encumbrances: ENC })
+    await tab(user, 'Title encumbrances')
+
+    const row = await screen.findByRole('row', { name: /ENC-PN-1001-001/ })
+    expect(row).toHaveTextContent('Mortgage Lien')
+    expect(row).toHaveTextContent('Deed of Trust 2019')
+    expect(row).toHaveTextContent('Kamali Family')
+    expect(row).toHaveTextContent('First Bank')
+    expect(row).toHaveTextContent('In progress')
+  })
+
+  it('adds an encumbrance, refusing the missing required fields, and an unrecorded document drops the recording date', async () => {
+    const { fake, user } = open('TitleResearcher', { encumbrances: ENC })
+    await tab(user, 'Title encumbrances')
+    const form = await screen.findByRole('form', { name: 'Add an encumbrance' })
+
+    await user.click(within(form).getByRole('button', { name: 'Add encumbrance' }))
+    for (const m of ['Encumbrance type is required.', 'Document title is required.', 'Grantor / lessor is required.', 'Grantee / lessee is required.'])
+      expect(await within(form).findByText(m)).toBeInTheDocument()
+
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Encumbrance type/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Mortgage Lien', 'Easement - Access', 'Judgment']))
+    await user.selectOptions(within(form).getByLabelText(/^Encumbrance type/), 'Easement - Access')
+    await user.type(within(form).getByLabelText(/^Document title/), 'Access easement')
+    await user.type(within(form).getByLabelText(/^Grantor/), 'Okafor')
+    await user.type(within(form).getByLabelText(/^Grantee/), 'County')
+    fireEvent.change(within(form).getByLabelText(/^Date recorded/), { target: { value: '2020-01-02' } })
+    await user.click(within(form).getByLabelText('Unrecorded document'))
+    expect(within(form).getByLabelText(/^Date recorded/)).toBeDisabled()
+    expect(within(form).getByLabelText(/^Date recorded/)).toHaveValue('')
+    fireEvent.change(within(form).getByLabelText(/^Exception to title submitted date/), { target: { value: '2026-03-01' } })
+    fireEvent.change(within(form).getByLabelText(/^Exception to title approved date/), { target: { value: '2026-02-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Add encumbrance' }))
+    expect(await within(form).findByText('The exception cannot be approved before it is submitted.')).toBeInTheDocument()
+
+    fireEvent.change(within(form).getByLabelText(/^Exception to title approved date/), { target: { value: '2026-03-10' } })
+    await user.type(within(form).getByLabelText(/^Record identifier/), 'TC-1')
+    await user.click(within(form).getByRole('button', { name: 'Add linked record' }))
+    await user.click(within(form).getByRole('button', { name: 'Add encumbrance' }))
+
+    expect(await screen.findByRole('row', { name: /Access easement/ })).toHaveTextContent('Unrecorded')
+    expect(fake.encumbrances.find((e) => e.documentTitle === 'Access easement')).toMatchObject({
+      number: 'ENC-PN-1001-002', isUnrecorded: true, dateRecorded: null, exceptionApprovedDate: '2026-03-10', links: [{ recordIdentifier: 'TC-1' }],
+    })
+  })
+
+  it('changes an encumbrance, attaches a file, and removes it', async () => {
+    const { fake, user } = open('TitleResearcher', { encumbrances: ENC })
+    await tab(user, 'Title encumbrances')
+    await user.click(await screen.findByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' }))
+    const form = await screen.findByRole('form', { name: 'Change encumbrance' })
+
+    expect(within(form).getByLabelText(/^Grantee/)).toHaveValue('First Bank')
+    await user.clear(within(form).getByLabelText(/^Review notes/))
+    await user.type(within(form).getByLabelText(/^Review notes/), 'Release requested.')
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(fake.encumbrances[0].reviewNotes).toBe('Release requested.'))
+
+    await user.click(await screen.findByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' }))
+    const panel = await screen.findByRole('region', { name: 'Attachments for ENC-PN-1001-001' })
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'release.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('release.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'Encumbrance', entityId: 'en1' })
+
+    await user.click(await screen.findByRole('button', { name: 'Remove encumbrance ENC-PN-1001-001' }))
+    await waitFor(() => expect(fake.encumbrances).toHaveLength(0))
+    expect(await screen.findByText('No encumbrances recorded')).toBeInTheDocument()
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -308,6 +381,19 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     expect(!!screen.queryByRole('form', { name: 'Add an ownership' })).toBe(can(role, 'ownership', 'create'))
     expect(!!screen.queryByRole('button', { name: 'Edit ownership 1' })).toBe(can(role, 'ownership', 'update'))
     expect(!!screen.queryByRole('button', { name: 'Remove ownership 1' })).toBe(can(role, 'ownership', 'delete'))
+  })
+
+  it('shows the Title encumbrances tab and its controls exactly as the Title Encumbrances page allows', async () => {
+    const { user } = open(role, { encumbrances: [{ parcelId: 'pc1', id: 'en1', number: 'ENC-PN-1001-001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Title encumbrances' })).toBe(can(role, 'titleencumbrances', 'read'))
+    if (!can(role, 'titleencumbrances', 'read')) return
+    await tab(user, 'Title encumbrances')
+    await screen.findByRole('table', { name: 'Title encumbrances' })
+    expect(!!screen.queryByRole('form', { name: 'Add an encumbrance' })).toBe(can(role, 'titleencumbrances', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' })).toBe(can(role, 'titleencumbrances', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove encumbrance ENC-PN-1001-001' })).toBe(can(role, 'titleencumbrances', 'delete'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

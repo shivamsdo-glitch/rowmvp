@@ -14,7 +14,12 @@ public sealed record EasementBody(
 public sealed record OwnershipBody(
     string? OwnerName, string? OwnerType, List<OwnershipAddressInput>? Addresses, List<OwnershipContactInput>? Contacts);
 
-/// <summary>The Contact Log, Easements and Ownership Details tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+public sealed record EncumbranceBody(
+    string? EncumbranceType, string? DocumentTitle, DateOnly? DocumentDate, DateOnly? DateRecorded, string? DocumentNumber, bool IsUnrecorded,
+    string? Grantor, string? Grantee, DateOnly? ExceptionSubmittedDate, DateOnly? ExceptionApprovedDate, string? ImpactAnalysis, string? RecommendedCure,
+    string? CureStatus, string? ReviewNotes, List<ContactLogLinkInput>? Links);
+
+/// <summary>The Contact Log, Easements, Ownership Details and Title Encumbrances tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -64,6 +69,32 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveOwnership(Guid parcelId, Guid ownershipId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveOwnershipCommand(parcelId, ownershipId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("encumbrances")]
+    [ProducesResponseType(typeof(IReadOnlyList<EncumbranceDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Encumbrances(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new ListEncumbrancesQuery(parcelId), ct));
+
+    [HttpPost("encumbrances")]
+    [ProducesResponseType(typeof(EncumbranceDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddEncumbrance(Guid parcelId, [FromBody] EncumbranceBody b, CancellationToken ct) =>
+        Created($"/api/v1/parcels/{parcelId}/encumbrances", await _mediator.Send(new AddEncumbranceCommand(
+            parcelId, b.EncumbranceType ?? "", b.DocumentTitle ?? "", b.DocumentDate, b.DateRecorded, b.DocumentNumber, b.IsUnrecorded, b.Grantor ?? "", b.Grantee ?? "",
+            b.ExceptionSubmittedDate, b.ExceptionApprovedDate, b.ImpactAnalysis, b.RecommendedCure, b.CureStatus, b.ReviewNotes, b.Links), ct));
+
+    [HttpPut("encumbrances/{encumbranceId:guid}")]
+    [ProducesResponseType(typeof(EncumbranceDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateEncumbrance(Guid parcelId, Guid encumbranceId, [FromBody] EncumbranceBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new UpdateEncumbranceCommand(
+            parcelId, encumbranceId, b.EncumbranceType ?? "", b.DocumentTitle ?? "", b.DocumentDate, b.DateRecorded, b.DocumentNumber, b.IsUnrecorded, b.Grantor ?? "", b.Grantee ?? "",
+            b.ExceptionSubmittedDate, b.ExceptionApprovedDate, b.ImpactAnalysis, b.RecommendedCure, b.CureStatus, b.ReviewNotes, b.Links), ct));
+
+    [HttpDelete("encumbrances/{encumbranceId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveEncumbrance(Guid parcelId, Guid encumbranceId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveEncumbranceCommand(parcelId, encumbranceId), ct);
         return NoContent();
     }
 

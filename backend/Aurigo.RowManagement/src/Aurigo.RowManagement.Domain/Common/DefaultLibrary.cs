@@ -54,6 +54,7 @@ public static class DefaultLibrary
             "Deed/Use Restrictions", "Lease", "Encroachment", "License", "Reservation", "Other", "Easement - Public Utility", "Easement - Private Utility",
             "Easement - Other", "Deed of Trust",
         }),
+        new("cure_status", "Cure status", CustomFieldType.List, Array.Empty<string>()),
         new("appraisal_type", "Appraisal type", CustomFieldType.List, Array.Empty<string>()),
         new("appraisal_amount_type", "Appraisal amount type", CustomFieldType.List, Array.Empty<string>()),
         new("review_type", "Appraisal review type", CustomFieldType.List, Array.Empty<string>()),

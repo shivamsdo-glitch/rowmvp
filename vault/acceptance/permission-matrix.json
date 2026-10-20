@@ -31,7 +31,8 @@
     "contactlog",
     "easements",
     "ownership",
-    "parcellocation"
+    "parcellocation",
+    "titleencumbrances"
   ],
   "matrix": {
     "ProjectManager": {
@@ -52,7 +53,8 @@
       "contactlog": "B",
       "easements": "B",
       "ownership": "B",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -72,7 +74,8 @@
       "contactlog": "S",
       "easements": "S",
       "ownership": "P",
-      "parcellocation": "P"
+      "parcellocation": "P",
+      "titleencumbrances": "B"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -92,7 +95,8 @@
       "contactlog": "B",
       "easements": "B",
       "ownership": "B",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -112,7 +116,8 @@
       "contactlog": "S",
       "easements": "P",
       "ownership": "B",
-      "parcellocation": "S"
+      "parcellocation": "S",
+      "titleencumbrances": "B"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -132,7 +137,8 @@
       "contactlog": "S",
       "easements": "B",
       "ownership": "U",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "P"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -152,7 +158,8 @@
       "contactlog": "S",
       "easements": "B",
       "ownership": "B",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -172,7 +179,8 @@
       "contactlog": "B",
       "easements": "B",
       "ownership": "B",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -192,7 +200,8 @@
       "contactlog": "P",
       "easements": "B",
       "ownership": "S",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -212,7 +221,8 @@
       "contactlog": "P",
       "easements": "B",
       "ownership": "B",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "Finance": {
       "dashboard": "B",
@@ -232,7 +242,8 @@
       "contactlog": "B",
       "easements": "B",
       "ownership": "B",
-      "parcellocation": "B"
+      "parcellocation": "B",
+      "titleencumbrances": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -252,7 +263,8 @@
       "contactlog": "P",
       "easements": "P",
       "ownership": "P",
-      "parcellocation": "P"
+      "parcellocation": "P",
+      "titleencumbrances": "P"
     }
   },
   "attachmentPages": {
@@ -268,6 +280,7 @@
     "Payment": "payments",
     "ContactLog": "contactlog",
     "Easement": "easements",
-    "Ownership": "ownership"
+    "Ownership": "ownership",
+    "Encumbrance": "titleencumbrances"
   }
 }

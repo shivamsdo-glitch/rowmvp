@@ -133,3 +133,50 @@ export const ownershipApi = (api: ApiClient) => ({
   update: (parcelId: string, id: string, body: OwnershipInput) => api.put<Ownership>(`/api/v1/parcels/${parcelId}/ownerships/${id}`, body),
   remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/ownerships/${id}`),
 })
+
+export interface Encumbrance {
+  id: string
+  parcelId: string
+  number: string
+  encumbranceType: string
+  documentTitle: string
+  documentDate: string | null
+  dateRecorded: string | null
+  documentNumber: string | null
+  isUnrecorded: boolean
+  grantor: string
+  grantee: string
+  exceptionSubmittedDate: string | null
+  exceptionApprovedDate: string | null
+  impactAnalysis: string | null
+  recommendedCure: string | null
+  cureStatus: string | null
+  reviewNotes: string | null
+  links: ContactLogLink[]
+  updatedAt: string
+}
+
+export interface EncumbranceInput {
+  encumbranceType: string
+  documentTitle: string
+  documentDate: string | null
+  dateRecorded: string | null
+  documentNumber: string | null
+  isUnrecorded: boolean
+  grantor: string
+  grantee: string
+  exceptionSubmittedDate: string | null
+  exceptionApprovedDate: string | null
+  impactAnalysis: string | null
+  recommendedCure: string | null
+  cureStatus: string | null
+  reviewNotes: string | null
+  links: ContactLogLinkInput[]
+}
+
+export const encumbrancesApi = (api: ApiClient) => ({
+  list: (parcelId: string) => api.get<Encumbrance[]>(`/api/v1/parcels/${parcelId}/encumbrances`),
+  add: (parcelId: string, body: EncumbranceInput) => api.post<Encumbrance>(`/api/v1/parcels/${parcelId}/encumbrances`, body),
+  update: (parcelId: string, id: string, body: EncumbranceInput) => api.put<Encumbrance>(`/api/v1/parcels/${parcelId}/encumbrances/${id}`, body),
+  remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/encumbrances/${id}`),
+})

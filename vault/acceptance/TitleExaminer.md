@@ -25,8 +25,10 @@
 | AT-TE-22 | Request a survey, attach CAD, review the legal description and sketch | 2 | Request status tracked; files versioned; review initials recorded; only roles allowed to edit survey plans can |
 | AT-TE-23 | Complete the appraisal package | 2 | Checklist complete → parcel becomes eligible for an appraisal request; an incomplete package blocks the request with the missing items named |
 | AT-TE-24 | Protect confidential title information | 2 | Other roles do not see confidential title fields on screen or in the API response |
+| AT-TE-40 | Record the encumbrances found on a parcel | Open a parcel's Title encumbrances tab. Try an empty form, an exception approved before it was submitted; add an encumbrance with type, document, parties, cure status, impact analysis, linked records; mark it unrecorded; attach the deed; remove them | Each shows its id ENC-<parcel>-001, 002...; the form names every missing field; an unrecorded document disables the recording date; the attachments panel appears while one is being changed | Type, document title, grantor and grantee are required (400); an unrecorded document with a recording date is refused (400); ids count up per parcel and are not reissued when an earlier one is removed; ten at once get different ids | ✅ | E2E `AT-TE-40` ×2; API `EncumbranceApiTests`; frontend `parcel-tabs.test.tsx`; unit `ParcelTabsTests` |
 
 ## Changelog
+- Phase 1.5 slice 6a: AT-TE-40 automated (the Title Encumbrances tab). ADR 0018.
 - Phase 1 slice 3c: AT-TE-25 automated (rights of entry read-only; no Approvals access).
 - Phase 1 slice 3a: AT-TE-15 automated (read-only access to parties).
 - Initial: AT-TE-10..14 automated; 20..24 specified.

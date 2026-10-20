@@ -163,4 +163,68 @@ public class ParcelTabsTests
         Letters(PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.Ownership))).Should().Be(ownership, $"{role} Ownership");
         Letters(PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.ParcelLocation))).Should().Be(location, $"{role} Parcel Location");
     }
+
+    // ── Title Encumbrances (slice 6a) ──
+
+    private static AddEncumbranceCommand Enc(
+        string type = "Mortgage Lien", string title = "Deed of Trust", string grantor = "Kamali", string grantee = "Bank", bool unrecorded = false,
+        DateOnly? recorded = null, DateOnly? submitted = null, DateOnly? approved = null, string? analysis = null, IReadOnlyList<ContactLogLinkInput>? links = null) =>
+        new(Guid.NewGuid(), type, title, null, recorded, null, unrecorded, grantor, grantee, submitted, approved, analysis, null, null, null, links);
+
+    private static bool Valid(AddEncumbranceCommand c) => new AddEncumbranceCommandValidator().Validate(c).IsValid;
+
+    [Theory]
+    [InlineData("Mortgage Lien", "Deed", "A", "B", true)]
+    [InlineData("", "Deed", "A", "B", false)]
+    [InlineData("Mortgage Lien", "", "A", "B", false)]
+    [InlineData("Mortgage Lien", "Deed", "", "B", false)]
+    [InlineData("Mortgage Lien", "Deed", "A", "   ", false)]
+    public void AT_TE_40_An_encumbrance_needs_a_type_a_document_title_a_grantor_and_a_grantee(string type, string title, string grantor, string grantee, bool valid) =>
+        Valid(Enc(type, title, grantor, grantee)).Should().Be(valid);
+
+    [Fact]
+    public void AT_TE_40_An_unrecorded_document_cannot_have_a_recording_date()
+    {
+        var d = new DateOnly(2019, 3, 15);
+        Valid(Enc(unrecorded: true, recorded: d)).Should().BeFalse();
+        Valid(Enc(unrecorded: true)).Should().BeTrue();
+        Valid(Enc(unrecorded: false, recorded: d)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void AT_TE_40_An_exception_cannot_be_approved_before_it_is_submitted()
+    {
+        var d = new DateOnly(2026, 2, 1);
+        Valid(Enc(submitted: d, approved: d.AddDays(-1))).Should().BeFalse();
+        Valid(Enc(submitted: d, approved: d)).Should().BeTrue();
+        Valid(Enc(submitted: null, approved: d)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void AT_TE_40_Encumbrance_text_and_linked_records_have_limits()
+    {
+        Valid(Enc(analysis: new string('a', 4000))).Should().BeTrue();
+        Valid(Enc(analysis: new string('a', 4001))).Should().BeFalse();
+        Valid(Enc(title: new string('t', 301))).Should().BeFalse();
+        Valid(Enc(links: new[] { new ContactLogLinkInput("", "x", null) })).Should().BeFalse();
+        Valid(Enc(links: Enumerable.Range(0, 51).Select(i => new ContactLogLinkInput($"R{i}", null, null)).ToList())).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("ProjectManager", "R")]
+    [InlineData("Designer", "R")]
+    [InlineData("DesignApprover", "R")]
+    [InlineData("Surveyor", "R")]
+    [InlineData("TitleResearcher", "CRUD")]
+    [InlineData("Appraiser", "R")]
+    [InlineData("AppraisalApprover", "R")]
+    [InlineData("Negotiator", "R")]
+    [InlineData("RelocationAgent", "R")]
+    [InlineData("Finance", "R")]
+    [InlineData("Admin", "CRUD")]
+    public void AT_X_49_The_default_access_to_Title_Encumbrances_follows_the_approved_matrix(string role, string expected)
+    {
+        var f = PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.TitleEncumbrances));
+        ((f.Create ? "C" : "") + (f.Read ? "R" : "") + (f.Update ? "U" : "") + (f.Delete ? "D" : "")).Should().Be(expected, role);
+    }
 }

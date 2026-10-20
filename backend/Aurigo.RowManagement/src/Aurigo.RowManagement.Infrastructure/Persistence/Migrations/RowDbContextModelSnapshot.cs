@@ -1226,6 +1226,182 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("parcel_easements", (string)null);
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEncumbrance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CureStatus")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cure_status");
+
+                    b.Property<DateOnly?>("DateRecorded")
+                        .HasColumnType("date")
+                        .HasColumnName("date_recorded");
+
+                    b.Property<DateOnly?>("DocumentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("document_date");
+
+                    b.Property<string>("DocumentNumber")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("document_number");
+
+                    b.Property<string>("DocumentTitle")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("document_title");
+
+                    b.Property<string>("EncumbranceType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("encumbrance_type");
+
+                    b.Property<DateOnly?>("ExceptionApprovedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("exception_approved_date");
+
+                    b.Property<DateOnly?>("ExceptionSubmittedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("exception_submitted_date");
+
+                    b.Property<string>("Grantee")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("grantee");
+
+                    b.Property<string>("Grantor")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("grantor");
+
+                    b.Property<string>("ImpactAnalysis")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("impact_analysis");
+
+                    b.Property<bool>("IsUnrecorded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_unrecorded");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("ParcelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parcel_id");
+
+                    b.Property<string>("RecommendedCure")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("recommended_cure");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("review_notes");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_encumbrances");
+
+                    b.HasIndex("ParcelId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ix_parcel_encumbrances_parcel_id_sequence");
+
+                    b.ToTable("parcel_encumbrances", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEncumbranceLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EncumbranceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("encumbrance_id");
+
+                    b.Property<string>("ModuleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("module_name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("RecordIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("record_identifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parcel_encumbrance_links");
+
+                    b.HasIndex("EncumbranceId")
+                        .HasDatabaseName("ix_parcel_encumbrance_links_encumbrance_id");
+
+                    b.ToTable("parcel_encumbrance_links", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelGroup", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3466,6 +3642,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_parcel_easements_parcels_parcel_id");
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEncumbrance", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
+                        .WithMany()
+                        .HasForeignKey("ParcelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_encumbrances_parcels_parcel_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEncumbranceLink", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelEncumbrance", null)
+                        .WithMany("Links")
+                        .HasForeignKey("EncumbranceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parcel_encumbrance_links_parcel_encumbrances_encumbrance_id");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelGroup", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Project", null)
@@ -3723,6 +3919,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelContactLogEntry", b =>
+                {
+                    b.Navigation("Links");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelEncumbrance", b =>
                 {
                     b.Navigation("Links");
                 });

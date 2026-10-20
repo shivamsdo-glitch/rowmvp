@@ -10,7 +10,7 @@ export type Role = (typeof ROLES)[number]
 /** Mirrors the backend page keys (Domain/Common/PageKeys). */
 export const PAGE_KEYS = [
   'dashboard', 'projects', 'parcels', 'parties', 'title', 'survey', 'appraisals',
-  'approvals', 'negotiations', 'agreements', 'closing', 'payments', 'administration', 'library', 'contactlog', 'easements', 'ownership', 'parcellocation',
+  'approvals', 'negotiations', 'agreements', 'closing', 'payments', 'administration', 'library', 'contactlog', 'easements', 'ownership', 'parcellocation', 'titleencumbrances',
 ] as const
 export type PageKey = (typeof PAGE_KEYS)[number]
 

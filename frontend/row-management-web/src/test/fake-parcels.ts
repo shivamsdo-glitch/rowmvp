@@ -32,6 +32,8 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['possession_type', 'Possession type', ['PUA', 'Closing']],
   ['mode_of_contact', 'Mode of contact', ['Phone', 'In person', 'Letter']],
   ['easement_type', 'Easement type', ['Sidewalk Easement', 'Drainage Easement']],
+  ['encumbrance_type', 'Encumbrance type', ['Mortgage Lien', 'Easement - Access', 'Judgment']],
+  ['cure_status', 'Cure status', ['In progress', 'Cured']],
   ['owner_type', 'Owner type', ['CAD Owner', 'Fee Owner', 'Vested Owner']],
   ['address_type', 'Address type', ['Tax Card Mailing Address']],
   ['contact_type', 'Contact type', ['Broker']],
