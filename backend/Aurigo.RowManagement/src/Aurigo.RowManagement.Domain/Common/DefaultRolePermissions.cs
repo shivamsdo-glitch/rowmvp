@@ -106,6 +106,18 @@ public static class DefaultRolePermissions
             {
                 [RoleNames.TitleResearcher] = S, [RoleNames.Negotiator] = S, [RoleNames.Admin] = P,
             },
+            [PageKeys.ParcelCondemnation] = new Dictionary<string, string>
+            {
+                [RoleNames.Negotiator] = S, [RoleNames.Admin] = P,
+            },
+            [PageKeys.ParcelProperty] = new Dictionary<string, string>
+            {
+                [RoleNames.ProjectManager] = P, [RoleNames.Admin] = P,
+            },
+            [PageKeys.ParcelRelocation] = new Dictionary<string, string>
+            {
+                [RoleNames.RelocationAgent] = P, [RoleNames.Admin] = P,
+            },
             [PageKeys.ParcelQuestionnaire] = new Dictionary<string, string>
             {
                 [RoleNames.RelocationAgent] = P, [RoleNames.Admin] = P,

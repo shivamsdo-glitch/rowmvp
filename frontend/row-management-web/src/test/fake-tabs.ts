@@ -1,4 +1,4 @@
-import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing, Appraisal, Negotiation, Questionnaire } from '@/api/parcel-tabs'
+import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, Ownership, OwnershipAddress, OwnershipContact, TitleClosing, Appraisal, Negotiation, Questionnaire, Condemnation, PropertyRecord, Relocation } from '@/api/parcel-tabs'
 import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
 
 function json(body: unknown, status = 200) {
@@ -18,6 +18,9 @@ export interface FakeTabsOptions extends FakeRecordsOptions {
   appraisals?: (Partial<Appraisal> & { parcelId: string })[]
   negotiations?: (Partial<Negotiation> & { parcelId: string })[]
   questionnaires?: (Partial<Questionnaire> & { parcelId: string })[]
+  condemnations?: (Partial<Condemnation> & { parcelId: string })[]
+  properties?: (Partial<PropertyRecord> & { parcelId: string })[]
+  relocations?: (Partial<Relocation> & { parcelId: string })[]
 }
 
 export interface FakeTabs extends FakeRecords {
@@ -30,6 +33,9 @@ export interface FakeTabs extends FakeRecords {
   appraisals: Appraisal[]
   negotiations: Negotiation[]
   questionnaires: Questionnaire[]
+  condemnations: Condemnation[]
+  properties: PropertyRecord[]
+  relocations: Relocation[]
 }
 
 /** An in-memory stand-in for a parcel's Contact Log, Easements and the attachments on them, with the server's rules and page permissions. */
@@ -87,8 +93,19 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     id: id('qs'), number: `QST-001-${String(i + 1).padStart(3, '0')}`, parcelNumber: '001', relocationType: 'Residential', dueByDate: null, sentToOwnerDate: null,
     interests: [], questions: [], updatedAt: '2026-01-01T00:00:00Z', ...q,
   }))
+  const condemnations: Condemnation[] = (opts.condemnations ?? []).map((c) => ({
+    id: id('cn'), number: 'CON-001', parcelNumber: '001', vestedOwnerName: null, details: {}, statusNotes: [], attorneys: [], commissioners: [], notices: [], updatedAt: '2026-01-01T00:00:00Z', ...c,
+  }))
+  const properties: PropertyRecord[] = (opts.properties ?? []).map((p) => ({
+    id: id('pm'), number: 'PMD-001', parcelNumber: '001', details: {}, statusNotes: [], funding: [], updatedAt: '2026-01-01T00:00:00Z', ...p,
+  }))
+  const relocations: Relocation[] = (opts.relocations ?? []).map((r) => ({
+    id: id('rl'), parcelNumber: '001', vestedOwnerName: null, details: { relocationNumber: 'R-1', displaceeName: 'Kamali', relocationType: 'Residential' }, statusNotes: [], agents: [], contacts: [],
+    eligibilities: [], contactLog: [], updatedAt: '2026-01-01T00:00:00Z', ...r,
+  }))
   const pageOf = (entityType: string) =>
-    entityType === 'ParcelQuestionnaire' ? 'parcelquestionnaire' : entityType === 'ParcelNegotiation' ? 'parcelnegotiation' : entityType === 'ParcelAppraisal' ? 'parcelappraisal' : entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
+    entityType === 'ParcelCondemnation' ? 'parcelcondemnation' : entityType === 'ParcelProperty' ? 'parcelproperty' : entityType === 'ParcelRelocation' ? 'parcelrelocation'
+    : entityType === 'ParcelQuestionnaire' ? 'parcelquestionnaire' : entityType === 'ParcelNegotiation' ? 'parcelnegotiation' : entityType === 'ParcelAppraisal' ? 'parcelappraisal' : entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : entityType === 'Ownership' ? 'ownership' : 'parcels'
 
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://x')
@@ -123,16 +140,18 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
-    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing|appraisals|negotiation|questionnaires)(?:\/([^/]+))?$/.exec(url.pathname)
+    const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing|appraisals|negotiation|questionnaires|condemnation|property-management|relocations)(?:\/([^/]+))?$/.exec(url.pathname)
     if (!m) return base.fetch(input, init)
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     base.calls.push({ key: `${method} ${url.pathname}`, body })
     const [, parcelId, part, rid] = m
-    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : part === 'appraisals' ? 'parcelappraisal' : part === 'negotiation' ? 'parcelnegotiation' : part === 'questionnaires' ? 'parcelquestionnaire' : 'easements'
+    const page = part === 'contact-log' ? 'contactlog' : part === 'ownerships' ? 'ownership' : part === 'encumbrances' ? 'titleencumbrances' : part === 'title-closing' ? 'titleclosing' : part === 'appraisals' ? 'parcelappraisal' : part === 'negotiation' ? 'parcelnegotiation' : part === 'questionnaires' ? 'parcelquestionnaire' : part === 'condemnation' ? 'parcelcondemnation' : part === 'property-management' ? 'parcelproperty' : part === 'relocations' ? 'parcelrelocation' : 'easements'
     const existingTc = titleClosings.find((x) => x.parcelId === parcelId)
     const existingNg = negotiations.find((x) => x.parcelId === parcelId)
-    const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? ((part === 'title-closing' && !existingTc) || (part === 'negotiation' && !existingNg) ? 'create' : 'update') : 'delete'
+    const existingCn = condemnations.find((x) => x.parcelId === parcelId)
+    const existingPm = properties.find((x) => x.parcelId === parcelId)
+    const act = method === 'GET' ? 'read' : method === 'POST' ? 'create' : method === 'PUT' ? ((part === 'title-closing' && !existingTc) || (part === 'negotiation' && !existingNg) || (part === 'condemnation' && !existingCn) || (part === 'property-management' && !existingPm) ? 'create' : 'update') : 'delete'
     if (!can(page, act)) return forbidden()
     const parcel = base.parcels.find((p) => p.id === parcelId)
     if (!parcel) return problem(404, 'not_found', 'Parcel was not found.')
@@ -158,6 +177,68 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       const tc: TitleClosing = { id: id('tc'), parcelId, number: `TC-${parcel.number}`, parcelNumber: parcel.number, vestedOwnerName: vested, ...fields }
       titleClosings.push(tc)
       return json(tc)
+    }
+
+    if (part === 'condemnation' || part === 'property-management') {
+      const existing = part === 'condemnation' ? existingCn : existingPm
+      const store = (part === 'condemnation' ? condemnations : properties) as { parcelId: string }[]
+      if (method === 'GET') return json({ record: existing ?? null })
+      if (method === 'DELETE') {
+        if (!existing) return problem(404, 'not_found', 'Record was not found.')
+        store.splice(store.indexOf(existing), 1)
+        return new Response(null, { status: 204 })
+      }
+      const errors: Record<string, string[]> = {}
+      const d = body?.details ?? {}
+      if (part === 'property-management' && d.salePrice !== null && d.salePrice !== undefined && d.salePrice < 0) errors.SalePrice = ['The amount must be zero or more.']
+      if (part === 'condemnation' && d.prelimPackageSubmittedToAtp && d.prelimPackageApprovedByAtp && d.prelimPackageApprovedByAtp < d.prelimPackageSubmittedToAtp) errors.PrelimPackageApprovedByAtp = ['The package cannot be approved before it is submitted.']
+      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
+      const withIds = <T extends object>(rows: T[] | undefined): (T & { id: string })[] => (rows ?? []).map((r) => ({ id: id('x'), ...r }))
+      const common = { ...body, statusNotes: withIds(body?.statusNotes), updatedAt: `2026-10-14T00:00:${String(seq % 60).padStart(2, '0')}Z` }
+      const fields = part === 'condemnation'
+        ? { ...common, attorneys: withIds(body?.attorneys), commissioners: withIds(body?.commissioners), notices: withIds(body?.notices) }
+        : { ...common, funding: withIds(body?.funding) }
+      if (existing) { Object.assign(existing, fields); return json(existing) }
+      if (part === 'condemnation') {
+        const c: Condemnation = { id: id('cn'), parcelId, number: `CON-${parcel.number}`, parcelNumber: parcel.number, vestedOwnerName: null, ...(fields as object) } as Condemnation
+        condemnations.push(c)
+        return json(c)
+      }
+      const p: PropertyRecord = { id: id('pm'), parcelId, number: `PMD-${parcel.number}`, parcelNumber: parcel.number, ...(fields as object) } as PropertyRecord
+      properties.push(p)
+      return json(p)
+    }
+
+    if (part === 'relocations') {
+      if (method === 'GET') return json(relocations.filter((r) => r.parcelId === parcelId))
+      if (method === 'DELETE') {
+        const i = relocations.findIndex((r) => r.id === rid && r.parcelId === parcelId)
+        if (i < 0) return problem(404, 'not_found', 'Relocation was not found.')
+        relocations.splice(i, 1)
+        return new Response(null, { status: 204 })
+      }
+      const d = body?.details ?? {}
+      const errors: Record<string, string[]> = {}
+      if (!String(d.relocationNumber ?? '').trim()) errors.RelocationNumber = ['Relocation number is required.']
+      if (!String(d.displaceeName ?? '').trim()) errors.DisplaceeName = ['Displacee name is required.']
+      if (!String(d.relocationType ?? '').trim()) errors.RelocationType = ['Relocation type is required.']
+      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
+      if (relocations.some((r) => r.parcelId === parcelId && r.details.relocationNumber === d.relocationNumber && r.id !== rid))
+        return problem(409, 'relocation_number_exists', `This parcel already has a relocation numbered '${d.relocationNumber}'.`)
+      const withIds = <T extends object>(rows: T[] | undefined): (T & { id: string })[] => (rows ?? []).map((r) => ({ id: id('x'), ...r }))
+      const fields = {
+        ...body, statusNotes: withIds(body?.statusNotes), agents: withIds(body?.agents), contacts: withIds(body?.contacts), eligibilities: withIds(body?.eligibilities),
+        contactLog: withIds(body?.contactLog), updatedAt: `2026-10-14T00:00:${String(seq % 60).padStart(2, '0')}Z`,
+      }
+      if (method === 'PUT') {
+        const r = relocations.find((x) => x.id === rid && x.parcelId === parcelId)
+        if (!r) return problem(404, 'not_found', 'Relocation was not found.')
+        Object.assign(r, fields)
+        return json(r)
+      }
+      const r: Relocation = { id: id('rl'), parcelId, parcelNumber: parcel.number, vestedOwnerName: null, ...fields }
+      relocations.push(r)
+      return json(r, 201)
     }
 
     if (part === 'questionnaires') {
@@ -356,5 +437,5 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     return json(e, 201)
   }
 
-  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings, appraisals, negotiations, questionnaires }
+  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, ownerships, encumbrances, titleClosings, appraisals, negotiations, questionnaires, condemnations, properties, relocations }
 }

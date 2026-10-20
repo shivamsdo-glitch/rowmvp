@@ -702,6 +702,179 @@ describe('Questionnaire (AT-RA-40)', () => {
   })
 })
 
+describe('Condemnation (AT-NE-43)', () => {
+  it('saves a first condemnation with its dates, people and grids, refusing an approval before the submission', async () => {
+    const { fake, user } = open('Negotiator')
+    await tab(user, 'Condemnation')
+    const form = await screen.findByRole('form', { name: 'Condemnation' })
+    expect(form).toHaveTextContent('Assigned when saved')
+
+    fireEvent.change(within(form).getByLabelText('Preliminary condemnation package submitted to ATP'), { target: { value: '2026-03-10' } })
+    fireEvent.change(within(form).getByLabelText('Preliminary condemnation package approved by ATP'), { target: { value: '2026-03-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Save condemnation' }))
+    expect(await within(form).findByText('The package cannot be approved before it is submitted.')).toBeInTheDocument()
+    expect(fake.condemnations).toHaveLength(0)
+
+    fireEvent.change(within(form).getByLabelText('Preliminary condemnation package approved by ATP'), { target: { value: '2026-03-12' } })
+    await user.selectOptions(within(form).getByLabelText('ED coordinator'), 'Casey Closer')
+    await user.click(within(form).getByRole('checkbox', { name: 'Objections filed?' }))
+
+    await user.type(within(form).getByLabelText('Status note'), 'Petition drafted.')
+    await user.click(within(form).getByRole('button', { name: 'Add status note' }))
+    await user.click(within(form).getByRole('button', { name: 'Add attorney' }))
+    expect(await within(form).findByText('Enter the party represented.')).toBeInTheDocument()
+    await user.type(within(form).getByLabelText('Party represented'), 'Owner')
+    await user.type(within(form).getByLabelText('Attorney firm'), 'Law LLP')
+    await user.click(within(form).getByRole('button', { name: 'Add attorney' }))
+    await user.type(within(form).getByLabelText('Name of commissioner'), 'C. Commissioner')
+    await user.click(within(form).getByRole('button', { name: 'Add commissioner' }))
+    await user.type(within(form).getByLabelText('Party to serve'), 'Owner')
+    await user.click(within(form).getByRole('button', { name: 'Add notice of hearing' }))
+    await user.click(within(form).getByRole('button', { name: 'Save condemnation' }))
+
+    await waitFor(() => expect(fake.condemnations).toHaveLength(1))
+    expect(fake.condemnations[0]).toMatchObject({ number: 'CON-PN-1001' })
+    expect(fake.condemnations[0].details).toMatchObject({ edCoordinator: 'Casey Closer', objectionsFiled: true, prelimPackageApprovedByAtp: '2026-03-12' })
+    expect(fake.condemnations[0].statusNotes.map((n) => n.text)).toEqual(['Petition drafted.'])
+    expect(fake.condemnations[0].attorneys).toMatchObject([{ partyRepresented: 'Owner', firm: 'Law LLP' }])
+    expect(fake.condemnations[0].commissioners[0].name).toBe('C. Commissioner')
+    expect(fake.condemnations[0].notices[0].partyToServe).toBe('Owner')
+    expect(await screen.findByText('Condemnation saved.')).toBeInTheDocument()
+  })
+
+  it('gives the negotiator no Remove button and lets the Admin attach a file and remove the record', async () => {
+    const neg = open('Negotiator', { condemnations: [{ parcelId: 'pc1', id: 'cn1', number: 'CON-PN-1001' }] })
+    await tab(neg.user, 'Condemnation')
+    await screen.findByRole('form', { name: 'Condemnation' })
+    expect(screen.queryByRole('button', { name: 'Remove condemnation record' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+  })
+
+  it('attaches a file and removes the record as Admin', async () => {
+    const { fake, user } = open('Admin', { condemnations: [{ parcelId: 'pc1', id: 'cn1', number: 'CON-PN-1001' }] })
+    await tab(user, 'Condemnation')
+    const panel = await screen.findByRole('region', { name: 'Attachments for CON-PN-1001' })
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'petition.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('petition.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelCondemnation', entityId: 'cn1' })
+    await user.click(screen.getByRole('button', { name: 'Remove condemnation record' }))
+    await waitFor(() => expect(fake.condemnations).toHaveLength(0))
+  })
+})
+
+describe('Property management and disposition (AT-PM-43)', () => {
+  it('saves a first record with disposition details and funding, refusing a negative price and percentages over 100', async () => {
+    const { fake, user } = open('ProjectManager')
+    await tab(user, 'Property management & disposition')
+    const form = await screen.findByRole('form', { name: 'Property management and disposition' })
+
+    await user.type(within(form).getByLabelText('Sale price / consideration value ($)'), '-5')
+    await user.click(within(form).getByRole('button', { name: 'Save property management' }))
+    expect(await within(form).findByText('The amount must be zero or more.')).toBeInTheDocument()
+    expect(fake.properties).toHaveLength(0)
+    await user.clear(within(form).getByLabelText('Sale price / consideration value ($)'))
+    await user.type(within(form).getByLabelText('Sale price / consideration value ($)'), '125000')
+
+    await waitFor(() => expect(within(within(form).getByLabelText('Disposition type')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Sale', 'Transfer']))
+    await user.selectOptions(within(form).getByLabelText('Disposition type'), 'Sale')
+    await user.click(within(form).getByRole('checkbox', { name: 'FTA concurrence required?' }))
+
+    await user.click(within(form).getByRole('button', { name: 'Add funding' }))
+    expect(await within(form).findByText('Choose the fund type.')).toBeInTheDocument()
+    await user.selectOptions(within(form).getByLabelText(/^Fund type/), 'Federal')
+    await user.type(within(form).getByLabelText('Funding percentage'), '60')
+    await user.click(within(form).getByRole('button', { name: 'Add funding' }))
+    await user.selectOptions(within(form).getByLabelText(/^Fund type/), 'Local')
+    await user.type(within(form).getByLabelText('Funding percentage'), '50')
+    await user.click(within(form).getByRole('button', { name: 'Add funding' }))
+    expect(await within(form).findByText('The funding percentages cannot add up to more than 100.')).toBeInTheDocument()
+    await user.clear(within(form).getByLabelText('Funding percentage'))
+    await user.type(within(form).getByLabelText('Funding percentage'), '40')
+    await user.click(within(form).getByRole('button', { name: 'Add funding' }))
+
+    await user.click(within(form).getByRole('button', { name: 'Save property management' }))
+    await waitFor(() => expect(fake.properties).toHaveLength(1))
+    expect(fake.properties[0]).toMatchObject({ number: 'PMD-PN-1001' })
+    expect(fake.properties[0].details).toMatchObject({ salePrice: 125000, dispositionType: 'Sale', ftaConcurrenceRequired: true })
+    expect(fake.properties[0].funding.map((x) => x.percentage)).toEqual([60, 40])
+  })
+
+  it('attaches a file and removes the record', async () => {
+    const { fake, user } = open('Admin', { properties: [{ parcelId: 'pc1', id: 'pm1', number: 'PMD-PN-1001' }] })
+    await tab(user, 'Property management & disposition')
+    const panel = await screen.findByRole('region', { name: 'Attachments for PMD-PN-1001' })
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'memo.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('memo.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelProperty', entityId: 'pm1' })
+    await user.click(screen.getByRole('button', { name: 'Remove property management record' }))
+    await waitFor(() => expect(fake.properties).toHaveLength(0))
+  })
+})
+
+describe('Relocation (AT-RA-41)', () => {
+  it('adds a relocation with its required fields, contacts, eligibility and contact log', async () => {
+    const { fake, user } = open('RelocationAgent')
+    await tab(user, 'Relocation')
+    const form = await screen.findByRole('form', { name: 'Add a relocation' })
+
+    await user.click(within(form).getByRole('button', { name: 'Add relocation' }))
+    expect(await within(form).findByText('Relocation number is required.')).toBeInTheDocument()
+    expect(within(form).getByText('Displacee name is required.')).toBeInTheDocument()
+    expect(within(form).getByText('Relocation type is required.')).toBeInTheDocument()
+    expect(fake.relocations).toHaveLength(0)
+
+    await user.type(within(form).getByLabelText(/^Relocation number/), 'R-7')
+    await user.type(within(form).getByLabelText(/^Displacee name/), 'Kamali')
+    await user.selectOptions(within(form).getByLabelText(/^Relocation type/), 'Residential')
+    fireEvent.change(within(form).getByLabelText('GIN mailed date'), { target: { value: '2026-03-05' } })
+    fireEvent.change(within(form).getByLabelText('GIN delivered date'), { target: { value: '2026-03-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Add relocation' }))
+    expect(await within(form).findByText('The GIN cannot be delivered before it is mailed.')).toBeInTheDocument()
+    fireEvent.change(within(form).getByLabelText('GIN delivered date'), { target: { value: '2026-03-07' } })
+
+    await user.type(within(form).getByLabelText('Contact name'), 'Alex')
+    await user.click(within(form).getByRole('checkbox', { name: 'Primary contact' }))
+    await user.click(within(form).getByRole('button', { name: 'Add relocation contact' }))
+    await user.type(within(form).getByLabelText('Contact name'), 'Blair')
+    await user.click(within(form).getByRole('checkbox', { name: 'Primary contact' }))
+    await user.click(within(form).getByRole('button', { name: 'Add relocation contact' }))
+    expect(await within(form).findByText('Only one contact can be the primary contact.')).toBeInTheDocument()
+
+    await user.selectOptions(within(form).getByLabelText('Eligibility type'), 'Moving Expenses')
+    await user.type(within(form).getByLabelText('Claim limit'), '5000')
+    await user.click(within(form).getByRole('button', { name: 'Add eligibility' }))
+    fireEvent.change(within(form).getByLabelText('Log date and time'), { target: { value: '2026-03-04T15:30' } })
+    await user.type(within(form).getByLabelText('Log discussion notes'), 'Left a message.')
+    await user.click(within(form).getByRole('button', { name: 'Add contact log entry' }))
+    await user.click(within(form).getByRole('button', { name: 'Add relocation' }))
+
+    await waitFor(() => expect(fake.relocations).toHaveLength(1))
+    expect(fake.relocations[0].details).toMatchObject({ relocationNumber: 'R-7', displaceeName: 'Kamali', relocationType: 'Residential', ginDeliveredDate: '2026-03-07' })
+    expect(fake.relocations[0].contacts).toMatchObject([{ name: 'Alex', isPrimary: true }])
+    expect(fake.relocations[0].eligibilities).toMatchObject([{ eligibilityType: 'Moving Expenses', claimLimit: 5000 }])
+    expect(fake.relocations[0].contactLog[0].notes).toBe('Left a message.')
+  })
+
+  it('changes a relocation, attaches a file and removes it', async () => {
+    const { fake, user } = open('Admin', { relocations: [{ parcelId: 'pc1', id: 'rl1' }] })
+    await tab(user, 'Relocation')
+    await user.click(await screen.findByRole('button', { name: 'Edit relocation R-1' }))
+    const form = await screen.findByRole('form', { name: 'Change relocation' })
+
+    fireEvent.change(within(form).getByLabelText('Target vacate date'), { target: { value: '2026-09-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(fake.relocations[0].details.targetVacateDate).toBe('2026-09-01'))
+
+    await user.click(await screen.findByRole('button', { name: 'Edit relocation R-1' }))
+    const panel = await screen.findByRole('region', { name: 'Attachments for relocation R-1' })
+    await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'plan.pdf', { type: 'application/pdf' }))
+    expect(await within(panel).findByText('plan.pdf')).toBeInTheDocument()
+    expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelRelocation', entityId: 'rl1' })
+    await user.click(screen.getByRole('button', { name: 'Remove relocation R-1' }))
+    await waitFor(() => expect(fake.relocations).toHaveLength(0))
+  })
+})
+
 describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs (AT-X-46, AT-X-47)', (role) => {
   it('shows the Contact log tab and its controls exactly as the Contact Log page allows', async () => {
     const { user } = open(role)
@@ -811,6 +984,43 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     expect(!!screen.queryByRole('form', { name: 'Add a questionnaire' })).toBe(can(role, 'parcelquestionnaire', 'create'))
     expect(!!screen.queryByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' })).toBe(can(role, 'parcelquestionnaire', 'update'))
     expect(!!screen.queryByRole('button', { name: 'Remove questionnaire QST-PN-1001-001' })).toBe(can(role, 'parcelquestionnaire', 'delete'))
+  })
+
+  it('shows the Condemnation tab and its controls exactly as the Condemnation page allows (AT-X-54)', async () => {
+    const withRecord = open(role, { condemnations: [{ parcelId: 'pc1', id: 'cn1', number: 'CON-PN-1001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Condemnation' })).toBe(can(role, 'parcelcondemnation', 'read'))
+    if (!can(role, 'parcelcondemnation', 'read')) return
+    await tab(withRecord.user, 'Condemnation')
+    await screen.findByRole('form', { name: 'Condemnation' })
+    expect(!!screen.queryByRole('button', { name: 'Save changes' })).toBe(can(role, 'parcelcondemnation', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove condemnation record' })).toBe(can(role, 'parcelcondemnation', 'delete'))
+  })
+
+  it('shows the Property management tab and its controls exactly as its page allows (AT-X-55)', async () => {
+    const withRecord = open(role, { properties: [{ parcelId: 'pc1', id: 'pm1', number: 'PMD-PN-1001' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Property management & disposition' })).toBe(can(role, 'parcelproperty', 'read'))
+    if (!can(role, 'parcelproperty', 'read')) return
+    await tab(withRecord.user, 'Property management & disposition')
+    await screen.findByRole('form', { name: 'Property management and disposition' })
+    expect(!!screen.queryByRole('button', { name: 'Save changes' })).toBe(can(role, 'parcelproperty', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove property management record' })).toBe(can(role, 'parcelproperty', 'delete'))
+  })
+
+  it('shows the Relocation tab and its controls exactly as the Relocation page allows (AT-X-56)', async () => {
+    const { user } = open(role, { relocations: [{ parcelId: 'pc1', id: 'rl1' }] })
+    await screen.findByRole('heading', { name: /PN-1001/ })
+
+    expect(!!screen.queryByRole('tab', { name: 'Relocation' })).toBe(can(role, 'parcelrelocation', 'read'))
+    if (!can(role, 'parcelrelocation', 'read')) return
+    await tab(user, 'Relocation')
+    await screen.findByRole('table', { name: 'Relocations' })
+    expect(!!screen.queryByRole('form', { name: 'Add a relocation' })).toBe(can(role, 'parcelrelocation', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Edit relocation R-1' })).toBe(can(role, 'parcelrelocation', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove relocation R-1' })).toBe(can(role, 'parcelrelocation', 'delete'))
   })
 
   it('shows the Easements tab and its controls exactly as the Easements page allows', async () => {

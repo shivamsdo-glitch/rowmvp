@@ -68,6 +68,18 @@ public interface IRowDbContext
     DbSet<ParcelQuestionnaire> ParcelQuestionnaires { get; }
     DbSet<QuestionnaireInterest> QuestionnaireInterests { get; }
     DbSet<QuestionnaireQuestion> QuestionnaireQuestions { get; }
+    DbSet<RecordStatusNote> RecordStatusNotes { get; }
+    DbSet<ParcelCondemnation> ParcelCondemnations { get; }
+    DbSet<CondemnationAttorney> CondemnationAttorneys { get; }
+    DbSet<CondemnationCommissioner> CondemnationCommissioners { get; }
+    DbSet<CondemnationNotice> CondemnationNotices { get; }
+    DbSet<ParcelPropertyRecord> ParcelPropertyRecords { get; }
+    DbSet<PropertyFunding> PropertyFundings { get; }
+    DbSet<ParcelRelocation> ParcelRelocations { get; }
+    DbSet<RelocationAgentRow> RelocationAgents { get; }
+    DbSet<RelocationContact> RelocationContacts { get; }
+    DbSet<RelocationEligibility> RelocationEligibilities { get; }
+    DbSet<RelocationContactLogRow> RelocationContactLogRows { get; }
     DbSet<RightOfEntry> RightsOfEntry { get; }
     DbSet<AcquisitionRequest> AcquisitionRequests { get; }
     DbSet<ParcelPlanReview> ParcelPlanReviews { get; }

@@ -35,6 +35,16 @@ public sealed record AppraisalBody(
 public sealed record QuestionnaireBody(
     string? RelocationType, DateOnly? DueByDate, DateOnly? SentToOwnerDate, List<QuestionnaireInterestInput>? Interests, List<QuestionnaireQuestionInput>? Questions);
 
+public sealed record CondemnationEnvelope(CondemnationDto? Record);
+public sealed record CondemnationBody(
+    CondemnationDetails? Details, List<StatusNoteInput>? StatusNotes, List<CondemnationAttorneyInput>? Attorneys, List<CondemnationCommissionerInput>? Commissioners,
+    List<CondemnationNoticeInput>? Notices);
+public sealed record PropertyEnvelope(PropertyDto? Record);
+public sealed record PropertyBody(PropertyDetails? Details, List<StatusNoteInput>? StatusNotes, List<PropertyFundingInput>? Funding);
+public sealed record RelocationBody(
+    RelocationDetails? Details, List<StatusNoteInput>? StatusNotes, List<RelocationAgentInput>? Agents, List<RelocationContactInput>? Contacts,
+    List<RelocationEligibilityInput>? Eligibilities, List<RelocationContactLogInput>? ContactLog);
+
 public sealed record NegotiationEnvelope(NegotiationDto? Record);
 public sealed record NegotiationBody(
     string? AssignedTo, decimal? TotalAgreementAmount, string? Notes, DateOnly? CounterofferSubmittedToJatDate, DateOnly? CounterofferResponseFromJatDate, string? JatResponse,
@@ -42,7 +52,7 @@ public sealed record NegotiationBody(
     List<NegotiationNoteInput>? StatusNotes, List<NegotiationAgentInput>? Agents, List<NegotiationRightOfEntryInput>? RightsOfEntry, List<NegotiationOfferInput>? Offers,
     List<NegotiationSettlementInput>? Settlements);
 
-/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing, Appraisal, Negotiation and Questionnaire tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
+/// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing, Appraisal, Negotiation, Questionnaire, Condemnation, Property Management and Relocation tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
 [ApiController]
 [Authorize]
 [Route("api/v1/parcels/{parcelId:guid}")]
@@ -144,6 +154,64 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveQuestionnaire(Guid parcelId, Guid questionnaireId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveQuestionnaireCommand(parcelId, questionnaireId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("condemnation")]
+    [ProducesResponseType(typeof(CondemnationEnvelope), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Condemnation(Guid parcelId, CancellationToken ct) => Ok(new CondemnationEnvelope(await _mediator.Send(new GetCondemnationQuery(parcelId), ct)));
+
+    /// <summary>Saves the parcel's one condemnation record: the first save creates it (needs Create), later saves change it (need Update). The grids are replaced as sent.</summary>
+    [HttpPut("condemnation")]
+    [ProducesResponseType(typeof(CondemnationDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SaveCondemnation(Guid parcelId, [FromBody] CondemnationBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SaveCondemnationCommand(parcelId, b.Details!, b.StatusNotes, b.Attorneys, b.Commissioners, b.Notices), ct));
+
+    [HttpDelete("condemnation")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveCondemnation(Guid parcelId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveCondemnationCommand(parcelId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("property-management")]
+    [ProducesResponseType(typeof(PropertyEnvelope), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Property(Guid parcelId, CancellationToken ct) => Ok(new PropertyEnvelope(await _mediator.Send(new GetPropertyQuery(parcelId), ct)));
+
+    /// <summary>Saves the parcel's one property management and disposition record (first save needs Create, later saves Update). The funding grid is replaced as sent.</summary>
+    [HttpPut("property-management")]
+    [ProducesResponseType(typeof(PropertyDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SaveProperty(Guid parcelId, [FromBody] PropertyBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SavePropertyCommand(parcelId, b.Details!, b.StatusNotes, b.Funding), ct));
+
+    [HttpDelete("property-management")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveProperty(Guid parcelId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemovePropertyCommand(parcelId), ct);
+        return NoContent();
+    }
+
+    [HttpGet("relocations")]
+    [ProducesResponseType(typeof(IReadOnlyList<RelocationDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Relocations(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new ListRelocationsQuery(parcelId), ct));
+
+    [HttpPost("relocations")]
+    [ProducesResponseType(typeof(RelocationDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddRelocation(Guid parcelId, [FromBody] RelocationBody b, CancellationToken ct) =>
+        Created($"/api/v1/parcels/{parcelId}/relocations", await _mediator.Send(new AddRelocationCommand(parcelId, b.Details!, b.StatusNotes, b.Agents, b.Contacts, b.Eligibilities, b.ContactLog), ct));
+
+    [HttpPut("relocations/{relocationId:guid}")]
+    [ProducesResponseType(typeof(RelocationDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateRelocation(Guid parcelId, Guid relocationId, [FromBody] RelocationBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new UpdateRelocationCommand(parcelId, relocationId, b.Details!, b.StatusNotes, b.Agents, b.Contacts, b.Eligibilities, b.ContactLog), ct));
+
+    [HttpDelete("relocations/{relocationId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveRelocation(Guid parcelId, Guid relocationId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoveRelocationCommand(parcelId, relocationId), ct);
         return NoContent();
     }
 

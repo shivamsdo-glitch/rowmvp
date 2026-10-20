@@ -29,6 +29,9 @@ public static class AttachmentTargets
         ["ParcelAppraisal"] = PageKeys.ParcelAppraisal,
         ["ParcelNegotiation"] = PageKeys.ParcelNegotiation,
         ["ParcelQuestionnaire"] = PageKeys.ParcelQuestionnaire,
+        ["ParcelCondemnation"] = PageKeys.ParcelCondemnation,
+        ["ParcelProperty"] = PageKeys.ParcelProperty,
+        ["ParcelRelocation"] = PageKeys.ParcelRelocation,
     };
 
     public static IReadOnlyCollection<string> EntityTypes => PageByType.Keys.ToArray();

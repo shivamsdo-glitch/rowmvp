@@ -12,6 +12,7 @@ Project & parcel setup → title & survey → appraisal & just compensation → 
 Requirements: ROW-001–021, 023–048, 063–081, 107–110, 233–268 (see per-phase mapping in `vault/phases/`).
 
 **Deferred to v2 — do NOT build:** condemnation (Diagram 6), relocation (5), utility/railroad (9), property mgmt/disposal (8), clearance/certification (10), platform admin/SSO/security hardening (11), document/GIS/reporting platform services (12–13). Where an in-range requirement lives in a deferred diagram (e.g. ROW-033, 038, 040, 041, 069), skip it and note it in the phase doc. Hand-offs to deferred modules (e.g. impasse → condemnation) are recorded as a status/flag only.
+**Parcel-record exception (Phase 1.5, ADR 0020):** the Condemnation, Property Management & Disposition and Relocation *tabs* on a parcel exist, as records the agency fills in (dates, people, grids, notes). The processes behind them (workflow, statutory deadlines, hand-offs, relocation benefit rules) are still v2.
 
 ## Locked tech stack — do not deviate
 | Layer | Choice |

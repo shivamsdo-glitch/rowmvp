@@ -368,3 +368,102 @@ export const questionnairesApi = (api: ApiClient) => ({
   update: (parcelId: string, id: string, body: QuestionnaireInput) => api.put<Questionnaire>(`/api/v1/parcels/${parcelId}/questionnaires/${id}`, body),
   remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/questionnaires/${id}`),
 })
+
+export interface StatusNote { id?: string; noteDate: string; text: string }
+/** Dates, people and flags of a record, by field name; null when empty. */
+export type DetailValues = Record<string, string | number | boolean | null>
+
+export interface CondemnationAttorney { id?: string; partyRepresented: string; attorneyName: string | null; firm: string | null; address: string | null; phone: string | null; email: string | null }
+export interface CondemnationCommissioner {
+  id?: string
+  appointmentDate: string | null
+  appointmentType: string | null
+  name: string
+  address: string | null
+  email: string | null
+  phone: string | null
+  struck: boolean
+}
+export interface CondemnationNotice { id?: string; partyToServe: string; serviceSubmitted: string | null; serviceCompleted: string | null; nohFiled: string | null; comments: string | null }
+
+export interface Condemnation {
+  id: string
+  parcelId: string
+  number: string
+  parcelNumber: string
+  /** Read-only: the parcel's ownerships of type "Vested Owner". */
+  vestedOwnerName: string | null
+  details: DetailValues
+  statusNotes: StatusNote[]
+  attorneys: CondemnationAttorney[]
+  commissioners: CondemnationCommissioner[]
+  notices: CondemnationNotice[]
+  updatedAt: string
+}
+export interface CondemnationInput {
+  details: DetailValues
+  statusNotes: StatusNote[]
+  attorneys: CondemnationAttorney[]
+  commissioners: CondemnationCommissioner[]
+  notices: CondemnationNotice[]
+}
+
+export const condemnationApi = (api: ApiClient) => ({
+  get: (parcelId: string) => api.get<{ record: Condemnation | null }>(`/api/v1/parcels/${parcelId}/condemnation`),
+  save: (parcelId: string, body: CondemnationInput) => api.put<Condemnation>(`/api/v1/parcels/${parcelId}/condemnation`, body),
+  remove: (parcelId: string) => api.delete(`/api/v1/parcels/${parcelId}/condemnation`),
+})
+
+export interface PropertyFunding { id?: string; fundType: string; fundSource: string | null; amount: number | null; percentage: number | null }
+export interface PropertyRecord {
+  id: string
+  parcelId: string
+  number: string
+  parcelNumber: string
+  details: DetailValues
+  statusNotes: StatusNote[]
+  funding: PropertyFunding[]
+  updatedAt: string
+}
+export interface PropertyInput { details: DetailValues; statusNotes: StatusNote[]; funding: PropertyFunding[] }
+
+export const propertyApi = (api: ApiClient) => ({
+  get: (parcelId: string) => api.get<{ record: PropertyRecord | null }>(`/api/v1/parcels/${parcelId}/property-management`),
+  save: (parcelId: string, body: PropertyInput) => api.put<PropertyRecord>(`/api/v1/parcels/${parcelId}/property-management`, body),
+  remove: (parcelId: string) => api.delete(`/api/v1/parcels/${parcelId}/property-management`),
+})
+
+export interface RelocationAgent { id?: string; agentName: string; agentType?: string | null; company?: string | null; phone?: string | null; email?: string | null }
+export interface RelocationContact { id?: string; name: string; contactType: string | null; contact: string | null; email: string | null; address: string | null; isPrimary: boolean }
+export interface RelocationEligibility { id?: string; eligibilityType: string; claimLimit: number | null; submittedForApproval: string | null; approved: string | null }
+export interface RelocationContactLog { id?: string; contactedAt: string; mode: string | null; contactedBy: string | null; contactPersons: string | null; notes: string | null }
+
+export interface Relocation {
+  id: string
+  parcelId: string
+  parcelNumber: string
+  /** Read-only: the parcel's ownerships of type "Vested Owner". */
+  vestedOwnerName: string | null
+  details: DetailValues
+  statusNotes: StatusNote[]
+  agents: RelocationAgent[]
+  contacts: RelocationContact[]
+  eligibilities: RelocationEligibility[]
+  contactLog: RelocationContactLog[]
+  updatedAt: string
+}
+export interface RelocationInput {
+  details: DetailValues
+  statusNotes: StatusNote[]
+  agents: { agentName: string }[]
+  contacts: RelocationContact[]
+  eligibilities: RelocationEligibility[]
+  contactLog: RelocationContactLog[]
+}
+
+export const relocationsApi = (api: ApiClient) => ({
+  list: (parcelId: string) => api.get<Relocation[]>(`/api/v1/parcels/${parcelId}/relocations`),
+  add: (parcelId: string, body: RelocationInput) => api.post<Relocation>(`/api/v1/parcels/${parcelId}/relocations`, body),
+  update: (parcelId: string, id: string, body: RelocationInput) => api.put<Relocation>(`/api/v1/parcels/${parcelId}/relocations/${id}`, body),
+  remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/relocations/${id}`),
+})

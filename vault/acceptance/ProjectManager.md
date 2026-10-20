@@ -28,6 +28,7 @@
 | AT-PM-40 | Enter the ROW project details and link a Planned or Build project | New project: Phase (starts at Phase 1), Location, Project manager, funding, construction project manager, dates; choose Link to Build, search, pick the project; save, reload, edit and clear the link | The overview shows Project details, Funding information (board approved funds follow the annual budgets) and Construction details | Phase is required on a new project; a manager who is not active in this agency (400 `unknown_project_manager`) or a project not in the catalog (400 `unknown_linked_project`) is refused; a link needs both source and number | ✅ | E2E `AT-PM-40` ×2; API `ProjectDetailsApiTests`; frontend `project-details.test.tsx`; unit `ProjectDetailsTests`. ADR 0016 |
 | AT-PM-41 | The managers list and the Planned/Build catalog follow the Projects permission | Every role opens a project and calls the two lookups | Edit project and Add parcel buttons appear only for roles that may change projects or create parcels | 403 without Read on Projects; 401 without sign-in | ✅ | E2E `AT-PM-41` ×11 roles; API `ProjectDetailsApiTests` |
 | AT-PM-42 | Add a parcel from inside a project | Project page: Add parcel, fill the form, Create parcel | The form is for this project; the new parcel opens and is listed under the project | Button hidden without Parcels create | ✅ | E2E `AT-PM-42`; frontend `project-details.test.tsx` |
+| AT-PM-43 | Keep the property management and disposition record of a parcel | Open a parcel's Property management & disposition tab. Enter a negative sale price, then a real one, pick the disposition type, tick FTA concurrence, add funding rows (try percentages over 100), add a status note, save, attach the memo, change it, remove it | One form with an ID assigned on the first save; the funding table lists each fund with its percentage | One record per parcel; a negative price or amount, a percentage over 100 or funding that adds up to more than 100, a recording before the closing and more than 50 rows are refused (400) | ✅ | E2E `AT-PM-43`; API `PropertyManagementApiTests`; frontend `parcel-tabs.test.tsx`; unit `LifecycleTabsTests` |
 
 ## Jobs that arrive with later phases (pending, tracked in `e2e/tests/future.spec.ts`)
 
@@ -37,6 +38,7 @@
 | AT-PM-27 | Open the Dashboard to see pipeline, budget and overdue items | 5 | Numbers reconcile with the parcel lists; clicking a figure opens the matching filtered list |
 
 ## Changelog
+- Phase 1.5 slice 8b: AT-PM-43 automated (the Property Management & Disposition tab). ADR 0020.
 - Phase 1.5 slice 4: AT-PM-40..42 automated (ROW project details, Planned/Build link, Add parcel on a project). ADR 0016.
 - Phase 1 slice 3c: AT-PM-30..34 automated (right of entry, acquisition requests, plan review gate, staff report and certificate, acquisition plan). ROW-077, 080, 239, 240, 241. ADR 0012.
 - Phase 1 slice 3b: AT-PM-28, 29 automated (parcel team and notes). The diary is read-only for this role (Negotiations page).

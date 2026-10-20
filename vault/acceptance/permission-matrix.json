@@ -36,7 +36,10 @@
     "titleclosing",
     "parcelappraisal",
     "parcelnegotiation",
-    "parcelquestionnaire"
+    "parcelquestionnaire",
+    "parcelcondemnation",
+    "parcelproperty",
+    "parcelrelocation"
   ],
   "matrix": {
     "ProjectManager": {
@@ -62,7 +65,10 @@
       "titleclosing": "B",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "P",
+      "parcelrelocation": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -87,7 +93,10 @@
       "titleclosing": "B",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -112,7 +121,10 @@
       "titleclosing": "B",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -137,7 +149,10 @@
       "titleclosing": "B",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -162,7 +177,10 @@
       "titleclosing": "S",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -187,7 +205,10 @@
       "titleclosing": "B",
       "parcelappraisal": "P",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -212,7 +233,10 @@
       "titleclosing": "B",
       "parcelappraisal": "U",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -237,7 +261,10 @@
       "titleclosing": "S",
       "parcelappraisal": "B",
       "parcelnegotiation": "P",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "S",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -262,7 +289,10 @@
       "titleclosing": "B",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "P"
+      "parcelquestionnaire": "P",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "P"
     },
     "Finance": {
       "dashboard": "B",
@@ -287,7 +317,10 @@
       "titleclosing": "B",
       "parcelappraisal": "B",
       "parcelnegotiation": "B",
-      "parcelquestionnaire": "B"
+      "parcelquestionnaire": "B",
+      "parcelcondemnation": "B",
+      "parcelproperty": "B",
+      "parcelrelocation": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -312,7 +345,10 @@
       "titleclosing": "P",
       "parcelappraisal": "P",
       "parcelnegotiation": "P",
-      "parcelquestionnaire": "P"
+      "parcelquestionnaire": "P",
+      "parcelcondemnation": "P",
+      "parcelproperty": "P",
+      "parcelrelocation": "P"
     }
   },
   "attachmentPages": {
@@ -333,6 +369,9 @@
     "TitleClosing": "titleclosing",
     "ParcelAppraisal": "parcelappraisal",
     "ParcelNegotiation": "parcelnegotiation",
-    "ParcelQuestionnaire": "parcelquestionnaire"
+    "ParcelQuestionnaire": "parcelquestionnaire",
+    "ParcelCondemnation": "parcelcondemnation",
+    "ParcelProperty": "parcelproperty",
+    "ParcelRelocation": "parcelrelocation"
   }
 }
