@@ -140,6 +140,21 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
+    const om = /^\/api\/v1\/overview\/(appraisals|negotiations|title-closings|encumbrances|easements)$/.exec(url.pathname)
+    if (om) {
+      if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
+      const kind = om[1] as 'appraisals' | 'negotiations' | 'title-closings' | 'encumbrances' | 'easements'
+      const page = { appraisals: 'parcelappraisal', negotiations: 'parcelnegotiation', 'title-closings': 'titleclosing', encumbrances: 'titleencumbrances', easements: 'easements' }[kind]
+      if (!can(page, 'read')) return forbidden()
+      const term = (url.searchParams.get('search') ?? '').trim().toLowerCase()
+      const store = ({ appraisals, negotiations, 'title-closings': titleClosings, encumbrances, easements }[kind] as unknown as { id: string; parcelId: string; number: string }[])
+      const rows = store.map((r) => {
+        const parcel = base.parcels.find((p) => p.id === r.parcelId)
+        return { ...r, parcelNumber: parcel?.number ?? '', address: parcel?.address ?? null, ownerName: parcel?.ownerName ?? null }
+      }).filter((r) => !term || [r.parcelNumber, r.address, r.ownerName, r.number].some((v) => (v ?? '').toLowerCase().includes(term)))
+      return json(rows)
+    }
+
     const m = /^\/api\/v1\/parcels\/([^/]+)\/(contact-log|easements|ownerships|encumbrances|title-closing|appraisals|negotiation|questionnaires|condemnation|property-management|relocations)(?:\/([^/]+))?$/.exec(url.pathname)
     if (!m) return base.fetch(input, init)
     if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)

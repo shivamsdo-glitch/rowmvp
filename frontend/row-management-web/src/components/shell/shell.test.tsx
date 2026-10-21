@@ -39,14 +39,15 @@ describe('sidebar', () => {
     }
   })
 
-  it('shows built screens as links and screens that are not built yet as disabled "Soon" items', async () => {
+  it('shows every screen as a working link, including the Title & Survey, Appraisal and Negotiation & Closing work screens', async () => {
     await openShell(ALL)
 
-    expect(screen.getByTitle('Title & Survey (coming soon)')).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.queryByRole('link', { name: /Title & Survey/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Title & Survey/ })).toHaveAttribute('href', '/title')
+    expect(screen.getByRole('link', { name: /Appraisal/ })).toHaveAttribute('href', '/appraisals')
+    expect(screen.getByRole('link', { name: /Negotiation & Closing/ })).toHaveAttribute('href', '/negotiations')
     expect(screen.getByRole('link', { name: /Projects/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Parcels/ })).toHaveAttribute('href', '/parcels')
-    expect(screen.getAllByText('Soon').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Soon')).not.toBeInTheDocument()
   })
 
   it('hides items the role cannot read, and a section with nothing visible disappears', async () => {

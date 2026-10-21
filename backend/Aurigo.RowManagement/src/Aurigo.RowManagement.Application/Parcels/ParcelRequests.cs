@@ -315,7 +315,8 @@ public sealed class ListParcelsQueryHandler : IRequestHandler<ListParcelsQuery, 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var term = request.Search.Trim().ToLower();
-            query = query.Where(p => p.Number.ToLower().Contains(term) || (p.Address != null && p.Address.ToLower().Contains(term)));
+            query = query.Where(p => p.Number.ToLower().Contains(term) || (p.Address != null && p.Address.ToLower().Contains(term))
+                || _db.ParcelOwnerships.Any(o => o.ParcelId == p.Id && o.OwnerName.ToLower().Contains(term)));
         }
 
         var total = await query.CountAsync(ct);

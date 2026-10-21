@@ -36,9 +36,9 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/requests', label: 'Requests', Icon: Inbox, page: 'approvals' },
       { to: '/rights-of-entry', label: 'Rights of entry', Icon: KeyRound, page: 'parcels' },
-      { to: '/title', label: 'Title & Survey', Icon: FileSearch, page: 'title', enabled: false },
-      { to: '/appraisals', label: 'Appraisal', Icon: Scale, page: 'appraisals', enabled: false },
-      { to: '/negotiations', label: 'Negotiation & Closing', Icon: Handshake, page: 'negotiations', enabled: false },
+      { to: '/title', label: 'Title & Survey', Icon: FileSearch, page: 'title' },
+      { to: '/appraisals', label: 'Appraisal', Icon: Scale, page: 'appraisals' },
+      { to: '/negotiations', label: 'Negotiation & Closing', Icon: Handshake, page: 'negotiations' },
     ],
   },
   {

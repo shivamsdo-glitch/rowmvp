@@ -344,7 +344,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
         .filter((p) => !f('projectId') || p.projectId === f('projectId'))
         .filter((p) => !f('statusId') || p.statusId === f('statusId'))
         .filter((p) => !f('groupId') || p.groupId === f('groupId'))
-        .filter((p) => !q || p.number.toLowerCase().includes(q) || (p.address ?? '').toLowerCase().includes(q))
+        .filter((p) => !q || p.number.toLowerCase().includes(q) || (p.address ?? '').toLowerCase().includes(q) || (p.ownerName ?? '').toLowerCase().includes(q))
         .sort((a, b) => a.projectNumber.localeCompare(b.projectNumber) || a.number.localeCompare(b.number))
       const page = Number(f('page') ?? 1)
       const pageSize = Number(f('pageSize') ?? 50)
