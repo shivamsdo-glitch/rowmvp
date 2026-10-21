@@ -9,7 +9,7 @@ export default async function globalSetup() {
   try {
     const page = await browser.newPage()
     for (let attempt = 0; attempt < 3; attempt++) {
-      await page.goto('http://localhost:5174/login', { waitUntil: 'networkidle' })
+      await page.goto(`http://localhost:${process.env.E2E_WEB_PORT ?? 5174}/login`, { waitUntil: 'networkidle' })
       try {
         await page.getByRole('button', { name: 'ProjectManager', exact: true }).waitFor({ timeout: 30_000 })
         // A second load proves the optimised bundle is stable (no further reload is pending).

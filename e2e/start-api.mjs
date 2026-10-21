@@ -3,14 +3,16 @@
 import { execFileSync, spawn } from 'node:child_process'
 
 const container = process.env.E2E_PG_CONTAINER ?? 'row-mvp-postgres'
+const db = process.env.E2E_DB ?? 'row_e2e'
+const port = process.env.E2E_API_PORT ?? '5101'
 const psql = (sql) =>
   execFileSync('docker', ['exec', container, 'psql', '-U', 'row', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', sql], { stdio: 'pipe' })
-psql('DROP DATABASE IF EXISTS row_e2e WITH (FORCE)')
-psql('CREATE DATABASE row_e2e')
+psql(`DROP DATABASE IF EXISTS ${db} WITH (FORCE)`)
+psql(`CREATE DATABASE ${db}`)
 
 const child = spawn(
   'dotnet',
-  ['run', '--project', '../backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api', '--no-launch-profile', '--urls', 'http://localhost:5101'],
+  ['run', '--project', '../backend/Aurigo.RowManagement/src/Aurigo.RowManagement.Api', '--no-launch-profile', '--urls', `http://localhost:${port}`],
   { stdio: 'inherit' },
 )
 child.on('exit', (code) => process.exit(code ?? 0))

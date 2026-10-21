@@ -3,10 +3,12 @@ import { defineConfig } from '@playwright/test'
 /**
  * End-to-end acceptance tests: a real browser (installed Microsoft Edge, no download needed), the real
  * Vite app, the real API and a throwaway real Postgres database (`row_e2e`, recreated every run).
- * Ports differ from the dev servers (5100/5173) so both can run at once.
+ * Ports differ from the dev servers (5100/5173) so both can run at once. Another project's server, or a second chat's gate, may hold these
+ * ports or the database: set E2E_API_PORT, E2E_WEB_PORT and E2E_DB to run beside it (defaults 5101, 5174, row_e2e).
  */
-const API = 5101
-const WEB = 5174
+const API = Number(process.env.E2E_API_PORT ?? 5101)
+const WEB = Number(process.env.E2E_WEB_PORT ?? 5174)
+const DB = process.env.E2E_DB ?? 'row_e2e'
 export const PG = process.env.E2E_PG ?? 'Host=127.0.0.1;Port=5434;Username=row;Password=row_dev_only'
 
 export default defineConfig({
@@ -39,7 +41,9 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         ASPNETCORE_ENVIRONMENT: 'Development',
-        ConnectionStrings__Postgres: `${PG};Database=row_e2e;Maximum Pool Size=20`,
+        ConnectionStrings__Postgres: `${PG};Database=${DB};Maximum Pool Size=20`,
+        E2E_API_PORT: String(API),
+        E2E_DB: DB,
         RateLimiting__AuthPermitLimit: '100000',
         RateLimiting__WritePermitLimit: '100000',
       },

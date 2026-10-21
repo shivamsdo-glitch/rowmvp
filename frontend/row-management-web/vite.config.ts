@@ -29,6 +29,6 @@ export default defineConfig({
     // Each worker loads the whole component library (~1 GB). Unbounded parallelism on a busy machine made workers
     // time out while starting; a small cap (2) keeps the run reliable; a start timeout is a fixed 60 s, so a memory-starved machine failed whole files, which matters more than shaving seconds.
     maxWorkers: 2,
-    testTimeout: 20_000,
+    testTimeout: 60_000,
   },
 })

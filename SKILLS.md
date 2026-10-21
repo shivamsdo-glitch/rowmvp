@@ -40,3 +40,6 @@ Create `src/routes/_app/<name>.tsx` with `createFileRoute('/_app/<name>')` and a
 - A permission rule blocks creating files named `Token*` / `Password*`; pick another name.
 - Frontend installs need the Aurigo private feed login; set `NODE_OPTIONS=--use-system-ca` on this machine's corporate proxy.
 - Starting the API with `--no-launch-profile` needs `ASPNETCORE_ENVIRONMENT=Development`, otherwise the JWT key check refuses to start (by design).
+
+## Keep BUILT.md current
+Whenever a change adds or alters something a new chat would need to know about, update `vault/BUILT.md` in the same commit: add or amend the row (parcel tab table, screens table, Phase 1 table, "not built" list), the status table if a phase moved, the code map if a new area was added, and bump the "Last updated" line. The gate's first check (`scripts/check-built.mjs`) fails otherwise. Use `--skip-built-check` only for a pure bug fix or refactor and say so in the commit message.

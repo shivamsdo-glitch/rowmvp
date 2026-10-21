@@ -2,6 +2,7 @@
 // The release gate. Runs every layer of the test pyramid in order and stops at the first failure.
 //   node scripts/verify.mjs            everything
 //   node scripts/verify.mjs --skip-e2e everything except the browser run (faster, for quick checks)
+//   node scripts/verify.mjs --skip-built-check   skip the "vault/BUILT.md was updated" check (pure bug fixes and refactors only)
 //
 // Needs: Docker Desktop running (Postgres), .NET 8 SDK, Node, and Microsoft Edge for the E2E layer.
 import { spawnSync } from 'node:child_process'
@@ -14,6 +15,7 @@ const backend = resolve(root, 'backend/Aurigo.RowManagement')
 const web = resolve(root, 'frontend/row-management-web')
 const e2e = resolve(root, 'e2e')
 const skipE2e = process.argv.includes('--skip-e2e')
+const skipBuiltCheck = process.argv.includes('--skip-built-check')
 const isWin = process.platform === 'win32'
 const npm = isWin ? 'npm.cmd' : 'npm'
 const npx = isWin ? 'npx.cmd' : 'npx'
@@ -22,6 +24,8 @@ const npx = isWin ? 'npx.cmd' : 'npx'
 const env = { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--use-system-ca', ROW_REQUIRE_PG: '1' }
 
 const steps = [
+  // Product code may not change without the map of what is built (vault/BUILT.md) changing too.
+  ...(skipBuiltCheck ? [] : [['vault/BUILT.md is updated with the change', 'node', ['scripts/check-built.mjs'], root]]),
   ['Database is up (docker compose)', 'docker', ['compose', 'up', '-d', '--wait'], root],
   ['Backend builds with zero warnings', 'dotnet', ['build', '--nologo', '-warnaserror'], backend],
   ['Backend unit tests', 'dotnet', ['test', 'tests/Aurigo.RowManagement.UnitTests', '--no-build', '--nologo'], backend],
@@ -49,6 +53,7 @@ function runStep(cmd, args, cwd, name) {
   }
 }
 
+if (skipBuiltCheck) console.log('⚠ Skipping the vault/BUILT.md check (--skip-built-check). Only for a change that adds nothing to the map.')
 const results = []
 for (const [name, cmd, args, cwd] of steps) {
   const started = Date.now()

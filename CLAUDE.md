@@ -2,6 +2,8 @@
 
 MVP for US State DOTs and City/County agencies. Greenfield. Domain research lives in `vault/` (10-stage ROW lifecycle, 323 sourced requirements ROW-001..ROW-323). **Read `vault/Feature_Index_Final.md` and the relevant `vault/diagrams/DiagramNN_Final.md` before building any feature.** Phase plans are in `vault/phases/`.
 
+**First, read `vault/BUILT.md`:** the map of what is already built (features, screens, parcel tabs, roles, code locations, what is *not* built, and how to work in parallel). Update it in the same commit as any feature.
+
 ## Domain in one paragraph
 A transportation project needs parcels of land. Each parcel has owners/interests, a title and survey package, an appraisal that establishes **just compensation**, then a negotiation (offer → counter → agreement) and closing/recording. Federal-aid projects follow the Uniform Act (URA); approvals are **configurable chains by dollar threshold** because agencies differ. Evidence codes in vault: V = source-stated, A = agency SOP, O = original list, D = design decision, U = user decision.
 
@@ -70,7 +72,7 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 `frontend/row-management-web`: file-based TanStack Router (`src/routes`, generated `routeTree.gen.ts` is committed), `AuthManager` session + guards in `src/auth`, fetch wrapper in `src/api`. `npm run dev` proxies `/api` to http://localhost:5100. Recipes for common jobs are in `SKILLS.md`.
 
 ## Testing and acceptance (ADR 0007)
-- **Release gate: `node scripts/verify.mjs`** (needs Docker running). Builds with zero warnings, then unit, real-Postgres integration (`ROW_REQUIRE_PG=1`), frontend type-check/tests/build, and the Playwright end-to-end run in Edge. `--skip-e2e` is for quick checks only.
+- **Release gate: `node scripts/verify.mjs`** (needs Docker running). First checks `vault/BUILT.md` was updated with the change, then builds with zero warnings, then unit, real-Postgres integration (`ROW_REQUIRE_PG=1`), frontend type-check/tests/build, and the Playwright end-to-end run in Edge. `--skip-e2e` is for quick checks only.
 - **Acceptance cases per user live in `vault/acceptance/`** (README, Everyone, one file per role). Case ids (`AT-TE-10`...) appear in the E2E test names. Pending jobs for later phases are `test.fixme` placeholders in `e2e/tests/future.spec.ts`.
 - **Access spec:** `backend/.../IntegrationTests/Support/Spec.cs` is the hand-written role x page table; it publishes `vault/acceptance/permission-matrix.json` (regenerate with `ROW_UPDATE_CONTRACT=1`) which the frontend and E2E tests read.
 - Real-Postgres tests skip when Docker is down unless `ROW_REQUIRE_PG=1`; never treat a skipped run as a pass.
@@ -79,4 +81,6 @@ Application is organised by feature (Commands/Queries/Validators/Mappers per fea
 - Work one phase at a time, in order; each phase doc has an exit checklist. Don't start a phase before the user confirms the prior one.
 - A phase is done only when `node scripts/verify.mjs` is green **and** its acceptance cases are automated for every role it touches (including the roles that must be refused). Add the cases as you build, not after.
 - Backend: `dotnet test` green + `dotnet build` warning-free. Frontend: `npm run build`, `vitest`, and type-check green. (The gate runs all of it.)
+- **Keep `vault/BUILT.md` current, in the same commit as the change (enforced).** It is the map every new chat reads to learn what exists. Any change that adds or alters a feature, screen/route, parcel tab, page key, role or permission, API surface, ADR, or a "not built / assumed" decision updates it: the right table row, the status table if a phase moves, and the "Last updated" line. The gate's first check (`scripts/check-built.mjs`) fails when product code (`backend/*/src`, `frontend/*/src`) changed but `vault/BUILT.md` did not. `--skip-built-check` is only for a pure bug fix or refactor that adds nothing to the map, and the commit message must say so. In a parallel chat, re-read `vault/BUILT.md` before starting and again before committing, since another chat may have changed it.
+- A feature is not done until its acceptance cases, its ADR (if a design decision was made) **and its `vault/BUILT.md` entry** are in the same commit as the code.
 - Open domain questions from vault/README_Final.md ("Yours to verify") are not ours to resolve; flag, don't guess.
