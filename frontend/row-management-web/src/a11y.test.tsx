@@ -240,7 +240,9 @@ describe('accessibility of the parcel screens', () => {
   })
 
   it('the dashboard next-actions card has no violations', async () => {
+    const user = userEventModule.setup()
     open('/')
+    await user.click(await screen.findByRole('tab', { name: 'My work' })) // a manager lands on the Program tab
     await screen.findByRole('region', { name: 'Next actions' })
     await settle()
 
@@ -440,6 +442,19 @@ describe('accessibility of rights of entry, reviews, reports, requests and the p
     await screen.findByRole('checkbox', { name: 'Require engineer and surveyor plan reviews' })
     await settle()
     expect(await violations(), 'administration').toEqual([])
+  })
+})
+
+describe('accessibility of the program view (AT-X-13, AT-X-61, AT-X-62)', () => {
+  it('the program view and an opened project have no violations', async () => {
+    const user = userEventModule.setup()
+    renderApp({ path: '/', fetchImpl: fakeAuthFetch({ rows: permissionRowsFor('Admin'), role: 'Admin', dashboard: sampleDashboard({ isManager: true }) }) as typeof fetch, signedIn: true })
+    await screen.findByRole('table', { name: 'Projects' })
+    expect(await violations()).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Open project P-2026-001' }))
+    await screen.findByRole('table', { name: 'Parcels in this project' })
+    expect(await violations()).toEqual([])
   })
 })
 

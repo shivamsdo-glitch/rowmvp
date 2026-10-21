@@ -72,12 +72,11 @@ describe('AT-X-59 the manager roll-up', () => {
     expect(screen.queryByRole('tab', { name: 'Team' })).not.toBeInTheDocument()
   })
 
-  it('gives a manager two tabs, and the Team tab shows tiles, parcels by status and each person', async () => {
+  it('gives a manager three tabs (Program first), and the Team tab shows tiles, parcels by status and each person', async () => {
     const user = userEventModule.setup()
     open({ role: 'ProjectManager', dashboard: sampleDashboard({ isManager: true, roles: ['ProjectManager'] }), team: sampleTeam() })
 
-    const mine = await screen.findByRole('tab', { name: 'My work' })
-    expect(mine).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('tab', { name: 'Program' })).toHaveAttribute('aria-selected', 'true')
     await user.click(screen.getByRole('tab', { name: 'Team' }))
 
     expect(await screen.findByTestId('tile-Active parcels')).toHaveTextContent('31')

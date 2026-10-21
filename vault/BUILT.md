@@ -2,7 +2,7 @@
 
 **Read this first in every new chat, then `CLAUDE.md` (rules) and `SKILLS.md` (recipes).** This file says *what has been built and where*; it does not repeat the rules. It is the map. **It must be updated in the same commit as every feature change** (add a row, a route, a page key, an ADR link, the acceptance IDs, bump "Last updated"). This is enforced: the release gate's first check, `scripts/check-built.mjs`, fails if `backend/*/src` or `frontend/*/src` changed and this file did not (`--skip-built-check` only for pure bug fixes and refactors).
 
-Last updated: 2026-10-21, after the one-form-per-process clean-up: Ownership interests (ownership + parties merged), Team picked from the Library, right of entry only in Negotiation (ADR 0023); before that the per-person dashboard, manager roll-up and Help center (ADR 0022). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
+Last updated: 2026-10-21, after the ROW Director's Program view (ADR 0024) on top of the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
 
 ---
 
@@ -65,6 +65,7 @@ Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product co
 | 8 | Condemnation, Property Management & Disposition, Relocation tabs | 0020 |
 | — | **Work screens** across parcels (Title & Survey, Appraisal, Negotiation & Closing) | 0021 |
 | — | **Dashboard** per person (what I did, what is waiting) + manager **Team** roll-up; in-app **Help center** behind the top-bar question mark | 0022 |
+| — | **ROW Director's Program view**: every project's health, % closed, pipeline and cost; drill-down to each parcel; time per step and per team; stuck parcels | 0024 |
 | — | Tab strip restyle (active tab = blue label + full-width blue bottom border; wraps instead of scrolling) | `components/ui/tabs.tsx` |
 
 ---
@@ -96,7 +97,7 @@ Older parcel tabs from Phase 1 (Summary, Team, Diary, Notes, Reviews & reports, 
 
 | Route | Screen | Page key |
 |---|---|---|
-| `/` | **Dashboard**: *My work* for everyone (waiting, done, recent); *Team* tab for Project Manager and Admin only | `dashboard` |
+| `/` | **Dashboard**: *My work* for everyone (waiting, done, recent); managers (Project Manager, Admin) also get *Program* (their default: projects with health, drill-down to parcels, time by step and team) and *Team* | `dashboard` |
 | **`/help`** | **Help center**: contents, search, topics, "What your role can do"; open to every signed-in person (`?topic=<id>`) | none (signed in) |
 | `/projects`, `/projects/$projectId` | Project list and detail (tabs) | `projects` |
 | `/parcels`, `/parcels/$parcelId` | Parcel board and detail (tabs in §5) | `parcels` |
@@ -130,6 +131,7 @@ Special rules beyond the page grid: appraisal review fields (Approver/Admin only
 | Endpoints | `Api/Controllers/ParcelTabsController.cs`, `OverviewController.cs`, `ParcelsController`… | `api/parcel-tabs.ts`, `api/overview.ts` |
 | Tab components | — | `features/parcels/*Tab*.tsx`, `LifecycleTabs.tsx`, `lifecycle-kit.tsx`, `NegotiationTab.tsx` (exports the shared `Grid`) |
 | Work screens | — | `features/work/ParcelWorkPage.tsx`, `WorkPages.tsx` |
+| Program view | `Application/Dashboard/ProgramDashboard.cs`, `Application/Calculations/ProgramMetrics.cs` (`StageTimes`, `ProjectHealth`), endpoints `/api/v1/dashboard/program` and `/projects/{id}` | `features/dashboard/ProgramView.tsx`, `dashboard-kit.tsx` |
 | Dashboard | `Application/Dashboard/DashboardRequests.cs`, `Application/Calculations/ActivitySummary.cs` (audit log → "done"), `Api/Controllers/DashboardController.cs` (`/api/v1/dashboard/me`, `/team`) | `features/dashboard/DashboardPage.tsx`, `api/dashboard.ts`, `test/fake-dashboard.ts` |
 | Help center | — | `features/help/help-content.ts` (all text, plain data), `HelpPage.tsx`, `routes/_app/help.tsx`; button in `components/shell/TopBar.tsx` |
 | Access defaults | `Domain/Common/PageKeys.cs`, `DefaultRolePermissions.cs` | `api/auth.ts` (`PAGE_KEYS`), `components/shell/nav.ts` |

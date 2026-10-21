@@ -103,10 +103,35 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: 'dashboard-program', section: 'Your dashboard', title: 'The Program view for a ROW Director',
+    summary: 'Where right of way stands on every project and parcel, and which teams take the time.',
+    blocks: [
+      { kind: 'p', text: 'Project Managers and Administrators land on the Program tab. It answers: where does right of way stand on each project, what is going on with each parcel, and where is the time going?' },
+      { kind: 'list', title: 'What you see', items: [
+        'Tiles for projects, active parcels, the share closed, projects needing attention, parcels stuck on a step, the estimated ROW cost and the known cost so far.',
+        'A table of projects with a health label and the first reason, how much is closed, a bar showing where the parcels are in the workflow, overdue and stuck parcels, the estimate, the known cost and the ROW clear date.',
+        'Where the time goes: teams ranked by the average days a parcel stays with them, longest first, and a table of every workflow step.',
+        'The parcels that have been on one step the longest, each linking to the parcel.',
+      ] },
+      { kind: 'steps', title: 'Look at one project', items: [
+        'Choose the project number in the table.',
+        'Read the reasons under the title. They say exactly why a project is Watch or Off track.',
+        'Scan the parcel table: owner, status, step and owning team, days on the step, appraisal, approved just compensation, agreed amount, closing date and anything needing attention.',
+        'Choose a parcel number to open the parcel. Choose All projects to go back.',
+      ] },
+      { kind: 'table', head: ['Health', 'When'], rows: [
+        ['Off track', 'The ROW clear date has passed with parcels not closed; or the known cost is over the estimate; or at least three parcels, and a quarter of the project, have an overdue deadline.'],
+        ['Watch', 'Any overdue deadline; or the ROW clear date is within 90 days with under 75% closed; or a parcel has been on one step for over 30 days.'],
+        ['On track', 'None of the above.'],
+      ] },
+      { kind: 'note', text: 'Time in a step is counted from the moves recorded on each parcel, so move parcels along as work finishes. Known cost uses the agreed amount, or the approved just compensation where nothing is agreed yet.' },
+    ],
+  },
+  {
     id: 'dashboard-team', section: 'Your dashboard', title: 'The Team view for managers',
     summary: 'Project Managers and Administrators see everyone’s work added together.',
     blocks: [
-      { kind: 'p', text: 'If you are a Project Manager or an Administrator, the Dashboard has two tabs: My work and Team. Team rolls up the whole agency.' },
+      { kind: 'p', text: 'If you are a Project Manager or an Administrator, the Dashboard has three tabs: Program, My work and Team. Team rolls up what every person did.' },
       { kind: 'list', items: [
         'Tiles for projects, active parcels, requests and reports awaiting a decision, overdue deadlines, rights of entry about to expire, and closings due. Click a tile to open the matching screen.',
         'Parcels by status, in the order your agency set up.',

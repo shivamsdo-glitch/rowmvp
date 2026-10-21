@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Clock, RefreshCw } from 'lucide-react'
-import { dashboardApi, type ActivityDay, type ActivityKind, type MyDashboard, type PendingItem, type TeamDashboard, type Tone } from '@/api/dashboard'
+import { dashboardApi, type ActivityDay, type ActivityKind, type MyDashboard, type PendingItem, type ProjectRow, type TeamDashboard } from '@/api/dashboard'
 import { useAuth } from '@/auth/auth-context'
 import { cn } from '@/lib/cn'
+import { Card, KpiTile, TONE_PILL } from './dashboard-kit'
+import { ProgramView } from './ProgramView'
 import { PageHeader } from '@/components/ui/page-header'
 import { relativeTime } from '@/components/shell/NotificationBell'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,35 +14,7 @@ import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { DataTable } from '../projects/form-kit'
 import { RemindersCard } from '../parcels/RemindersCard'
 
-const TONE_TEXT: Record<Tone, string> = { danger: 'text-danger', warn: 'text-foreground', info: 'text-primary' }
-const TONE_PILL: Record<Tone, string> = { danger: 'bg-danger/15 text-danger', warn: 'bg-warn/25 text-foreground', info: 'bg-primary-soft text-primary' }
 const ACTION_WORD = { Create: 'Added', Update: 'Changed', Delete: 'Removed' } as const
-
-/** A big number with a plain label, the way a tile reads at a glance. A tile with a link opens the screen behind it. */
-export function KpiTile({ label, value, hint, tone = 'info', to }: { label: string; value: ReactNode; hint?: string; tone?: Tone; to?: string }) {
-  const body = (
-    <>
-      <div className="eyebrow">{label}</div>
-      <div className={cn('mt-1 text-3xl font-semibold leading-none tabular-nums', TONE_TEXT[tone])} data-testid={`tile-${label}`}>{value}</div>
-      {hint && <div className="mt-2 text-xs text-muted-foreground">{hint}</div>}
-    </>
-  )
-  const cls = 'block rounded-lg border bg-card p-4 shadow-sm'
-  return to
-    ? <Link to={to as never} className={cn(cls, 'transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring')}>{body}</Link>
-    : <div className={cls}>{body}</div>
-}
-
-export function Card({ title, subtitle, children, className }: { title: string; subtitle?: string; children: ReactNode; className?: string }) {
-  return (
-    <section aria-label={title} className={cn('rounded-lg border bg-card p-4 shadow-sm', className)}>
-      <h2 className="text-sm font-semibold">{title}</h2>
-      {subtitle && <p className="mb-3 text-xs text-muted-foreground">{subtitle}</p>}
-      {!subtitle && <div className="mb-3" />}
-      {children}
-    </section>
-  )
-}
 
 const dayName = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
 
@@ -197,36 +171,48 @@ function Loaded<T>({ q, what, children }: { q: { isPending: boolean; isError: bo
   return <>{children(q.data)}</>
 }
 
+type View = 'program' | 'me' | 'team'
+
 export function DashboardPage() {
   const { user, manager } = useAuth()
-  const [view, setView] = useState<'me' | 'team'>('me')
+  const [chosen, setChosen] = useState<View | null>(null)
+  const [project, setProject] = useState<ProjectRow | null>(null)
   const me = useQuery({ queryKey: ['dashboard', 'me'], queryFn: () => dashboardApi(manager.api).me() })
   const isManager = me.data?.isManager === true
+  // A manager lands on the program view (where does ROW stand?); everyone else on their own work.
+  const view: View = isManager ? (chosen ?? 'program') : 'me'
   const team = useQuery({ queryKey: ['dashboard', 'team'], queryFn: () => dashboardApi(manager.api).team(), enabled: isManager && view === 'team' })
-  const active = view === 'team' && isManager ? team : me
+  const qc = useQueryClient()
+  const active = view === 'team' ? team : me
+  const refresh = () => {
+    if (view === 'program') void qc.invalidateQueries({ queryKey: ['dashboard', project ? 'project' : 'program'] })
+    else void active.refetch()
+  }
+  const busy = view === 'program' ? qc.isFetching({ queryKey: ['dashboard', 'program'] }) + qc.isFetching({ queryKey: ['dashboard', 'project'] }) > 0 : active.isFetching
+  const subtitle = view === 'program' ? 'Where right of way stands on every project.' : view === 'team' ? 'The whole team at a glance.' : 'Here is what you have done and what is waiting.'
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        subtitle={`Welcome, ${user?.fullName ?? ''}. ${view === 'team' && isManager ? 'The whole team at a glance.' : 'Here is what you have done and what is waiting.'}`}
+        subtitle={`Welcome, ${user?.fullName ?? ''}. ${subtitle}`}
         actions={(
-          <button type="button" onClick={() => void active.refetch()} disabled={active.isFetching} className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60">
-            <RefreshCw size={14} className={active.isFetching ? 'animate-spin' : ''} aria-hidden /> Refresh
-            {active.dataUpdatedAt > 0 && <span className="text-muted-foreground">· {new Date(active.dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+          <button type="button" onClick={refresh} disabled={busy} className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60">
+            <RefreshCw size={14} className={busy ? 'animate-spin' : ''} aria-hidden /> Refresh
           </button>
         )}
       />
       {isManager && (
         <Tabs className="mb-4">
           <TabsList role="tablist" aria-label="Dashboard view">
-            <TabsTrigger role="tab" aria-selected={view === 'me'} active={view === 'me'} onClick={() => setView('me')}>My work</TabsTrigger>
-            <TabsTrigger role="tab" aria-selected={view === 'team'} active={view === 'team'} onClick={() => setView('team')}>Team</TabsTrigger>
+            <TabsTrigger role="tab" aria-selected={view === 'program'} active={view === 'program'} onClick={() => setChosen('program')}>Program</TabsTrigger>
+            <TabsTrigger role="tab" aria-selected={view === 'me'} active={view === 'me'} onClick={() => setChosen('me')}>My work</TabsTrigger>
+            <TabsTrigger role="tab" aria-selected={view === 'team'} active={view === 'team'} onClick={() => setChosen('team')}>Team</TabsTrigger>
           </TabsList>
         </Tabs>
       )}
-      {view === 'team' && isManager
-        ? <TabsContent className="mt-0"><Loaded q={team} what="The team view">{(d) => <TeamView data={d} />}</Loaded></TabsContent>
+      {view === 'program' ? <ProgramView selected={project} onSelect={setProject} />
+        : view === 'team' ? <TabsContent className="mt-0"><Loaded q={team} what="The team view">{(d) => <TeamView data={d} />}</Loaded></TabsContent>
         : <Loaded q={me} what="Your work">{(d) => <MyWork data={d} />}</Loaded>}
       <p className="mt-6 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Clock size={12} aria-hidden />

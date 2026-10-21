@@ -24,4 +24,17 @@ public sealed class DashboardController : ControllerBase
     [ProducesResponseType(typeof(TeamDashboardDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Team(CancellationToken ct) => Ok(await _mediator.Send(new GetTeamDashboardQuery(), ct));
+
+    /// <summary>The ROW Director's view: every project with its health and cost, and where the time goes by step and team. 403 unless project manager or administrator.</summary>
+    [HttpGet("program")]
+    [ProducesResponseType(typeof(ProgramDashboardDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Program(CancellationToken ct) => Ok(await _mediator.Send(new GetProgramDashboardQuery(), ct));
+
+    /// <summary>One project in depth, with every parcel and what is going on with it. 403 unless project manager or administrator.</summary>
+    [HttpGet("projects/{projectId:guid}")]
+    [ProducesResponseType(typeof(ProjectDashboardDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Project(Guid projectId, CancellationToken ct) => Ok(await _mediator.Send(new GetProjectDashboardQuery(projectId), ct));
 }

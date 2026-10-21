@@ -1,4 +1,4 @@
-import type { MyDashboard, TeamDashboard } from '@/api/dashboard'
+import type { ParcelRow, ProgramDashboard, ProjectDashboard, ProjectRow, MyDashboard, TeamDashboard } from '@/api/dashboard'
 
 const today = new Date()
 const iso = (daysAgo: number) => {
@@ -50,3 +50,49 @@ export const sampleTeam = (over: Partial<TeamDashboard> = {}): TeamDashboard => 
   ],
   ...over,
 })
+
+const STEPS = [['setup', 'Parcel set up'], ['title_survey', 'Title & survey'], ['appraisal', 'Appraisal & just compensation'], ['offer', 'Offer'], ['negotiation', 'Negotiation'], ['agreement', 'Agreement'], ['closing', 'Closing']] as const
+const byStep = (counts: Record<string, number>) => STEPS.map(([stepKey, label]) => ({ stepKey, label, count: counts[stepKey] ?? 0 }))
+
+export const sampleProject = (over: Partial<ProjectRow> = {}): ProjectRow => ({
+  id: 'p1', number: 'P-2026-001', name: 'US-90 Widening', phase: 'Phase 1', projectManager: 'Pat Manager', oversightType: 'Federal',
+  parcels: 4, closed: 1, percentClosed: 25, byStep: byStep({ setup: 1, title_survey: 1, appraisal: 1, closing: 1 }), overdueParcels: 1, stuckParcels: 1,
+  estimateTotal: 500_000, knownCost: 620_000, rowClearDate: '2026-09-01', daysToClear: -50, health: 'Red',
+  reasons: ['The ROW clear date (2026-09-01) has passed with 3 parcels not closed.', 'Known cost $620,000 is over the estimate $500,000.'], ...over,
+})
+
+export const sampleProgram = (over: Partial<ProgramDashboard> = {}): ProgramDashboard => ({
+  generatedAt: new Date().toISOString(), stuckDays: 30,
+  tiles: [
+    { key: 'projects', label: 'Projects', value: 2, format: 'count', tone: 'info' },
+    { key: 'parcels', label: 'Active parcels', value: 7, format: 'count', tone: 'info' },
+    { key: 'closed', label: 'Parcels closed', value: 28, format: 'percent', tone: 'info' },
+    { key: 'attention', label: 'Projects needing attention', value: 1, format: 'count', tone: 'warn' },
+    { key: 'stuck', label: 'Parcels stuck on a step', value: 1, format: 'count', tone: 'danger' },
+    { key: 'estimate', label: 'Estimated ROW cost', value: 1_250_000, format: 'money', tone: 'info' },
+    { key: 'known', label: 'Known cost to date', value: 840_000, format: 'money', tone: 'info' },
+  ],
+  projects: [sampleProject(), sampleProject({ id: 'p2', number: 'P-2026-002', name: 'Main St Bridge', parcels: 3, closed: 1, percentClosed: 33, byStep: byStep({ negotiation: 2, closing: 1 }), overdueParcels: 0, stuckParcels: 0, estimateTotal: 750_000, knownCost: 220_000, rowClearDate: null, daysToClear: null, health: 'Green', reasons: [] })],
+  stages: STEPS.map(([stepKey, label], i) => ({ stepKey, label, team: ['Project team', 'Title & Survey', 'Appraisal', 'Negotiation', 'Negotiation', 'Negotiation', 'Closing'][i], parcelsNow: i === 1 ? 2 : 1, completedStays: i, avgDaysCompleted: i ? 4.5 * i : null, avgDaysOpen: 12.5, longestOpenDays: 41, stuck: i === 2 ? 1 : 0 })),
+  teams: [
+    { team: 'Appraisal', parcelsNow: 2, stays: 5, avgDaysPerStay: 42.5, totalDays: 212, longestOpenDays: 61, stuck: 1 },
+    { team: 'Negotiation', parcelsNow: 3, stays: 9, avgDaysPerStay: 18, totalDays: 162, longestOpenDays: 20, stuck: 0 },
+    { team: 'Title & Survey', parcelsNow: 1, stays: 4, avgDaysPerStay: 6.2, totalDays: 25, longestOpenDays: 9, stuck: 0 },
+  ],
+  stuck: [{ parcelId: 'pc1', parcelNumber: '1004', projectId: 'p1', projectNumber: 'P-2026-001', stepLabel: 'Appraisal & just compensation', team: 'Appraisal', days: 61 }],
+  ...over,
+})
+
+export const sampleParcels = (): ParcelRow[] => [
+  { id: 'pc1', number: '1001', address: '12 Harbor Rd', ownerName: 'Ada Owner', status: 'Appraisal', statusColor: '#2563eb', stepKey: 'appraisal', stepLabel: 'Appraisal & just compensation', team: 'Appraisal', daysInStep: 61,
+    appraisalTotal: 102_500.25, approvedJustCompensation: 90_000, agreedAmount: null, anticipatedClosing: null, actualClosing: null, closed: false, flags: ['Overdue deadline', '61 days on this step'] },
+  { id: 'pc2', number: '1002', address: '14 Harbor Rd', ownerName: 'Bo Owner', status: 'In Possession - CLOSED', statusColor: '#16a34a', stepKey: 'closing', stepLabel: 'Closing', team: 'Closing', daysInStep: 3,
+    appraisalTotal: 80_000, approvedJustCompensation: 80_000, agreedAmount: 95_000, anticipatedClosing: '2026-05-01', actualClosing: '2026-05-02', closed: true, flags: [] },
+  { id: 'pc3', number: '1003', address: null, ownerName: null, status: 'Pre-Acquisition', statusColor: '#64748b', stepKey: 'setup', stepLabel: 'Parcel set up', team: 'Project team', daysInStep: 2,
+    appraisalTotal: null, approvedJustCompensation: null, agreedAmount: null, anticipatedClosing: '2026-12-01', actualClosing: null, closed: false, flags: [] },
+]
+
+export const sampleProjectDashboard = (over: Partial<ProjectDashboard> = {}): ProjectDashboard => {
+  const program = sampleProgram()
+  return { generatedAt: new Date().toISOString(), stuckDays: 30, project: program.projects[0], stages: program.stages, teams: program.teams, parcels: sampleParcels(), ...over }
+}

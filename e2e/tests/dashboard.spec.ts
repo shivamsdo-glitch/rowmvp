@@ -27,6 +27,7 @@ for (const role of ROLES) {
   test.describe(`Dashboard · ${role}`, () => {
     test(`AT-X-58 ${role} has a dashboard of their own, and only managers get the Team tab`, async ({ page, request }) => {
       await signInViaUi(page, role)
+      if (MANAGERS.includes(role)) await page.getByRole('tab', { name: 'My work', ...exact }).click() // a manager lands on the Program tab
 
       await expect(page.getByRole('region', { name: 'Waiting for you' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'What you have done' })).toBeVisible()
@@ -102,6 +103,7 @@ test.describe('Dashboard · what is waiting', () => {
 
     const pmPage = await browser.newPage()
     await signInViaUi(pmPage, 'ProjectManager')
+    await pmPage.getByRole('tab', { name: 'My work', ...exact }).click()
     await expect(pmPage.getByRole('link', { name: /Your acquisition requests still waiting/ })).toBeVisible()
     await pmPage.close()
 

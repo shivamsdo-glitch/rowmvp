@@ -1,6 +1,6 @@
 import type { PagePermission } from '@/api/auth'
-import type { MyDashboard, TeamDashboard } from '@/api/dashboard'
-import { emptyDashboard, sampleTeam } from './fake-dashboard'
+import type { MyDashboard, ProgramDashboard, ProjectDashboard, TeamDashboard } from '@/api/dashboard'
+import { emptyDashboard, sampleProgram, sampleProjectDashboard, sampleTeam } from './fake-dashboard'
 
 const ALL_PAGES = [
   'dashboard', 'projects', 'parcels', 'parties', 'title', 'survey', 'appraisals',
@@ -23,7 +23,7 @@ function json(body: unknown, status = 200) {
  * A fetch stand-in for the auth endpoints. Give `readable` (pages the user can read) or full `rows`.
  * A request without the expected token is a 401, like the real API.
  */
-export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean; dashboard?: MyDashboard; team?: TeamDashboard | 'forbidden'; dashboardFails?: boolean }) {
+export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean; dashboard?: MyDashboard; team?: TeamDashboard | 'forbidden'; dashboardFails?: boolean; program?: ProgramDashboard | 'forbidden' | 'fails'; project?: ProjectDashboard | 'fails' }) {
   const token = opts.token ?? 'good-token'
   const role = opts.role ?? 'Admin'
   return async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -57,6 +57,15 @@ export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission
     if (url === '/api/v1/dashboard/team') {
       if (opts.team === 'forbidden' || !(role === 'Admin' || role === 'ProjectManager' || opts.team)) return json({ title: 'forbidden' }, 403)
       return json(opts.team ?? sampleTeam())
+    }
+    if (url === '/api/v1/dashboard/program') {
+      if (opts.program === 'fails') return json({ title: 'server_error' }, 500)
+      if (opts.program === 'forbidden' || !(role === 'Admin' || role === 'ProjectManager')) return json({ title: 'forbidden' }, 403)
+      return json(opts.program ?? sampleProgram())
+    }
+    if (url.startsWith('/api/v1/dashboard/projects/')) {
+      if (opts.project === 'fails') return json({ title: 'server_error' }, 500)
+      return json(opts.project ?? sampleProjectDashboard())
     }
     // The dashboard's next-actions card asks for reminders; an agency with no parcels has none.
     if (url.startsWith('/api/v1/reminders')) return json([])
