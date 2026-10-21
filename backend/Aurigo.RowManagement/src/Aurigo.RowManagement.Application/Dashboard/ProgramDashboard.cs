@@ -30,11 +30,11 @@ public sealed record ParcelRowDto(
     decimal? AppraisalTotal, decimal? ApprovedJustCompensation, decimal? AgreedAmount, DateOnly? AnticipatedClosing, DateOnly? ActualClosing, bool Closed, IReadOnlyList<string> Flags);
 
 public sealed record ProgramDashboardDto(
-    DateTime GeneratedAt, int StuckDays, IReadOnlyList<ProgramTileDto> Tiles, IReadOnlyList<ProjectRowDto> Projects, IReadOnlyList<StageDto> Stages,
+    DateTime GeneratedAt, int StuckDays, ProgramRulesDto Rules, IReadOnlyList<ProgramTileDto> Tiles, IReadOnlyList<ProjectRowDto> Projects, IReadOnlyList<StageDto> Stages,
     IReadOnlyList<TeamTimeDto> Teams, IReadOnlyList<StuckParcelDto> Stuck);
 
 public sealed record ProjectDashboardDto(
-    DateTime GeneratedAt, int StuckDays, ProjectRowDto Project, IReadOnlyList<StageDto> Stages, IReadOnlyList<TeamTimeDto> Teams, IReadOnlyList<ParcelRowDto> Parcels);
+    DateTime GeneratedAt, int StuckDays, ProgramRulesDto Rules, ProjectRowDto Project, IReadOnlyList<StageDto> Stages, IReadOnlyList<TeamTimeDto> Teams, IReadOnlyList<ParcelRowDto> Parcels);
 
 internal sealed class ProgramBuilder
 {
@@ -50,7 +50,7 @@ internal sealed class ProgramBuilder
     }
 
     public sealed record Built(
-        DateTime Now, IReadOnlyList<ProjectRowDto> Projects, IReadOnlyDictionary<Guid, List<ParcelRowDto>> ParcelsByProject, IReadOnlyList<StageDto> Stages,
+        DateTime Now, ProgramRules Rules, IReadOnlyList<ProjectRowDto> Projects, IReadOnlyDictionary<Guid, List<ParcelRowDto>> ParcelsByProject, IReadOnlyList<StageDto> Stages,
         IReadOnlyList<TeamTimeDto> Teams, IReadOnlyList<StuckParcelDto> Stuck);
 
     private sealed record P(Guid Id, Guid ProjectId, string Number, string? Address, Guid StatusId, string CurrentStepKey, DateTime CreatedAt);
@@ -67,14 +67,16 @@ internal sealed class ProgramBuilder
             .Select(p => new P(p.Id, p.ProjectId, p.Number, p.Address, p.StatusId, p.CurrentStepKey, p.CreatedAt)).ToListAsync(ct);
         var parcelIds = parcels.Select(p => p.Id).ToList();
 
-        // The workflow: the standard steps in their order, then any step only another acquisition type has (early approval, donation review...).
+        // The agency's thresholds and step-to-team choices, and the workflow: the standard steps in order, then steps only another acquisition type has.
+        var (rules, chosenTeams) = await ProgramConfig.LoadAsync(_db, ct);
+        var allSteps = await ProgramConfig.StepsAsync(_db, ct);
         var templates = await _db.WorkflowTemplates.AsNoTracking().ToDictionaryAsync(t => t.Id, t => t.AcquisitionType, ct);
-        var steps = (await _db.WorkflowSteps.AsNoTracking().Select(s => new { s.TemplateId, s.Key, s.Label, s.Order }).ToListAsync(ct))
-            .Select(s => new { s.Key, s.Label, s.Order, Standard = templates.GetValueOrDefault(s.TemplateId) == AcquisitionType.Standard }).ToList();
-        var standardKeys = steps.Where(s => s.Standard).OrderBy(s => s.Order).Select(s => s.Key).Distinct().ToList();
-        var extraKeys = steps.Where(s => !standardKeys.Contains(s.Key)).GroupBy(s => s.Key).OrderBy(g => g.Min(x => x.Order)).Select(g => g.Key).ToList();
-        var labels = steps.GroupBy(s => s.Key).ToDictionary(g => g.Key, g => g.First().Label);
+        var standardKeys = (await _db.WorkflowSteps.AsNoTracking().Select(s => new { s.TemplateId, s.Key, s.Order }).ToListAsync(ct))
+            .Where(s => templates.GetValueOrDefault(s.TemplateId) == AcquisitionType.Standard).OrderBy(s => s.Order).Select(s => s.Key).Distinct().ToList();
+        var extraKeys = allSteps.Select(s => s.Key).Where(k => !standardKeys.Contains(k)).ToList();
+        var labels = allSteps.ToDictionary(s => s.Key, s => s.Label);
         string Label(string key) => labels.GetValueOrDefault(key, key);
+        string TeamOf(string key) => StageTimes.TeamOf(key, chosenTeams);
 
         var events = (await _db.ParcelStepEvents.AsNoTracking().Where(e => parcelIds.Contains(e.ParcelId)).Select(e => new { e.ParcelId, e.FromStepKey, e.ToStepKey, e.CreatedAt }).ToListAsync(ct))
             .ToLookup(e => e.ParcelId);
@@ -112,19 +114,19 @@ internal sealed class ProgramBuilder
                 known += agreed ?? approved ?? 0;
                 var flags = new List<string>();
                 if (overdue.Contains(p.Id)) flags.Add("Overdue deadline");
-                if (!isClosed && days > StageTimes.DefaultStuckDays) flags.Add($"{Math.Floor(days):0} days on this step");
+                if (!isClosed && days > rules.StuckDays) flags.Add($"{Math.Floor(days):0} days on this step");
                 if (!isClosed && closing is { AnticipatedClosingDate: { } due, ActualClosingDate: null } && due < today) flags.Add("Closing past due");
                 var status = statuses.GetValueOrDefault(p.StatusId);
                 rows.Add(new ParcelRowDto(p.Id, p.Number, p.Address, owners.GetValueOrDefault(p.Id), status?.Name ?? "—", status?.Color ?? "#64748b", p.CurrentStepKey, Label(p.CurrentStepKey),
-                    StageTimes.TeamOf(p.CurrentStepKey), Math.Round(days, 1), apps?.FirstOrDefault()?.Total, approved, agreed, closing?.AnticipatedClosingDate, closing?.ActualClosingDate, isClosed, flags));
+                    TeamOf(p.CurrentStepKey), Math.Round(days, 1), apps?.FirstOrDefault()?.Total, approved, agreed, closing?.AnticipatedClosingDate, closing?.ActualClosingDate, isClosed, flags));
             }
             parcelRows[project.Id] = rows;
 
             var closed = rows.Count(r => r.Closed);
             var overdueCount = rows.Count(r => r.Flags.Contains("Overdue deadline"));
-            var stuckCount = rows.Count(r => !r.Closed && r.DaysInStep > StageTimes.DefaultStuckDays);
+            var stuckCount = rows.Count(r => !r.Closed && r.DaysInStep > rules.StuckDays);
             estimates.TryGetValue(project.Id, out var estimate);
-            var health = ProjectHealth.Evaluate(new ProjectHealthInput(rows.Count, closed, overdueCount, stuckCount, project.RightOfWayClearDate, today, estimates.ContainsKey(project.Id) ? estimate : null, known));
+            var health = ProjectHealth.Evaluate(new ProjectHealthInput(rows.Count, closed, overdueCount, stuckCount, project.RightOfWayClearDate, today, estimates.ContainsKey(project.Id) ? estimate : null, known), rules);
             projectRows.Add(new ProjectRowDto(
                 project.Id, project.Number, project.Name, project.Phase, project.ProjectManagerName, project.OversightType.ToString(),
                 rows.Count, closed, rows.Count == 0 ? 0 : (int)Math.Floor(closed * 100.0 / rows.Count),
@@ -134,19 +136,19 @@ internal sealed class ProgramBuilder
         }
 
         var all = histories.Values.ToList();
-        var stages = StageTimes.Summarize(all, standardKeys, now).Select(s => new StageDto(s.StepKey, Label(s.StepKey), s.Team, s.ParcelsNow, s.CompletedStays,
+        var stages = StageTimes.Summarize(all, standardKeys, now, rules.StuckDays, chosenTeams).Select(s => new StageDto(s.StepKey, Label(s.StepKey), s.Team, s.ParcelsNow, s.CompletedStays,
             s.AvgDaysCompleted is { } a ? Math.Round(a, 1) : null, s.AvgDaysOpen is { } o ? Math.Round(o, 1) : null, s.LongestOpenDays is { } l ? Math.Round(l, 1) : null, s.Stuck)).ToList();
-        var teams = StageTimes.ByTeam(all, now).Select(t => new TeamTimeDto(t.Team, t.ParcelsNow, t.Stays, t.AvgDaysPerStay is { } a ? Math.Round(a, 1) : null, Math.Round(t.TotalDays, 1),
+        var teams = StageTimes.ByTeam(all, now, rules.StuckDays, chosenTeams).Select(t => new TeamTimeDto(t.Team, t.ParcelsNow, t.Stays, t.AvgDaysPerStay is { } a ? Math.Round(a, 1) : null, Math.Round(t.TotalDays, 1),
             t.LongestOpenDays is { } l ? Math.Round(l, 1) : null, t.Stuck)).ToList();
 
         var number = projects.ToDictionary(p => p.Id, p => p.Number);
         var parcelById = parcels.ToDictionary(p => p.Id);
         var closedIds = parcelRows.Values.SelectMany(r => r).Where(r => r.Closed).Select(r => r.Id).ToHashSet();
-        var stuck = all.SelectMany(StageTimes.Stays).Where(s => s.IsOpen && !closedIds.Contains(s.ParcelId) && s.DaysAt(now) > StageTimes.DefaultStuckDays)
+        var stuck = all.SelectMany(StageTimes.Stays).Where(s => s.IsOpen && !closedIds.Contains(s.ParcelId) && s.DaysAt(now) > rules.StuckDays)
             .OrderByDescending(s => s.DaysAt(now)).Take(10)
-            .Select(s => new StuckParcelDto(s.ParcelId, parcelById[s.ParcelId].Number, parcelById[s.ParcelId].ProjectId, number[parcelById[s.ParcelId].ProjectId], Label(s.StepKey), StageTimes.TeamOf(s.StepKey), Math.Round(s.DaysAt(now), 1))).ToList();
+            .Select(s => new StuckParcelDto(s.ParcelId, parcelById[s.ParcelId].Number, parcelById[s.ParcelId].ProjectId, number[parcelById[s.ParcelId].ProjectId], Label(s.StepKey), TeamOf(s.StepKey), Math.Round(s.DaysAt(now), 1))).ToList();
 
-        return new Built(now, projectRows, parcelRows, stages, teams, stuck);
+        return new Built(now, rules, projectRows, parcelRows, stages, teams, stuck);
     }
 }
 
@@ -196,7 +198,7 @@ public sealed class GetProgramDashboardQueryHandler : IRequestHandler<GetProgram
             new("estimate", "Estimated ROW cost", b.Projects.Sum(p => p.EstimateTotal ?? 0), "money", "info"),
             new("known", "Known cost to date", b.Projects.Sum(p => p.KnownCost), "money", "info"),
         };
-        return new ProgramDashboardDto(b.Now, StageTimes.DefaultStuckDays, tiles, b.Projects, b.Stages, b.Teams, b.Stuck);
+        return new ProgramDashboardDto(b.Now, b.Rules.StuckDays, ProgramConfig.ToDto(b.Rules), tiles, b.Projects, b.Stages, b.Teams, b.Stuck);
     }
 }
 
@@ -225,6 +227,6 @@ public sealed class GetProjectDashboardQueryHandler : IRequestHandler<GetProject
         await ProgramAccess.EnsureDirectorAsync(_permissions, _user, ct);
         var b = await new ProgramBuilder(_db, _mediator, _clock).BuildAsync(request.ProjectId, ct);
         var project = b.Projects.Single();
-        return new ProjectDashboardDto(b.Now, StageTimes.DefaultStuckDays, project, b.Stages, b.Teams, b.ParcelsByProject[project.Id]);
+        return new ProjectDashboardDto(b.Now, b.Rules.StuckDays, ProgramConfig.ToDto(b.Rules), project, b.Stages, b.Teams, b.ParcelsByProject[project.Id]);
     }
 }

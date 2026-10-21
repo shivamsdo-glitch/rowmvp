@@ -125,6 +125,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         ['On track', 'None of the above.'],
       ] },
       { kind: 'note', text: 'Time in a step is counted from the moves recorded on each parcel, so move parcels along as work finishes. Known cost uses the agreed amount, or the approved just compensation where nothing is agreed yet.' },
+      { kind: 'note', text: 'The 30-day stuck limit, the health thresholds and which team owns each step are the defaults. An Administrator can change them under Configuration, Program view settings.' },
     ],
   },
   {
@@ -253,7 +254,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: 'configuration', section: 'Setting up', title: 'Configuration',
     summary: 'Parcel statuses, groups, workflow steps and deadline rules.',
     blocks: [
-      { kind: 'p', text: 'Configuration is for Administrators. Set the parcel statuses and groups, the order of workflow steps and who may override a step, and the statutory deadline rules that drive reminders.' },
+      { kind: 'p', text: 'Configuration is for Administrators. Set the parcel statuses and groups, the order of workflow steps and who may override a step, and the statutory deadline rules that drive reminders. Program view settings set when a parcel counts as stuck, when a project is on watch or off track, and which team owns each step; Reset to defaults puts them back.' },
     ],
   },
 

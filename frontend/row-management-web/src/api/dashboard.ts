@@ -109,10 +109,20 @@ export interface ParcelRow {
   closed: boolean
   flags: string[]
 }
-export interface ProgramDashboard { generatedAt: string; stuckDays: number; tiles: ProgramTile[]; projects: ProjectRow[]; stages: Stage[]; teams: TeamTime[]; stuck: StuckParcel[] }
-export interface ProjectDashboard { generatedAt: string; stuckDays: number; project: ProjectRow; stages: Stage[]; teams: TeamTime[]; parcels: ParcelRow[] }
+export interface ProgramDashboard { generatedAt: string; stuckDays: number; rules: ProgramRules; tiles: ProgramTile[]; projects: ProjectRow[]; stages: Stage[]; teams: TeamTime[]; stuck: StuckParcel[] }
+export interface ProjectDashboard { generatedAt: string; stuckDays: number; rules: ProgramRules; project: ProjectRow; stages: Stage[]; teams: TeamTime[]; parcels: ParcelRow[] }
+
+export interface ProgramRules { stuckDays: number; clearDateWarningDays: number; clearDateWarningPercentClosed: number; redOverdueMinimumParcels: number; redOverduePercent: number }
+export interface StepTeam { stepKey: string; label: string; team: string; defaultTeam: string }
+/** What an administrator sets for the Program view: the thresholds, and which team owns each step. */
+export interface ProgramSettings { rules: ProgramRules; defaults: ProgramRules; steps: StepTeam[]; teams: string[] }
+export interface ProgramSettingsInput extends ProgramRules { steps: { stepKey: string; team: string }[] }
 
 export const dashboardApi = (api: ApiClient) => ({
+  settings: () => api.get<ProgramSettings>('/api/v1/dashboard/settings'),
+  saveSettings: (body: ProgramSettingsInput) => api.put<ProgramSettings>('/api/v1/dashboard/settings', body),
+  /** Back to the default thresholds and team mapping. */
+  resetSettings: () => api.delete('/api/v1/dashboard/settings'),
   /** The ROW Director's view (project managers and administrators only). */
   program: () => api.get<ProgramDashboard>('/api/v1/dashboard/program'),
   project: (id: string) => api.get<ProjectDashboard>(`/api/v1/dashboard/projects/${id}`),

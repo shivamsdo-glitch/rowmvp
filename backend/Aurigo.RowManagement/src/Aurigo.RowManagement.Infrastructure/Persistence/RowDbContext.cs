@@ -69,6 +69,8 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
     public DbSet<DeadlineRule> DeadlineRules => Set<DeadlineRule>();
     public DbSet<StepGateSettings> StepGateSettings => Set<StepGateSettings>();
+    public DbSet<ProgramSettings> ProgramSettings => Set<ProgramSettings>();
+    public DbSet<ProgramStepTeam> ProgramStepTeams => Set<ProgramStepTeam>();
     public DbSet<Party> Parties => Set<Party>();
     public DbSet<LibraryField> LibraryFields => Set<LibraryField>();
     public DbSet<LibraryValue> LibraryValues => Set<LibraryValue>();

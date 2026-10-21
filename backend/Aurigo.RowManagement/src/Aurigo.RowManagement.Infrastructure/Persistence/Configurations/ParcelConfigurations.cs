@@ -195,3 +195,25 @@ public class StepGateSettingsConfiguration : IEntityTypeConfiguration<StepGateSe
         b.HasIndex(x => x.TenantId).IsUnique(); // one row per tenant
     }
 }
+
+public class ProgramSettingsConfiguration : IEntityTypeConfiguration<ProgramSettings>
+{
+    public void Configure(EntityTypeBuilder<ProgramSettings> b)
+    {
+        b.ToTable("program_settings");
+        b.HasKey(x => x.Id);
+        b.HasIndex(x => x.TenantId).IsUnique(); // one row per tenant
+    }
+}
+
+public class ProgramStepTeamConfiguration : IEntityTypeConfiguration<ProgramStepTeam>
+{
+    public void Configure(EntityTypeBuilder<ProgramStepTeam> b)
+    {
+        b.ToTable("program_step_teams");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.StepKey).HasMaxLength(64).IsRequired();
+        b.Property(x => x.Team).HasMaxLength(50).IsRequired();
+        b.HasIndex(x => new { x.TenantId, x.StepKey }).IsUnique();
+    }
+}

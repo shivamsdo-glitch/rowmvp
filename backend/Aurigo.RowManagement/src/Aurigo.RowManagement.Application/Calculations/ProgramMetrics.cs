@@ -19,6 +19,13 @@ public sealed record StepStay(Guid ParcelId, string StepKey, DateTime Entered, D
 public sealed record StageSummary(
     string StepKey, string Team, int ParcelsNow, int CompletedStays, double? AvgDaysCompleted, double? AvgDaysOpen, double? LongestOpenDays, int Stuck);
 
+/// <summary>The thresholds a program is judged by. The defaults are what an agency gets until an administrator changes them (ADR 0025).</summary>
+public sealed record ProgramRules(
+    int StuckDays = 30, int ClearDateWarningDays = 90, int ClearDateWarningPercentClosed = 75, int RedOverdueMinimumParcels = 3, int RedOverduePercent = 25)
+{
+    public static readonly ProgramRules Default = new();
+}
+
 public sealed record TeamSummary(string Team, int ParcelsNow, int Stays, double? AvgDaysPerStay, double TotalDays, double? LongestOpenDays, int Stuck);
 
 public static class StageTimes
@@ -30,7 +37,11 @@ public static class StageTimes
     /// The team that owns a step. A default mapping of the standard workflow; a step this does not know belongs to "Other".
     /// (Making this editable is a later step; see ADR 0024.)
     /// </summary>
-    public static string TeamOf(string stepKey) => stepKey switch
+    public static string TeamOf(string stepKey, IReadOnlyDictionary<string, string>? chosen = null) =>
+        chosen is not null && chosen.TryGetValue(stepKey, out var team) ? team : DefaultTeamOf(stepKey);
+
+    /// <summary>The team a step belongs to until the agency chooses otherwise.</summary>
+    public static string DefaultTeamOf(string stepKey) => stepKey switch
     {
         "setup" or "early_approval" => "Project team",
         "title_survey" => "Title & Survey",
@@ -58,7 +69,7 @@ public static class StageTimes
     }
 
     /// <summary>One row per step in <paramref name="stepOrder"/> (and any other step seen), counting where parcels are and how long they stayed.</summary>
-    public static IReadOnlyList<StageSummary> Summarize(IEnumerable<ParcelStepHistory> histories, IReadOnlyList<string> stepOrder, DateTime now, int stuckDays = DefaultStuckDays)
+    public static IReadOnlyList<StageSummary> Summarize(IEnumerable<ParcelStepHistory> histories, IReadOnlyList<string> stepOrder, DateTime now, int stuckDays = DefaultStuckDays, IReadOnlyDictionary<string, string>? teams = null)
     {
         var stays = histories.SelectMany(Stays).ToList();
         var keys = stepOrder.Concat(stays.Select(s => s.StepKey)).Distinct(StringComparer.Ordinal).ToList();
@@ -67,14 +78,14 @@ public static class StageTimes
             var inStep = stays.Where(s => s.StepKey == key).ToList();
             var done = inStep.Where(s => !s.IsOpen).Select(s => s.DaysAt(now)).ToList();
             var open = inStep.Where(s => s.IsOpen).Select(s => s.DaysAt(now)).ToList();
-            return new StageSummary(key, TeamOf(key), open.Count, done.Count, done.Count == 0 ? null : done.Average(), open.Count == 0 ? null : open.Average(),
+            return new StageSummary(key, TeamOf(key, teams), open.Count, done.Count, done.Count == 0 ? null : done.Average(), open.Count == 0 ? null : open.Average(),
                 open.Count == 0 ? null : open.Max(), open.Count(d => d > stuckDays));
         }).ToList();
     }
 
     /// <summary>Teams ranked by how long a parcel stays with them on average, longest first. Open stays count up to <paramref name="now"/>.</summary>
-    public static IReadOnlyList<TeamSummary> ByTeam(IEnumerable<ParcelStepHistory> histories, DateTime now, int stuckDays = DefaultStuckDays) =>
-        histories.SelectMany(Stays).GroupBy(s => TeamOf(s.StepKey))
+    public static IReadOnlyList<TeamSummary> ByTeam(IEnumerable<ParcelStepHistory> histories, DateTime now, int stuckDays = DefaultStuckDays, IReadOnlyDictionary<string, string>? teams = null) =>
+        histories.SelectMany(Stays).GroupBy(s => TeamOf(s.StepKey, teams))
             .Select(g =>
             {
                 var days = g.Select(s => s.DaysAt(now)).ToList();
@@ -97,13 +108,15 @@ public sealed record ProjectHealthResult(ProjectHealthLevel Level, IReadOnlyList
 /// </summary>
 public static class ProjectHealth
 {
+    // The defaults live in ProgramRules.Default; an agency's own values arrive as the `rules` argument.
     public const int ClearDateWarningDays = 90;
     public const int ClearDateWarningPercentClosed = 75;
     public const int RedOverdueMinimumParcels = 3;
     public const int RedOverduePercent = 25;
 
-    public static ProjectHealthResult Evaluate(ProjectHealthInput p)
+    public static ProjectHealthResult Evaluate(ProjectHealthInput p, ProgramRules? rules = null)
     {
+        var r = rules ?? ProgramRules.Default;
         if (p.ActiveParcels == 0) return new ProjectHealthResult(ProjectHealthLevel.None, Array.Empty<string>());
         var red = new List<string>();
         var amber = new List<string>();
@@ -113,16 +126,16 @@ public static class ProjectHealth
         if (p.RowClearDate is { } clear)
         {
             if (clear < p.Today && open > 0) red.Add($"The ROW clear date ({clear:yyyy-MM-dd}) has passed with {open} parcel{(open == 1 ? "" : "s")} not closed.");
-            else if (clear >= p.Today && clear <= p.Today.AddDays(ClearDateWarningDays) && percentClosed < ClearDateWarningPercentClosed)
+            else if (clear >= p.Today && clear <= p.Today.AddDays(r.ClearDateWarningDays) && percentClosed < r.ClearDateWarningPercentClosed)
                 amber.Add($"The ROW clear date is {clear.DayNumber - p.Today.DayNumber} days away and only {Math.Floor(percentClosed):0}% of parcels are closed.");
         }
         if (p.EstimateTotal is > 0 && p.KnownCost > p.EstimateTotal) red.Add($"Known cost {p.KnownCost:C0} is over the estimate {p.EstimateTotal:C0}.");
         if (p.OverdueParcels > 0)
         {
-            var big = p.OverdueParcels >= RedOverdueMinimumParcels && p.OverdueParcels * 100.0 / p.ActiveParcels >= RedOverduePercent;
+            var big = p.OverdueParcels >= r.RedOverdueMinimumParcels && p.OverdueParcels * 100.0 / p.ActiveParcels >= r.RedOverduePercent;
             (big ? red : amber).Add($"{p.OverdueParcels} parcel{(p.OverdueParcels == 1 ? " has" : "s have")} an overdue deadline.");
         }
-        if (p.StuckParcels > 0) amber.Add($"{p.StuckParcels} parcel{(p.StuckParcels == 1 ? " has" : "s have")} been on one step for over {StageTimes.DefaultStuckDays} days.");
+        if (p.StuckParcels > 0) amber.Add($"{p.StuckParcels} parcel{(p.StuckParcels == 1 ? " has" : "s have")} been on one step for over {r.StuckDays} days.");
 
         var level = red.Count > 0 ? ProjectHealthLevel.Red : amber.Count > 0 ? ProjectHealthLevel.Amber : ProjectHealthLevel.Green;
         return new ProjectHealthResult(level, red.Concat(amber).ToList());

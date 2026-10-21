@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { useAuth } from '@/auth/auth-context'
 import { PlanReviewGateCard } from '@/features/acquisition/PlanReviewGateCard'
 import { CustomFieldsCard, DeadlineRulesCard, ParcelStatusesCard, StepOverrideCard, WorkflowsCard } from '@/features/parcels/ParcelRulesCards'
+import { ProgramSettingsCard } from '@/features/dashboard/ProgramSettingsCard'
 import { NumberSettingsCard } from '@/features/projects/NumberSettingsCard'
 import { TimeZoneCard } from '@/features/projects/TimeZoneCard'
 
@@ -20,6 +21,7 @@ function AdministrationPage() {
       <PageHeader title="Administration" subtitle="Configure how the agency works. Roles and page permissions will be managed here too." />
       <NumberSettingsCard />
       <TimeZoneCard />
+      <ProgramSettingsCard />
       {parcelRules && (
         <>
           <ParcelStatusesCard />

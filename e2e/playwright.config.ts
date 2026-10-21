@@ -28,10 +28,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
   },
-  // The plan-review gate is a setting for the whole agency, so its scenarios run alone, after every other spec.
+  // The plan-review gate and the Program view settings are settings for the whole agency, so their scenarios run alone, after every other spec.
   projects: [
-    { name: 'main', testIgnore: /gate\.spec\.ts/ },
-    { name: 'gate', testMatch: /gate\.spec\.ts/, dependencies: ['main'] },
+    { name: 'main', testIgnore: /(gate|program-settings)\.spec\.ts/ },
+    { name: 'gate', testMatch: /(gate|program-settings)\.spec\.ts/, dependencies: ['main'] },
   ],
   webServer: [
     {

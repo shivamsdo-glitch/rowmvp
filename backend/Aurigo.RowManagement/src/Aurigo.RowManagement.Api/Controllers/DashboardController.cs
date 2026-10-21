@@ -37,4 +37,23 @@ public sealed class DashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Project(Guid projectId, CancellationToken ct) => Ok(await _mediator.Send(new GetProjectDashboardQuery(projectId), ct));
+
+    public sealed record StepTeamBody(string StepKey, string Team);
+    public sealed record ProgramSettingsBody(int StuckDays, int ClearDateWarningDays, int ClearDateWarningPercentClosed, int RedOverdueMinimumParcels, int RedOverduePercent, List<StepTeamBody>? Steps);
+
+    /// <summary>The thresholds and the step-to-team mapping the Program view uses. Governed by the Configuration page (read to see, update to change).</summary>
+    [HttpGet("settings")]
+    [ProducesResponseType(typeof(ProgramSettingsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Settings(CancellationToken ct) => Ok(await _mediator.Send(new GetProgramSettingsQuery(), ct));
+
+    [HttpPut("settings")]
+    [ProducesResponseType(typeof(ProgramSettingsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SaveSettings([FromBody] ProgramSettingsBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new SetProgramSettingsCommand(b.StuckDays, b.ClearDateWarningDays, b.ClearDateWarningPercentClosed, b.RedOverdueMinimumParcels, b.RedOverduePercent,
+            (b.Steps ?? new List<StepTeamBody>()).Select(s => new StepTeamInput(s.StepKey, s.Team)).ToList()), ct));
+
+    /// <summary>Back to the default thresholds and mapping.</summary>
+    [HttpDelete("settings")]
+    [ProducesResponseType(typeof(ProgramSettingsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ResetSettings(CancellationToken ct) => Ok(await _mediator.Send(new ResetProgramSettingsCommand(), ct));
 }

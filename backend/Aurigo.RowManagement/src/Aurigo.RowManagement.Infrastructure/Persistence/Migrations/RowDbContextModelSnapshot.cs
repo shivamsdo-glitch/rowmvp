@@ -3935,6 +3935,112 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProgramSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ClearDateWarningDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("clear_date_warning_days");
+
+                    b.Property<int>("ClearDateWarningPercentClosed")
+                        .HasColumnType("integer")
+                        .HasColumnName("clear_date_warning_percent_closed");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("RedOverdueMinimumParcels")
+                        .HasColumnType("integer")
+                        .HasColumnName("red_overdue_minimum_parcels");
+
+                    b.Property<int>("RedOverduePercent")
+                        .HasColumnType("integer")
+                        .HasColumnName("red_overdue_percent");
+
+                    b.Property<int>("StuckDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("stuck_days");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_program_settings");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_program_settings_tenant_id");
+
+                    b.ToTable("program_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ProgramStepTeam", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("StepKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("step_key");
+
+                    b.Property<string>("Team")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("team");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_program_step_teams");
+
+                    b.HasIndex("TenantId", "StepKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_program_step_teams_tenant_id_step_key");
+
+                    b.ToTable("program_step_teams", (string)null);
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")

@@ -1,4 +1,4 @@
-import type { ParcelRow, ProgramDashboard, ProjectDashboard, ProjectRow, MyDashboard, TeamDashboard } from '@/api/dashboard'
+import type { ParcelRow, ProgramRules, ProgramSettings, ProgramDashboard, ProjectDashboard, ProjectRow, MyDashboard, TeamDashboard } from '@/api/dashboard'
 
 const today = new Date()
 const iso = (daysAgo: number) => {
@@ -51,6 +51,8 @@ export const sampleTeam = (over: Partial<TeamDashboard> = {}): TeamDashboard => 
   ...over,
 })
 
+export const DEFAULT_RULES: ProgramRules = { stuckDays: 30, clearDateWarningDays: 90, clearDateWarningPercentClosed: 75, redOverdueMinimumParcels: 3, redOverduePercent: 25 }
+
 const STEPS = [['setup', 'Parcel set up'], ['title_survey', 'Title & survey'], ['appraisal', 'Appraisal & just compensation'], ['offer', 'Offer'], ['negotiation', 'Negotiation'], ['agreement', 'Agreement'], ['closing', 'Closing']] as const
 const byStep = (counts: Record<string, number>) => STEPS.map(([stepKey, label]) => ({ stepKey, label, count: counts[stepKey] ?? 0 }))
 
@@ -62,7 +64,7 @@ export const sampleProject = (over: Partial<ProjectRow> = {}): ProjectRow => ({
 })
 
 export const sampleProgram = (over: Partial<ProgramDashboard> = {}): ProgramDashboard => ({
-  generatedAt: new Date().toISOString(), stuckDays: 30,
+  generatedAt: new Date().toISOString(), stuckDays: 30, rules: DEFAULT_RULES,
   tiles: [
     { key: 'projects', label: 'Projects', value: 2, format: 'count', tone: 'info' },
     { key: 'parcels', label: 'Active parcels', value: 7, format: 'count', tone: 'info' },
@@ -94,5 +96,14 @@ export const sampleParcels = (): ParcelRow[] => [
 
 export const sampleProjectDashboard = (over: Partial<ProjectDashboard> = {}): ProjectDashboard => {
   const program = sampleProgram()
-  return { generatedAt: new Date().toISOString(), stuckDays: 30, project: program.projects[0], stages: program.stages, teams: program.teams, parcels: sampleParcels(), ...over }
+  return { generatedAt: new Date().toISOString(), stuckDays: 30, rules: DEFAULT_RULES, project: program.projects[0], stages: program.stages, teams: program.teams, parcels: sampleParcels(), ...over }
 }
+
+const DEFAULT_TEAMS: Record<string, string> = { setup: 'Project team', title_survey: 'Title & Survey', appraisal: 'Appraisal', offer: 'Negotiation', negotiation: 'Negotiation', agreement: 'Negotiation', closing: 'Closing' }
+
+/** The Program settings an agency has before anybody changes anything. */
+export const sampleSettings = (over: Partial<ProgramSettings> = {}): ProgramSettings => ({
+  rules: DEFAULT_RULES, defaults: DEFAULT_RULES,
+  steps: STEPS.map(([stepKey, label]) => ({ stepKey, label, team: DEFAULT_TEAMS[stepKey], defaultTeam: DEFAULT_TEAMS[stepKey] })),
+  teams: ['Appraisal', 'Closing', 'Negotiation', 'Project team', 'Title & Survey'], ...over,
+})

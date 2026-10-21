@@ -1,6 +1,6 @@
 import type { PagePermission } from '@/api/auth'
-import type { MyDashboard, ProgramDashboard, ProjectDashboard, TeamDashboard } from '@/api/dashboard'
-import { emptyDashboard, sampleProgram, sampleProjectDashboard, sampleTeam } from './fake-dashboard'
+import type { MyDashboard, ProgramSettings, ProgramSettingsInput, ProgramDashboard, ProjectDashboard, TeamDashboard } from '@/api/dashboard'
+import { emptyDashboard, sampleProgram, sampleSettings, sampleProjectDashboard, sampleTeam } from './fake-dashboard'
 
 const ALL_PAGES = [
   'dashboard', 'projects', 'parcels', 'parties', 'title', 'survey', 'appraisals',
@@ -23,9 +23,10 @@ function json(body: unknown, status = 200) {
  * A fetch stand-in for the auth endpoints. Give `readable` (pages the user can read) or full `rows`.
  * A request without the expected token is a 401, like the real API.
  */
-export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean; dashboard?: MyDashboard; team?: TeamDashboard | 'forbidden'; dashboardFails?: boolean; program?: ProgramDashboard | 'forbidden' | 'fails'; project?: ProjectDashboard | 'fails' }) {
+export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean; dashboard?: MyDashboard; team?: TeamDashboard | 'forbidden'; dashboardFails?: boolean; program?: ProgramDashboard | 'forbidden' | 'fails'; project?: ProjectDashboard | 'fails'; settings?: ProgramSettings | 'fails'; onSettingsSaved?: (body: ProgramSettingsInput) => void; settingsRejects?: string }) {
   const token = opts.token ?? 'good-token'
   const role = opts.role ?? 'Admin'
+  let settings = opts.settings && opts.settings !== 'fails' ? opts.settings : sampleSettings()
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     const headers = (init?.headers ?? {}) as Record<string, string>
@@ -57,6 +58,20 @@ export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission
     if (url === '/api/v1/dashboard/team') {
       if (opts.team === 'forbidden' || !(role === 'Admin' || role === 'ProjectManager' || opts.team)) return json({ title: 'forbidden' }, 403)
       return json(opts.team ?? sampleTeam())
+    }
+    if (url === '/api/v1/dashboard/settings') {
+      if (role !== 'Admin') return json({ title: 'forbidden' }, 403)
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body ?? '{}')) as ProgramSettingsInput
+        if (opts.settingsRejects) return json({ title: 'invalid_request', detail: opts.settingsRejects }, 400)
+        opts.onSettingsSaved?.(body)
+        const { steps, ...rules } = body
+        settings = { ...settings, rules, steps: settings.steps.map((s) => ({ ...s, team: steps.find((x) => x.stepKey === s.stepKey)?.team ?? s.defaultTeam })) }
+        return json(settings)
+      }
+      if (init?.method === 'DELETE') { settings = sampleSettings(); return new Response(null, { status: 204 }) }
+      if (opts.settings === 'fails') return json({ title: 'server_error' }, 500)
+      return json(settings)
     }
     if (url === '/api/v1/dashboard/program') {
       if (opts.program === 'fails') return json({ title: 'server_error' }, 500)

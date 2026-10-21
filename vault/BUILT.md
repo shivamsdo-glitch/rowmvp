@@ -2,7 +2,7 @@
 
 **Read this first in every new chat, then `CLAUDE.md` (rules) and `SKILLS.md` (recipes).** This file says *what has been built and where*; it does not repeat the rules. It is the map. **It must be updated in the same commit as every feature change** (add a row, a route, a page key, an ADR link, the acceptance IDs, bump "Last updated"). This is enforced: the release gate's first check, `scripts/check-built.mjs`, fails if `backend/*/src` or `frontend/*/src` changed and this file did not (`--skip-built-check` only for pure bug fixes and refactors).
 
-Last updated: 2026-10-21, after the ROW Director's Program view (ADR 0024) on top of the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
+Last updated: 2026-10-21, after the Program view settings (ADR 0025), the ROW Director's Program view (ADR 0024), the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
 
 ---
 
@@ -65,6 +65,7 @@ Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product co
 | 8 | Condemnation, Property Management & Disposition, Relocation tabs | 0020 |
 | — | **Work screens** across parcels (Title & Survey, Appraisal, Negotiation & Closing) | 0021 |
 | — | **Dashboard** per person (what I did, what is waiting) + manager **Team** roll-up; in-app **Help center** behind the top-bar question mark | 0022 |
+| — | **Program view settings** (Configuration page): stuck days, health thresholds and the step-to-team mapping, with the ADR 0024 values as defaults | 0025 |
 | — | **ROW Director's Program view**: every project's health, % closed, pipeline and cost; drill-down to each parcel; time per step and per team; stuck parcels | 0024 |
 | — | Tab strip restyle (active tab = blue label + full-width blue bottom border; wraps instead of scrolling) | `components/ui/tabs.tsx` |
 
@@ -131,7 +132,7 @@ Special rules beyond the page grid: appraisal review fields (Approver/Admin only
 | Endpoints | `Api/Controllers/ParcelTabsController.cs`, `OverviewController.cs`, `ParcelsController`… | `api/parcel-tabs.ts`, `api/overview.ts` |
 | Tab components | — | `features/parcels/*Tab*.tsx`, `LifecycleTabs.tsx`, `lifecycle-kit.tsx`, `NegotiationTab.tsx` (exports the shared `Grid`) |
 | Work screens | — | `features/work/ParcelWorkPage.tsx`, `WorkPages.tsx` |
-| Program view | `Application/Dashboard/ProgramDashboard.cs`, `Application/Calculations/ProgramMetrics.cs` (`StageTimes`, `ProjectHealth`), endpoints `/api/v1/dashboard/program` and `/projects/{id}` | `features/dashboard/ProgramView.tsx`, `dashboard-kit.tsx` |
+| Program view | `Application/Dashboard/ProgramDashboard.cs`, `Application/Calculations/ProgramMetrics.cs` (`StageTimes`, `ProjectHealth`), endpoints `/api/v1/dashboard/program` and `/projects/{id}`; settings: `Application/Dashboard/ProgramSettingsRequests.cs`, `Domain/Entities/ProgramSettings.cs`, `/api/v1/dashboard/settings` | `features/dashboard/ProgramView.tsx`, `dashboard-kit.tsx`, `ProgramSettingsCard.tsx` (on `/administration`) |
 | Dashboard | `Application/Dashboard/DashboardRequests.cs`, `Application/Calculations/ActivitySummary.cs` (audit log → "done"), `Api/Controllers/DashboardController.cs` (`/api/v1/dashboard/me`, `/team`) | `features/dashboard/DashboardPage.tsx`, `api/dashboard.ts`, `test/fake-dashboard.ts` |
 | Help center | — | `features/help/help-content.ts` (all text, plain data), `HelpPage.tsx`, `routes/_app/help.tsx`; button in `components/shell/TopBar.tsx` |
 | Access defaults | `Domain/Common/PageKeys.cs`, `DefaultRolePermissions.cs` | `api/auth.ts` (`PAGE_KEYS`), `components/shell/nav.ts` |
@@ -161,7 +162,7 @@ Practical rules:
    The E2E step uses API port 5101, web port 5174 and database `row_e2e`; if another project or chat holds them, set `E2E_API_PORT`, `E2E_WEB_PORT` and `E2E_DB` (for example `E2E_WEB_PORT=5184 node scripts/verify.mjs`).
 4. A gate timeout/blank-page flake is not a pass: rerun, and fix the cause if it repeats (frontend tests have a 60 s per-test limit; the E2E `signInViaUi` helper retries a blank login page).
 5. Re-read this file before you start and again before you commit: another chat may have changed it. When merging two chats' work, merge their edits to this file too.
-6. Don't push unless asked; there is currently **no git remote configured**.
+6. Don't push unless asked. `origin` is the GitHub repository `shivamsdo-glitch/rowmvp`.
 
 ## 10. Not built / flagged (do not assume these exist)
 
@@ -170,4 +171,4 @@ Practical rules:
 - Not built from the requirements document because it gave no screenshot or detail: **Site Work** and **Form rZy9V** tabs; the **Land Planner** section of Appraisal; the **Work log** of Title Encumbrances; per-row file attachments on right-of-entry and settlement rows; Workflow / Select Actions / Save & Continue / Link Document buttons; map on Parcel Location.
 - Open document questions answered by assumption (ADR 0019, 0020): Questionnaire "Sent to owner" is a date and the hidden ownership-interest column is "Phone"; Relocation Number is typed by the user; "Relocation complete" and "Relocation complete 1" are kept as two dates; "Survey" has no tab of its own (Title & Survey covers title encumbrances and easements).
 - Relocation's own "Agents" grid still takes typed names (a different record from the parcel team); existing tenants must add agent types/people to the Library by hand (defaults seed only new tenants); tract-child parcels still record owners on the tract (ADR 0023).
-- No git remote; nothing has been pushed.
+- The git remote is `origin` (GitHub `rowmvp`); work is pushed to `master` when asked.

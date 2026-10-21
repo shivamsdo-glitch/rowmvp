@@ -39,6 +39,8 @@ public interface IRowDbContext
     DbSet<WorkflowStep> WorkflowSteps { get; }
     DbSet<DeadlineRule> DeadlineRules { get; }
     DbSet<StepGateSettings> StepGateSettings { get; }
+    DbSet<ProgramSettings> ProgramSettings { get; }
+    DbSet<ProgramStepTeam> ProgramStepTeams { get; }
     DbSet<Party> Parties { get; }
     DbSet<LibraryField> LibraryFields { get; }
     DbSet<LibraryValue> LibraryValues { get; }
