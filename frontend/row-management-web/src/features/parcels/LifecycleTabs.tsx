@@ -14,6 +14,7 @@ import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
 import { Grid } from './NegotiationTab'
+import { useTeamNames } from './team-kit'
 import { agent, bodyFrom, blankState, checkState, date, Fact, flag, list, money, SpecFields, stateFrom, StatusNotesGrid, text, type FieldSpec, type FormState } from './lifecycle-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -358,13 +359,14 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   const listQ = useQuery({ queryKey: key, queryFn: () => api.list(parcelId), enabled: manager.can('parcelrelocation') })
   const agentList = useQuery({ queryKey: ['library', 'agents'], queryFn: () => libraryApi(manager.api).agents(), retry: false })
   const agents = useAgentNames()
+  const teamNames = useTeamNames(parcelId)
   const statuses = useLibraryValues('displacee_status')
   const interests = useLibraryValues('displacee_interest')
   const types = useLibraryValues('relocation_type')
   const eligTypes = useLibraryValues('eligibility_type')
   const modes = useLibraryValues('mode_of_contact')
   const HEAD: FieldSpec[] = [
-    text('relocationNumber', 'Relocation number', 100, true), agent('assignedTo', 'Assigned to'), text('displaceeName', 'Displacee name', 200, true), flag('limitedEnglishProficiency', 'Limited English proficiency'),
+    text('relocationNumber', 'Relocation number', 100, true), list('assignedTo', 'Assigned to', teamNames), text('displaceeName', 'Displacee name', 200, true), flag('limitedEnglishProficiency', 'Limited English proficiency'),
     list('displaceeStatus', 'Displacee status', statuses), list('displaceeInterest', 'Displacee interest', interests), text('displaceeMailingAddress', 'Displacee mailing address', 1000),
     list('relocationType', 'Relocation type', types, true), text('propertySiteAddress', 'Property site address', 1000),
   ]

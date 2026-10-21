@@ -44,7 +44,7 @@ describe('Right of entry on a parcel (ROW-077)', () => {
 
   it('lists rights of entry and shows a granted one past its end date as expired', async () => {
     const { user } = open('/parcels/pc1', 'ProjectManager', { roes: seed })
-    await tab(user, 'Right of entry')
+    await tab(user, 'Negotiation')
 
     const table = await screen.findByRole('table', { name: 'Rights of entry' })
     const rows = within(table).getAllByRole('row').slice(1)
@@ -54,8 +54,8 @@ describe('Right of entry on a parcel (ROW-077)', () => {
   })
 
   it('refuses a granted right without the date it was given, then records it', async () => {
-    const { user, fake } = open('/parcels/pc1')
-    await tab(user, 'Right of entry')
+    const { user, fake } = open('/parcels/pc1', 'Negotiator')
+    await tab(user, 'Negotiation')
     const form = await screen.findByRole('form', { name: 'Record a right of entry' })
 
     await user.selectOptions(within(form).getByLabelText(/^Status/), 'Granted')
@@ -64,6 +64,12 @@ describe('Right of entry on a parcel (ROW-077)', () => {
     expect(fake.roes).toHaveLength(0)
 
     await user.type(within(form).getByLabelText(/^Permission given on/), '2026-10-01')
+    await user.type(within(form).getByLabelText(/^Letter mailed on/), '2026-09-20')
+    await user.type(within(form).getByLabelText(/^Letter delivered on/), '2026-09-10')
+    await user.click(within(form).getByRole('button', { name: 'Record' }))
+    expect(await within(form).findByText('A letter cannot be delivered before it is mailed.')).toBeInTheDocument()
+    await user.clear(within(form).getByLabelText(/^Letter delivered on/))
+    await user.type(within(form).getByLabelText(/^Letter delivered on/), '2026-09-22')
     await user.type(within(form).getByLabelText(/^Permission ends on/), '2026-09-01')
     await user.click(within(form).getByRole('button', { name: 'Record' }))
     expect(await within(form).findByText('Permission cannot end before it was given.')).toBeInTheDocument()
@@ -73,12 +79,12 @@ describe('Right of entry on a parcel (ROW-077)', () => {
     await user.type(within(form).getByLabelText(/^Given by/), '  Alex Marlowe ')
     await user.click(within(form).getByRole('button', { name: 'Record' }))
     expect(await screen.findByRole('row', { name: /Alex Marlowe/ })).toBeInTheDocument()
-    expect(fake.roes[0]).toMatchObject({ status: 'Granted', grantedOn: '2026-10-01', expiresOn: '2026-12-31', grantedBy: 'Alex Marlowe' })
+    expect(fake.roes[0]).toMatchObject({ status: 'Granted', grantedOn: '2026-10-01', expiresOn: '2026-12-31', grantedBy: 'Alex Marlowe', letterMailedDate: '2026-09-20', letterDeliveredDate: '2026-09-22' })
   })
 
   it('shows the server’s refusal beside the field', async () => {
-    const { user } = open('/parcels/pc1')
-    await tab(user, 'Right of entry')
+    const { user } = open('/parcels/pc1', 'Negotiator')
+    await tab(user, 'Negotiation')
     const form = await screen.findByRole('form', { name: 'Record a right of entry' })
 
     await user.type(within(form).getByLabelText(/^Requested on/), '2026-11-30')
@@ -87,8 +93,8 @@ describe('Right of entry on a parcel (ROW-077)', () => {
   })
 
   it('changes and removes a right of entry', async () => {
-    const { user, fake } = open('/parcels/pc1', 'ProjectManager', { roes: seed })
-    await tab(user, 'Right of entry')
+    const { user, fake } = open('/parcels/pc1', 'Negotiator', { roes: seed })
+    await tab(user, 'Negotiation')
     await user.click((await screen.findAllByRole('button', { name: /^Edit the granted right of entry/ }))[0])
     const form = screen.getByRole('form', { name: 'Change right of entry' })
 
@@ -101,7 +107,7 @@ describe('Right of entry on a parcel (ROW-077)', () => {
 
   it('keeps a split parcel’s rights for reading with no form', async () => {
     const { user } = open('/parcels/pc-gone', 'ProjectManager', { roes: [{ parcelId: 'pc-gone', status: 'Requested' }] })
-    await tab(user, 'Right of entry')
+    await tab(user, 'Negotiation')
     expect(await screen.findByRole('table', { name: 'Rights of entry' })).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'Record a right of entry' })).not.toBeInTheDocument()
   })
@@ -113,21 +119,21 @@ describe('Right of entry on a parcel (ROW-077)', () => {
       fail && String(input).endsWith('/rights-of-entry') ? Promise.resolve(new Response(JSON.stringify({ title: 'server_error', detail: 'Boom.' }), { status: 500, headers: { 'Content-Type': 'application/json' } })) : fake.fetch(input, init)) as typeof fetch
     const user = userEventModule.setup()
     renderApp({ path: '/parcels/pc1', fetchImpl, signedIn: true })
-    await tab(user, 'Right of entry')
+    await tab(user, 'Negotiation')
     expect(await screen.findByText('Rights of entry could not be loaded')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('No rights of entry')).toBeInTheDocument()
   })
 
-  it.each(ROLES)('%s sees the tab and a form only when the Parcels page allows it', async (role) => {
-    if (!can(role, 'parcels', 'read')) return
+  it.each(ROLES)('%s sees the right of entry form on the Negotiation tab only when that page allows it', async (role) => {
+    if (!can(role, 'parcels', 'read') || !can(role, 'parcelnegotiation', 'read')) return
     const { user } = open('/parcels/pc1', role, { roes: seed })
-    await tab(user, 'Right of entry')
+    await tab(user, 'Negotiation')
     expect(await screen.findByRole('table', { name: 'Rights of entry' })).toBeInTheDocument()
-    expect(!!screen.queryByRole('form', { name: 'Record a right of entry' })).toBe(can(role, 'parcels', 'create'))
-    expect(screen.queryAllByRole('button', { name: /^Edit the/ }).length > 0).toBe(can(role, 'parcels', 'update'))
-    expect(screen.queryAllByRole('button', { name: /^Remove the/ }).length > 0).toBe(can(role, 'parcels', 'delete'))
+    expect(!!screen.queryByRole('form', { name: 'Record a right of entry' })).toBe(can(role, 'parcelnegotiation', 'create'))
+    expect(screen.queryAllByRole('button', { name: /^Edit the/ }).length > 0).toBe(can(role, 'parcelnegotiation', 'update'))
+    expect(screen.queryAllByRole('button', { name: /^Remove the/ }).length > 0).toBe(can(role, 'parcelnegotiation', 'delete'))
   })
 })
 

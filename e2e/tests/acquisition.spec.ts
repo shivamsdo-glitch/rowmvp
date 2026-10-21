@@ -48,12 +48,12 @@ async function otherPerson(browser: Browser, page: Page, role: string) {
   return { context, other }
 }
 
-test.describe('Project Manager · right of entry', () => {
-  test('AT-PM-30 records, changes and removes a right of entry; an ended one reads Expired; the report lists it', async ({ page, request }) => {
+test.describe('Negotiator · right of entry', () => {
+  test('AT-PM-30 records, changes and removes a right of entry (in the Negotiation tab, ADR 0023); an ended one reads Expired; the report lists it', async ({ page, request }) => {
     const a = await as(request, 'Admin')
     const parcel = await makeParcel(request, a)
-    await signInViaUi(page, 'ProjectManager')
-    await openTab(page, parcel.id, 'Right of entry')
+    await signInViaUi(page, 'Negotiator')
+    await openTab(page, parcel.id, 'Negotiation')
 
     await expect(page.getByText('No rights of entry')).toBeVisible()
     const form = page.getByRole('form', { name: 'Record a right of entry' })
@@ -130,12 +130,17 @@ test.describe('Everyone · rights of entry report', () => {
       }
 
       // The parcel's tab.
-      if (canRead(role, 'parcels')) {
-        await openTab(page, parcel.id, 'Right of entry')
+      await page.goto(`/parcels/${parcel.id}`)
+      await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
+      await expect(page.getByRole('tab', { name: 'Right of entry' }), `${role}: right of entry has no tab of its own`).toHaveCount(0)
+      if (canRead(role, 'parcelnegotiation')) {
+        await page.getByRole('tab', { name: 'Negotiation' }).click()
         await expect(page.getByRole('table', { name: 'Rights of entry' }).getByRole('row', { name: /Seed Owner/ })).toBeVisible()
-        await expect(page.getByRole('form', { name: 'Record a right of entry' })).toHaveCount(allowed(role, 'parcels', 'create') ? 1 : 0)
-        await expect(page.getByRole('button', { name: /^Edit the/ })).toHaveCount(allowed(role, 'parcels', 'update') ? 2 : 0)
-        await expect(page.getByRole('button', { name: /^Remove the/ })).toHaveCount(allowed(role, 'parcels', 'delete') ? 2 : 0)
+        await expect(page.getByRole('form', { name: 'Record a right of entry' })).toHaveCount(allowed(role, 'parcelnegotiation', 'create') ? 1 : 0)
+        await expect(page.getByRole('button', { name: /^Edit the/ })).toHaveCount(allowed(role, 'parcelnegotiation', 'update') ? 2 : 0)
+        await expect(page.getByRole('button', { name: /^Remove the/ })).toHaveCount(allowed(role, 'parcelnegotiation', 'delete') ? 2 : 0)
+      } else {
+        await expect(page.getByRole('tab', { name: 'Negotiation' })).toHaveCount(0)
       }
 
       // The server agrees.
@@ -143,9 +148,9 @@ test.describe('Everyone · rights of entry report', () => {
       const ok = (page: string, action: 'read' | 'create' | 'update' | 'delete', yes: number) => (allowed(role, page, action) ? yes : 403)
       expect(await code(request.get('/api/v1/rights-of-entry', { headers: mine }))).toBe(ok('parcels', 'read', 200))
       expect(await code(request.get(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: mine }))).toBe(ok('parcels', 'read', 200))
-      expect(await code(request.post(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: mine, data: { status: 'Requested', requestedOn: today(-1), purpose: `By ${role}` } }))).toBe(ok('parcels', 'create', 201))
-      expect(await code(request.put(`/api/v1/parcels/${parcel.id}/rights-of-entry/${granted.id}`, { headers: mine, data: { status: 'Granted', grantedOn: today(-5), expiresOn: today(10), grantedBy: `Edited by ${role}` } }))).toBe(ok('parcels', 'update', 200))
-      expect(await code(request.delete(`/api/v1/parcels/${parcel.id}/rights-of-entry/${granted.id}`, { headers: mine }))).toBe(ok('parcels', 'delete', 204))
+      expect(await code(request.post(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: mine, data: { status: 'Requested', requestedOn: today(-1), purpose: `By ${role}` } }))).toBe(ok('parcelnegotiation', 'create', 201))
+      expect(await code(request.put(`/api/v1/parcels/${parcel.id}/rights-of-entry/${granted.id}`, { headers: mine, data: { status: 'Granted', grantedOn: today(-5), expiresOn: today(10), grantedBy: `Edited by ${role}` } }))).toBe(ok('parcelnegotiation', 'update', 200))
+      expect(await code(request.delete(`/api/v1/parcels/${parcel.id}/rights-of-entry/${granted.id}`, { headers: mine }))).toBe(ok('parcelnegotiation', 'delete', 204))
       const anon = { Authorization: '' }
       expect(await code(request.get('/api/v1/rights-of-entry', { headers: anon }))).toBe(401)
     })
@@ -395,7 +400,7 @@ test.describe('Other roles · acquisition records', () => {
     await expect(page.getByRole('form', { name: 'Enter a request' })).toHaveCount(0)
   })
 
-  test('AT-NG-26 the negotiator reads rights of entry, reviews, reports and requests but changes none of them', async ({ page, request }) => {
+  test('AT-NG-26 the negotiator records rights of entry in the Negotiation tab and reads reviews, reports and requests but changes none of them', async ({ page, request }) => {
     const a = await as(request, 'Admin')
     const parcel = await makeParcel(request, a)
     const lot = unique('Negotiator lot')
@@ -403,9 +408,9 @@ test.describe('Other roles · acquisition records', () => {
     await request.post('/api/v1/acquisition-requests', { headers: a, data: { requesterType: 'External', requesterName: 'Port', property: lot } })
 
     await signInViaUi(page, 'Negotiator')
-    await openTab(page, parcel.id, 'Right of entry')
+    await openTab(page, parcel.id, 'Negotiation')
     await expect(page.getByRole('table', { name: 'Rights of entry' })).toBeVisible()
-    await expect(page.getByRole('form', { name: 'Record a right of entry' })).toHaveCount(0)
+    await expect(page.getByRole('form', { name: 'Record a right of entry' })).toHaveCount(1)
     await page.getByRole('tab', { name: 'Reviews & reports' }).click()
     await expect(page.getByRole('status', { name: 'Plan review gate' })).toBeVisible()
     await expect(page.getByRole('form', { name: 'Record a plan review' })).toHaveCount(0)
@@ -421,7 +426,7 @@ test.describe('Other roles · acquisition records', () => {
     expect((await request.post('/api/v1/acquisition-requests', { headers: ng, data: { requesterType: 'Internal', requesterName: 'x', property: 'y' } })).status()).toBe(403)
   })
 
-  test('AT-TE-25 the title examiner reads rights of entry but cannot open the requests page or any request', async ({ page, request }) => {
+  test('AT-TE-25 the title examiner reads rights of entry in the Negotiation tab without a form, cannot write one, and cannot open the requests page or any request', async ({ page, request }) => {
     const a = await as(request, 'Admin')
     const parcel = await makeParcel(request, a)
     await request.post(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: a, data: { status: 'Requested', requestedOn: today(-1), grantedBy: 'Seed' } })
@@ -430,11 +435,13 @@ test.describe('Other roles · acquisition records', () => {
     await expect(page.getByRole('complementary', { name: 'Primary' }).getByRole('link', { name: 'Requests' })).toHaveCount(0)
     await page.goto('/requests')
     await expect(page).toHaveURL(/\/forbidden/)
-    await openTab(page, parcel.id, 'Right of entry')
+    await openTab(page, parcel.id, 'Negotiation')
     await expect(page.getByRole('table', { name: 'Rights of entry' })).toBeVisible()
     await expect(page.getByRole('form', { name: 'Record a right of entry' })).toHaveCount(0)
 
     const te = { Authorization: `Bearer ${await sessionToken(page)}` }
+    expect((await request.get(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: te })).status()).toBe(200)
+    expect((await request.post(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers: te, data: { status: 'Requested', requestedOn: today(-1) } })).status()).toBe(403)
     expect((await request.get('/api/v1/acquisition-requests', { headers: te })).status()).toBe(403)
     expect((await request.post('/api/v1/acquisition-requests', { headers: te, data: { requesterType: 'Internal', requesterName: 'x', property: 'y' } })).status()).toBe(403)
   })

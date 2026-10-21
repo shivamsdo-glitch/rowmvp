@@ -1,5 +1,6 @@
 import type { DiaryEntry, ParcelNote, TeamMember } from '@/api/parcel-records'
 import { fakePeopleApi, type FakePeople, type FakePeopleOptions } from './fake-people'
+import { FAKE_LIBRARY_AGENTS } from './fake-parcels'
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -22,8 +23,6 @@ export interface FakeRecords extends FakePeople {
   notes: ParcelNote[]
 }
 
-const ROLE_ORDER = ['ProjectLead', 'AppraisalCoordinator', 'Appraiser', 'Reviewer', 'Negotiator', 'Counsel', 'RelocationAgent', 'Fhwa', 'Other']
-
 /** An in-memory stand-in for a parcel's team, diary and notes, with the server's rules and permission pages. */
 export function fakeRecordsApi(opts: FakeRecordsOptions): FakeRecords {
   const base = fakePeopleApi(opts)
@@ -36,7 +35,7 @@ export function fakeRecordsApi(opts: FakeRecordsOptions): FakeRecords {
   const key = (s: string) => s.trim().split(/\s+/).join(' ').toUpperCase()
 
   const team: TeamMember[] = (opts.team ?? []).map((m) => ({
-    id: id('tm'), role: 'Other', organization: null, isConsultant: false, email: null, phone: null, notes: null, updatedAt: '2026-01-01T00:00:00Z', ...m,
+    id: id('tm'), role: 'Other', agentId: null, organization: null, email: null, phone: null, notes: null, updatedAt: '2026-01-01T00:00:00Z', ...m,
   }))
   const diary: DiaryEntry[] = (opts.diary ?? []).map((d) => ({
     id: id('de'), occurredOn: today, method: 'Call', direction: 'Outgoing', contactName: 'Someone', partyId: null, summary: 'Spoke.', outcome: null,
@@ -64,7 +63,7 @@ export function fakeRecordsApi(opts: FakeRecordsOptions): FakeRecords {
     if (part === 'team') {
       if (method === 'GET') {
         if (opts.teamFails) return problem(500, 'server_error', 'Boom.')
-        return json(team.filter((t) => t.parcelId === parcelId).sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.name.localeCompare(b.name)))
+        return json(team.filter((t) => t.parcelId === parcelId).sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name)))
       }
       if (method === 'DELETE') {
         const i = team.findIndex((t) => t.id === rid && t.parcelId === parcelId)
@@ -72,13 +71,13 @@ export function fakeRecordsApi(opts: FakeRecordsOptions): FakeRecords {
         team.splice(i, 1)
         return new Response(null, { status: 204 })
       }
-      const errors: Record<string, string[]> = {}
-      if (!String(body?.name ?? '').trim()) errors.Name = ['Name is required.']
-      if (body?.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) errors.Email = ['Enter a valid email address.']
-      if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
-      const exists = team.some((t) => t.parcelId === parcelId && t.role === body.role && key(t.name) === key(body.name) && t.id !== rid)
-      if (exists) return problem(409, 'team_member_exists', `${body.name.trim()} is already the ${String(body.role).toLowerCase()} on this parcel.`)
-      const fields = { role: body.role, name: body.name.trim().split(/\s+/).join(' '), organization: body.organization ?? null, isConsultant: !!body.isConsultant, email: body.email ?? null, phone: body.phone ?? null, notes: body.notes ?? null }
+      const agent = FAKE_LIBRARY_AGENTS.find((x) => x.id === body?.agentId)
+      if (!body?.agentId) return problem(400, 'validation_failed', 'Validation failed.', { AgentId: ['Choose a person from the Library.'] })
+      if (!agent) return problem(404, 'not_found', 'Library agent was not found.')
+      if (!agent.isActive) return problem(400, 'agent_inactive', `${agent.name} is switched off in the Library. Choose someone else or switch them back on.`)
+      const exists = team.some((t) => t.parcelId === parcelId && t.role === agent.agentType && key(t.name) === key(agent.name) && t.id !== rid)
+      if (exists) return problem(409, 'team_member_exists', `${agent.name} is already on this parcel as ${agent.agentType.toLowerCase()}.`)
+      const fields = { role: agent.agentType, agentId: agent.id, name: agent.name, organization: agent.company, email: agent.email, phone: agent.phone, notes: body.notes ?? null }
       if (method === 'PUT') {
         const t = team.find((x) => x.id === rid && x.parcelId === parcelId)
         if (!t) return problem(404, 'not_found', 'Team member was not found.')

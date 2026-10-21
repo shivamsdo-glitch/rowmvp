@@ -8,6 +8,7 @@ import { canRead, devToken, level, newId, ROLES, sessionToken, signInViaUi } fro
  */
 
 const canCreate = (role: string) => ['S', 'P'].includes(level(role, 'parties') ?? '')
+const canUpdate = (role: string) => ['U', 'S', 'P'].includes(level(role, 'parties') ?? '')
 const canDelete = (role: string) => level(role, 'parties') === 'P'
 const unique = (label: string) => `${label} ${newId().slice(0, 8)}`
 const TIN = '123-45-6789'
@@ -90,7 +91,7 @@ async function openTractPanel(page: Page, project: Made, tract = 'T-1') {
 
 async function openParcelParties(page: Page, parcelId: string) {
   await page.goto(`/parcels/${parcelId}`)
-  await page.getByRole('tab', { name: 'Parties' }).click()
+  await page.getByRole('tab', { name: 'Ownership interests' }).click()
   await expect(section(page, 'Contacts')).toBeVisible()
 }
 
@@ -192,7 +193,7 @@ test.describe('Project Manager · parties', () => {
     await edit.getByRole('button', { name: 'Save changes' }).click()
     await expect(edit.getByText('A share must be more than 0 and at most 100 percent.')).toBeVisible()
     await edit.getByLabel('Share (%)').fill('75.5')
-    await edit.getByLabel('Notes').fill('Corrected from the deed')
+    await edit.getByLabel('Role notes').fill('Corrected from the deed')
     await edit.getByRole('button', { name: 'Save changes' }).click()
     const row = section(page, 'Owners and interests').getByRole('row', { name: new RegExp(`^${owner.name} Fee owner`) })
     await expect(row).toContainText('75.5%')
@@ -338,7 +339,7 @@ test.describe('Negotiator · parties', () => {
     await create.getByRole('button', { name: 'Create party' }).click()
     await expect(create.getByText('Enter a valid email address.')).toBeVisible()
     await create.getByLabel(/^Email/).fill('nora@example.com')
-    await create.getByLabel(/^State/).fill('wa')
+    await create.getByLabel(/^State/).first().fill('wa')
     await create.getByRole('button', { name: 'Create party' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toContainText(name)
     await expect(page.getByText('WA', { exact: true })).toBeVisible()
@@ -406,7 +407,7 @@ test.describe('Negotiator · parties', () => {
 })
 
 // ───────────────────────────────── Read-only roles ─────────────────────────────────
-for (const [id, role] of [['AT-TE-15', 'TitleResearcher'], ['AT-AP-15', 'Appraiser'], ['AT-FN-15', 'Finance']] as const) {
+for (const [id, role] of [['AT-AP-15', 'Appraiser'], ['AT-FN-15', 'Finance']] as const) {
   test.describe(`${role} · parties (read only)`, () => {
     test(`${id} reads who owns a parcel and whether a tax ID is on file, and can change nothing`, async ({ page, request }) => {
       expect(canCreate(role)).toBe(false)
@@ -534,7 +535,7 @@ test.describe('Everyone · parties', () => {
         await expect(page.getByRole('button', { name: 'New party' })).toHaveCount(canCreate(role) ? 1 : 0)
         await page.goto(`/parties/${party.id}`)
         await expect(page.getByRole('heading', { level: 1 })).toContainText(party.name)
-        await expect(page.getByRole('form', { name: 'Tax information' })).toHaveCount(canCreate(role) ? 1 : 0)
+        await expect(page.getByRole('form', { name: 'Tax information' })).toHaveCount(canUpdate(role) ? 1 : 0)
         await expect(page.getByRole('region', { name: 'Delete this party' })).toHaveCount(canDelete(role) ? 1 : 0)
         await openParcelParties(page, parcel.id)
         await expect(page.getByRole('button', { name: 'Add a person or organization' })).toHaveCount(canCreate(role) ? 1 : 0)
@@ -548,8 +549,8 @@ test.describe('Everyone · parties', () => {
       expect(await status(request.get(`/api/v1/parties/${party.id}`, { headers: mine }))).toBe(canRead(role, 'parties') ? 200 : 403)
       expect(await status(request.get(`/api/v1/parcels/${parcel.id}/parties`, { headers: mine }))).toBe(canRead(role, 'parties') ? 200 : 403)
       expect(await status(request.post('/api/v1/parties', { headers: mine, data: partyBody(unique(`By ${role}`)) }))).toBe(canCreate(role) ? 201 : 403)
-      expect(await status(request.put(`/api/v1/parties/${party.id}`, { headers: mine, data: partyBody(party.name) }))).toBe(canCreate(role) ? 200 : 403)
-      expect(await status(request.put(`/api/v1/party-links/${link.id}`, { headers: mine, data: { sharePercent: 10, leaseOnFile: false } }))).toBe(canCreate(role) ? 200 : 403)
+      expect(await status(request.put(`/api/v1/parties/${party.id}`, { headers: mine, data: partyBody(party.name) }))).toBe(canUpdate(role) ? 200 : 403)
+      expect(await status(request.put(`/api/v1/party-links/${link.id}`, { headers: mine, data: { sharePercent: 10, leaseOnFile: false } }))).toBe(canUpdate(role) ? 200 : 403)
       const throwaway = await makeParty(request, admin)
       expect(await status(request.delete(`/api/v1/parties/${throwaway.id}`, { headers: mine }))).toBe(canDelete(role) ? 204 : 403)
 

@@ -1,20 +1,6 @@
 import type { ApiClient } from './client'
 
-// A parcel's team, negotiation diary and notes (ROW-019, 020, 021).
-
-export const TEAM_ROLES = ['ProjectLead', 'AppraisalCoordinator', 'Appraiser', 'Reviewer', 'Negotiator', 'Counsel', 'RelocationAgent', 'Fhwa', 'Other'] as const
-export type TeamRole = (typeof TEAM_ROLES)[number]
-export const TEAM_ROLE_LABEL: Record<TeamRole, string> = {
-  ProjectLead: 'Project lead',
-  AppraisalCoordinator: 'Appraisal coordinator',
-  Appraiser: 'Appraiser',
-  Reviewer: 'Reviewer',
-  Negotiator: 'Negotiator',
-  Counsel: 'Counsel',
-  RelocationAgent: 'Relocation agent',
-  Fhwa: 'FHWA representative',
-  Other: 'Other',
-}
+// A parcel's team, negotiation diary and notes (ROW-019, 020, 021). The team is picked from the Library (ADR 0023).
 
 export const DIARY_METHODS = ['Call', 'Meeting', 'Mailing', 'Email', 'ContactAttempt', 'Other'] as const
 export type DiaryMethod = (typeof DIARY_METHODS)[number]
@@ -23,13 +9,15 @@ export const DIARY_METHOD_LABEL: Record<DiaryMethod, string> = {
 }
 export type DiaryDirection = 'Outgoing' | 'Incoming'
 
+/** A person on the parcel's team: picked from the Library's Agents list, so the role is the agent's type and the contact details are the Library's. */
 export interface TeamMember {
   id: string
   parcelId: string
-  role: TeamRole
+  /** The agent type (a value of the Library's Agent type list). */
+  role: string
+  agentId: string | null
   name: string
   organization: string | null
-  isConsultant: boolean
   email: string | null
   phone: string | null
   notes: string | null
@@ -37,12 +25,7 @@ export interface TeamMember {
 }
 
 export interface TeamMemberInput {
-  role: TeamRole
-  name: string
-  organization: string | null
-  isConsultant: boolean
-  email: string | null
-  phone: string | null
+  agentId: string
   notes: string | null
 }
 

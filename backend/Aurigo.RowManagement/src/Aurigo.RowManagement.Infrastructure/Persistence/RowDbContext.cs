@@ -79,9 +79,8 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<ParcelContactLogEntry> ParcelContactLogEntries => Set<ParcelContactLogEntry>();
     public DbSet<ParcelContactLogLink> ParcelContactLogLinks => Set<ParcelContactLogLink>();
     public DbSet<ParcelEasement> ParcelEasements => Set<ParcelEasement>();
-    public DbSet<ParcelOwnership> ParcelOwnerships => Set<ParcelOwnership>();
-    public DbSet<ParcelOwnershipAddress> ParcelOwnershipAddresses => Set<ParcelOwnershipAddress>();
-    public DbSet<ParcelOwnershipContact> ParcelOwnershipContacts => Set<ParcelOwnershipContact>();
+    public DbSet<PartyAddress> PartyAddresses => Set<PartyAddress>();
+    public DbSet<PartyContact> PartyContacts => Set<PartyContact>();
     public DbSet<ParcelEncumbrance> ParcelEncumbrances => Set<ParcelEncumbrance>();
     public DbSet<ParcelEncumbranceLink> ParcelEncumbranceLinks => Set<ParcelEncumbranceLink>();
     public DbSet<ParcelTitleClosing> ParcelTitleClosings => Set<ParcelTitleClosing>();
@@ -91,8 +90,6 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<ParcelAppraisalAmount> ParcelAppraisalAmounts => Set<ParcelAppraisalAmount>();
     public DbSet<ParcelNegotiation> ParcelNegotiations => Set<ParcelNegotiation>();
     public DbSet<NegotiationNote> NegotiationNotes => Set<NegotiationNote>();
-    public DbSet<NegotiationAgent> NegotiationAgents => Set<NegotiationAgent>();
-    public DbSet<NegotiationRightOfEntry> NegotiationRightsOfEntry => Set<NegotiationRightOfEntry>();
     public DbSet<NegotiationOffer> NegotiationOffers => Set<NegotiationOffer>();
     public DbSet<NegotiationSettlement> NegotiationSettlements => Set<NegotiationSettlement>();
     public DbSet<ParcelQuestionnaire> ParcelQuestionnaires => Set<ParcelQuestionnaire>();

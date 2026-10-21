@@ -12,6 +12,7 @@ import { fakeAcquisitionApi } from '@/test/fake-acquisition'
 import { fakeRecordsApi } from '@/test/fake-records'
 import { fakeProjectsApi } from '@/test/fake-projects'
 import { renderApp } from '@/test/render-app'
+import { sampleDashboard, sampleTeam } from '@/test/fake-dashboard'
 
 beforeEach(() => sessionStorage.clear())
 
@@ -289,7 +290,7 @@ describe('accessibility of the parties screens (ROW-014..018)', () => {
   it('the parcel parties tab has no violations, including the add and edit forms', async () => {
     const user = userEventModule.setup()
     openParties('/parcels/pc2')
-    await user.click(await screen.findByRole('tab', { name: 'Parties' }))
+    await user.click(await screen.findByRole('tab', { name: 'Ownership interests' }))
     await screen.findByRole('region', { name: 'Tenants and occupants' })
     await settle()
     expect(await violations(), 'tab').toEqual([])
@@ -392,7 +393,7 @@ describe('accessibility of rights of entry, reviews, reports, requests and the p
     const user = userEventModule.setup()
     renderApp({ path: '/parcels/pc1', fetchImpl: fake().fetch, signedIn: true })
 
-    await user.click(await screen.findByRole('tab', { name: 'Right of entry' }))
+    await user.click(await screen.findByRole('tab', { name: 'Negotiation' }))
     await screen.findByRole('table', { name: 'Rights of entry' })
     await settle()
     expect(await violations(), 'right of entry').toEqual([])
@@ -439,5 +440,30 @@ describe('accessibility of rights of entry, reviews, reports, requests and the p
     await screen.findByRole('checkbox', { name: 'Require engineer and surveyor plan reviews' })
     await settle()
     expect(await violations(), 'administration').toEqual([])
+  })
+})
+
+describe('accessibility of the dashboard and the help center (AT-X-13, AT-X-58, AT-X-59, AT-X-60)', () => {
+  it('my dashboard with work waiting and work done has no violations', async () => {
+    renderApp({ path: '/', fetchImpl: fakeAuthFetch({ rows: permissionRowsFor('Negotiator'), role: 'Negotiator', dashboard: sampleDashboard() }) as typeof fetch, signedIn: true })
+    await screen.findByRole('list', { name: 'Work waiting for you' })
+
+    expect(await violations()).toEqual([])
+  })
+
+  it('the manager team view has no violations', async () => {
+    const user = userEventModule.setup()
+    renderApp({ path: '/', fetchImpl: fakeAuthFetch({ rows: permissionRowsFor('ProjectManager'), role: 'ProjectManager', dashboard: sampleDashboard({ isManager: true }), team: sampleTeam() }) as typeof fetch, signedIn: true })
+    await user.click(await screen.findByRole('tab', { name: 'Team' }))
+    await screen.findByRole('table', { name: 'Team members' })
+
+    expect(await violations()).toEqual([])
+  })
+
+  it.each([['/help'], ['/help?topic=key-concepts'], ['/help?topic=my-access'], ['/help?topic=quick-start']])('the help center at %s has no violations', async (path) => {
+    renderApp({ path, fetchImpl: fakeAuthFetch({ rows: permissionRowsFor('Appraiser'), role: 'Appraiser' }) as typeof fetch, signedIn: true })
+    await screen.findByRole('navigation', { name: 'Help contents' })
+
+    expect(await violations()).toEqual([])
   })
 })

@@ -23,55 +23,64 @@ async function makeParcel(request: APIRequestContext, headers: Headers) {
   return (await res.json()) as { id: string; number: string }
 }
 
+/** A person in the Library's Agents list: the only way onto a parcel's team (ADR 0023). Names are made unique so runs never collide. */
+async function makeAgent(request: APIRequestContext, name: string, agentType = 'Negotiator', company: string | null = 'Okafor Land Services') {
+  const unique_ = `${name} ${newId().slice(0, 6)}`
+  const res = await request.post('/api/v1/library/agents', { headers: await admin(request), data: { name: unique_, agentType, company, phone: '555-123-4567', email: 'riley@example.com' } })
+  expect(res.status(), await res.text()).toBe(201)
+  return { ...(await res.json()), name: unique_ } as { id: string; name: string }
+}
+
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
   await page.getByRole('tab', { name: tab }).click()
 }
 
 test.describe('Project Manager · team and notes', () => {
-  test('AT-PM-28 assigns, changes and removes the people on a parcel', async ({ page, request }) => {
+  test('AT-PM-28 assigns, changes and removes the people on a parcel, picking them from the Library', async ({ page, request }) => {
     const parcel = await makeParcel(request, await admin(request))
+    const riley = await makeAgent(request, 'Riley Okafor', 'Negotiator')
+    const sam = await makeAgent(request, 'Sam Counsel', 'Counsel')
     await signInViaUi(page, 'ProjectManager')
     await openTab(page, parcel.id, 'Team')
-    const person = unique('Riley Okafor')
 
     const form = page.getByRole('form', { name: 'Assign a team member' })
+    // Nothing is typed: a type, then a person of that type from the Library.
+    await expect(form.getByLabel(/^Name/)).toHaveCount(0)
     await form.getByRole('button', { name: 'Assign' }).click()
-    await expect(form.getByText('Name is required.')).toBeVisible()
-    await form.getByLabel(/^Role/).selectOption({ label: 'Negotiator' })
-    await form.getByLabel(/^Name/).fill(person)
-    await form.getByLabel('Organization').fill('Okafor Land Services')
-    await form.getByLabel(/^Consultant/).check()
-    await form.getByLabel('Email').fill('nope')
+    await expect(form.getByText('Choose the type of person.')).toBeVisible()
+    await form.getByLabel(/^Type/).selectOption('Negotiator')
     await form.getByRole('button', { name: 'Assign' }).click()
-    await expect(form.getByText('Enter a valid email address.')).toBeVisible()
-    await form.getByLabel('Email').fill('riley@example.com')
+    await expect(form.getByText('Choose a person from the Library.')).toBeVisible()
+    await form.getByLabel(/^Person/).selectOption(riley.id)
+    await expect(form).toContainText('Okafor Land Services')
     await form.getByRole('button', { name: 'Assign' }).click()
 
     const table = page.getByRole('table', { name: 'Parcel team' })
-    await expect(table.getByRole('row', { name: new RegExp(person) })).toContainText('Consultant')
-    await expect(table.getByRole('row', { name: new RegExp(person) })).toContainText('Okafor Land Services')
+    await expect(table.getByRole('row', { name: new RegExp(riley.name) })).toContainText('Okafor Land Services')
+    await expect(table.getByRole('row', { name: new RegExp(riley.name) })).toContainText('riley@example.com')
 
-    // The same person in the same role twice is refused; another role is fine.
-    await form.getByLabel(/^Role/).selectOption({ label: 'Negotiator' })
-    await form.getByLabel(/^Name/).fill(person.toUpperCase())
+    // The same person twice is refused; another type is fine.
+    await form.getByLabel(/^Type/).selectOption('Negotiator')
+    await form.getByLabel(/^Person/).selectOption(riley.id)
     await form.getByRole('button', { name: 'Assign' }).click()
-    await expect(form.getByText(/is already the negotiator on this parcel/)).toBeVisible()
-    await form.getByLabel(/^Role/).selectOption({ label: 'Counsel' })
+    await expect(form.getByText(/is already on this parcel as negotiator/)).toBeVisible()
+    await form.getByLabel(/^Type/).selectOption('Counsel')
+    await form.getByLabel(/^Person/).selectOption(sam.id)
     await form.getByRole('button', { name: 'Assign' }).click()
-    await expect(table.getByRole('row', { name: /Counsel/ })).toBeVisible()
+    await expect(table.getByRole('row', { name: new RegExp(sam.name) })).toBeVisible()
 
-    await page.getByRole('button', { name: `Edit ${person}, Negotiator` }).click()
+    await page.getByRole('button', { name: `Edit ${riley.name}, Negotiator` }).click()
     const edit = page.getByRole('form', { name: 'Change team member' })
-    await edit.getByLabel(/^Role/).selectOption({ label: 'Appraiser' })
+    await edit.getByLabel(/^Notes/).fill('Lead negotiator')
     await edit.getByRole('button', { name: 'Save changes' }).click()
-    await expect(table.getByRole('row', { name: /^Appraiser/ })).toContainText(person)
+    await expect(table.getByRole('row', { name: new RegExp(riley.name) })).toContainText('Lead negotiator')
 
-    await page.getByRole('button', { name: `Remove ${person}, Appraiser` }).click()
-    await expect(table.getByRole('row', { name: /^Appraiser/ })).toHaveCount(0)
+    await page.getByRole('button', { name: `Remove ${riley.name}, Negotiator` }).click()
+    await expect(table.getByRole('row', { name: new RegExp(riley.name) })).toHaveCount(0)
     const pm = { Authorization: `Bearer ${await sessionToken(page)}` }
     const team = await (await request.get(`/api/v1/parcels/${parcel.id}/team`, { headers: pm })).json()
-    expect(team.map((m: any) => m.name)).toEqual([person.toUpperCase()])
+    expect(team.map((m: any) => m.name)).toEqual([sam.name])
     expect(team[0].role).toBe('Counsel')
   })
 
@@ -168,7 +177,9 @@ test.describe('Everyone · team, diary and notes', () => {
     test(`AT-X-38 ${role}: the Team, Diary and Notes controls match the access spec, and the server agrees`, async ({ page, request }) => {
       const a = await admin(request)
       const parcel = await makeParcel(request, a)
-      const member = await (await request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: a, data: { role: 'Counsel', name: 'Seed Counsel', isConsultant: false } })).json()
+      const counsel = await makeAgent(request, 'Seed Counsel', 'Counsel')
+      const another = await makeAgent(request, 'Another Reviewer', 'Appraisal Reviewer')
+      const member = await (await request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: a, data: { agentId: counsel.id } })).json()
       const entry = await (await request.post(`/api/v1/parcels/${parcel.id}/diary`, { headers: a, data: { occurredOn: today(), method: 'Call', direction: 'Outgoing', contactName: 'Seed', summary: 'seed' } })).json()
       const note = await (await request.post(`/api/v1/parcels/${parcel.id}/notes`, { headers: a, data: { text: 'seed note' } })).json()
       await signInViaUi(page, role)
@@ -196,7 +207,7 @@ test.describe('Everyone · team, diary and notes', () => {
       expect(await code(request.get(`/api/v1/parcels/${parcel.id}/team`, { headers: mine }))).toBe(ok('parcels', 'read', 200))
       expect(await code(request.get(`/api/v1/parcels/${parcel.id}/notes`, { headers: mine }))).toBe(ok('parcels', 'read', 200))
       expect(await code(request.get(`/api/v1/parcels/${parcel.id}/diary`, { headers: mine }))).toBe(ok('negotiations', 'read', 200))
-      expect(await code(request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: mine, data: { role: 'Other', name: `By ${role}`, isConsultant: false } }))).toBe(ok('parcels', 'create', 201))
+      expect(await code(request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: mine, data: { agentId: another.id } }))).toBe(ok('parcels', 'create', 201))
       expect(await code(request.post(`/api/v1/parcels/${parcel.id}/notes`, { headers: mine, data: { text: `by ${role}` } }))).toBe(ok('parcels', 'create', 201))
       expect(await code(request.post(`/api/v1/parcels/${parcel.id}/diary`, { headers: mine, data: { occurredOn: today(), method: 'Call', direction: 'Outgoing', contactName: role, summary: 'x' } }))).toBe(ok('negotiations', 'create', 201))
       expect(await code(request.delete(`/api/v1/parcels/${parcel.id}/diary/${entry.id}`, { headers: mine }))).toBe(ok('negotiations', 'delete', 204))
@@ -223,6 +234,7 @@ test.describe('Everyone · team, diary and notes', () => {
     await openTab(page, parcel.id, 'Notes')
     await expect(page.getByText('mine')).toBeVisible()
     await expect(page.getByRole('form', { name: 'Add a note' })).toHaveCount(0)
-    expect((await request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: a, data: { role: 'Other', name: 'late' } })).status()).toBe(409)
+    const lateAgent = await makeAgent(request, 'Late Arrival', 'Counsel')
+    expect((await request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: a, data: { agentId: lateAgent.id } })).status()).toBe(409)
   })
 })

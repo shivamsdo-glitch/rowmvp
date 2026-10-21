@@ -138,13 +138,14 @@ public class LibraryTests
 
         var added = await c.Add.Handle(new AddLibraryValueCommand(field.Id, "  Wizard  "), default);
         var surveyor = added.Values.Single(v => v.Value == "Wizard");
-        added.Values.Should().HaveCount(11, "ten defaults and the new one");
+        added.Values.Should().HaveCount(DefaultLibrary.Fields.Single(f => f.Key == LibraryKeys.AgentType).Values.Count + 1, "the defaults and the new one");
 
         var renamed = await c.UpdateValue.Handle(new UpdateLibraryValueCommand(field.Id, surveyor.Id, "Land surveyor", true), default);
         renamed.Values.Select(v => v.Value).Should().Contain("Appraiser").And.Contain("Land surveyor").And.NotContain("Wizard");
         var off = await c.UpdateValue.Handle(new UpdateLibraryValueCommand(field.Id, surveyor.Id, "Land surveyor", false), default);
         off.Values.Single(v => v.Id == surveyor.Id).IsActive.Should().BeFalse();
-        (await c.List.Handle(new ListLibraryFieldsQuery(), default)).Single(f => f.Key == LibraryKeys.AgentType).Should().Match<LibraryFieldSummaryDto>(f => f.ValueCount == 11 && f.ActiveCount == 10);
+        var defaults = DefaultLibrary.Fields.Single(f => f.Key == LibraryKeys.AgentType).Values.Count;
+        (await c.List.Handle(new ListLibraryFieldsQuery(), default)).Single(f => f.Key == LibraryKeys.AgentType).Should().Match<LibraryFieldSummaryDto>(f => f.ValueCount == defaults + 1 && f.ActiveCount == defaults);
     }
 
     [Fact]

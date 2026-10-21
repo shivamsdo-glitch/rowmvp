@@ -23,7 +23,8 @@ function open(path: string, role = 'Appraiser', extra: Partial<FakeTabsOptions> 
   const fake = fakeTabsApi({
     role, rows: permissionRowsFor(role), projects: PROJECTS,
     parcels: [{ id: 'pc1', projectId: 'p1', number: 'PN-1001', address: '1 Oak St' }, { id: 'pc2', projectId: 'p1', number: 'PN-2002', address: '9 Elm Rd' }],
-    ownerships: [{ parcelId: 'pc1', ownerName: 'Kamali Trust' }, { parcelId: 'pc2', ownerName: 'Brightwater LLC' }],
+    parties: [{ id: 'pt1', name: 'Kamali Trust' }, { id: 'pt2', name: 'Brightwater LLC' }],
+    links: [{ partyId: 'pt1', parcelId: 'pc1', role: 'FeeOwner' }, { partyId: 'pt2', parcelId: 'pc2', role: 'FeeOwner' }],
     appraisals: [{ parcelId: 'pc1', id: 'ap1', number: 'APR-PN-1001-001', appraisalType: 'Full', appraiser: 'Ann', appraisalTotal: 1500 }],
     ...extra,
   })

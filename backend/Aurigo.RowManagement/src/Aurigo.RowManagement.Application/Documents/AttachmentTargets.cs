@@ -23,7 +23,6 @@ public static class AttachmentTargets
         ["Payment"] = PageKeys.Payments,
         ["ContactLog"] = PageKeys.ContactLog,
         ["Easement"] = PageKeys.Easements,
-        ["Ownership"] = PageKeys.Ownership,
         ["Encumbrance"] = PageKeys.TitleEncumbrances,
         ["TitleClosing"] = PageKeys.TitleClosing,
         ["ParcelAppraisal"] = PageKeys.ParcelAppraisal,

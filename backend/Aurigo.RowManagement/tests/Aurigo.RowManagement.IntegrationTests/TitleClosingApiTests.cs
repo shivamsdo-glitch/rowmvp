@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Aurigo.RowManagement.Application.Parcels;
 using Aurigo.RowManagement.Application.ParcelTabs;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.Application.Projects;
 using Aurigo.RowManagement.IntegrationTests.Support;
 using FluentAssertions;
@@ -88,9 +89,9 @@ public class TitleClosingApiTests : IClassFixture<PgApi>
     {
         var parcel = await NewParcel();
         var designer = await _api.As("Designer");
-        await Ok<OwnershipDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/ownerships", new { ownerName = "Fee Person", ownerType = "Fee Owner" }, Json), HttpStatusCode.Created);
-        await Ok<OwnershipDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/ownerships", new { ownerName = "Vested One", ownerType = "Vested Owner" }, Json), HttpStatusCode.Created);
-        await Ok<OwnershipDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/ownerships", new { ownerName = "Vested Two", ownerType = "Vested Owner" }, Json), HttpStatusCode.Created);
+        await Ok<PartyLinkDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/parties", new { newParty = new { kind = "Person", name = "Fee Person" }, role = "FeeOwner", ownerType = "Fee Owner", leaseOnFile = false }, Json), HttpStatusCode.Created);
+        await Ok<PartyLinkDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/parties", new { newParty = new { kind = "Person", name = "Vested One" }, role = "FeeOwner", ownerType = "Vested Owner", leaseOnFile = false }, Json), HttpStatusCode.Created);
+        await Ok<PartyLinkDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/parties", new { newParty = new { kind = "Person", name = "Vested Two" }, role = "FeeOwner", ownerType = "Vested Owner", leaseOnFile = false }, Json), HttpStatusCode.Created);
         var neg = await _api.As("Negotiator");
 
         var saved = await Ok<TitleClosingDto>(await neg.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/title-closing", Body(), Json));

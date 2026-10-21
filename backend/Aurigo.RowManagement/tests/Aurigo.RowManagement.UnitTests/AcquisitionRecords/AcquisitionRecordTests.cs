@@ -106,7 +106,7 @@ public class AcquisitionRecordTests
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
-        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Negotiator);
 
         var added = await c.AddRoe.Handle(Granted(parcel), default);
         added.GrantedBy.Should().Be("Alex Marlowe", "text is trimmed");
@@ -126,7 +126,7 @@ public class AcquisitionRecordTests
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
-        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Negotiator);
 
         var noDate = await Thrown<ValidationException>(() => c.AddRoe.Handle(new AddRightOfEntryCommand(parcel, RightOfEntryStatus.Granted, null, null, null, null, null, null), default));
         noDate.Errors.Should().Contain(e => e.PropertyName == "GrantedOn");
@@ -140,7 +140,7 @@ public class AcquisitionRecordTests
     {
         var store = await Provision();
         var (parcel, project) = await AddParcel(store, TestDb.TenantA);
-        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Negotiator);
         var ended = await c.AddRoe.Handle(new AddRightOfEntryCommand(parcel, RightOfEntryStatus.Granted, null, Today.AddDays(-60), Today.AddDays(-1), null, null, null), default);
 
         ended.EffectiveStatus.Should().Be("Expired");
@@ -163,7 +163,7 @@ public class AcquisitionRecordTests
         var (parcelA, projectA) = await AddParcel(store, TestDb.TenantA);
         var (parcelB, _) = await AddParcel(store, TestDb.TenantA);
         var (superseded, _) = await AddParcel(store, TestDb.TenantA, state: ParcelState.Split);
-        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Negotiator);
 
         await c.AddRoe.Handle(Granted(parcelA, endsInDays: 10), default);
         await c.AddRoe.Handle(Granted(parcelA, endsInDays: 200), default);
@@ -184,7 +184,7 @@ public class AcquisitionRecordTests
     }
 
     [Fact]
-    public async Task ROW_077_Rights_of_entry_follow_the_parcels_permissions_for_every_role()
+    public async Task ROW_077_Rights_of_entry_are_kept_by_the_roles_that_can_change_the_Negotiation_tab_and_read_by_all()
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
@@ -195,7 +195,7 @@ public class AcquisitionRecordTests
             await using var c = new Ctx(store, TestDb.TenantA, role);
             (await c.ListRoe.Handle(new ListParcelRightsOfEntryQuery(parcel), default)).Should().NotBeNull($"{role} can read parcels");
             var write = () => c.AddRoe.Handle(Granted(parcel), default);
-            if (role is RoleNames.ProjectManager or RoleNames.Admin) await write.Should().NotThrowAsync(role);
+            if (role is RoleNames.Negotiator or RoleNames.Admin) await write.Should().NotThrowAsync(role);
             else await write.Should().ThrowAsync<ForbiddenException>(role);
         }
     }
@@ -206,7 +206,7 @@ public class AcquisitionRecordTests
         var store = await Provision();
         var (gone, _) = await AddParcel(store, TestDb.TenantA, state: ParcelState.Split);
         var (live, _) = await AddParcel(store, TestDb.TenantA);
-        await using var a = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+        await using var a = new Ctx(store, TestDb.TenantA, RoleNames.Negotiator);
         var conflict = await Thrown<ConflictException>(() => a.AddRoe.Handle(Granted(gone), default));
         conflict.Code.Should().Be("parcel_not_active");
 

@@ -12,22 +12,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Aurigo.RowManagement.Application.ParcelTabs;
 
-// ── Negotiation (Phase 1.5, ADR 0019) ───────────────────────────────────
+// ── Negotiation (Phase 1.5, ADR 0019; rights of entry and agents moved out in ADR 0023) ───────────────────────────────────
 
 public sealed record NegotiationNoteInput(DateOnly NoteDate, string Text);
-public sealed record NegotiationAgentInput(string AgentName);
-public sealed record NegotiationRightOfEntryInput(
-    DateOnly? LetterMailedDate, DateOnly? LetterDeliveredDate, DateOnly? SignedReceivedDate, DateOnly? SentToAtpDate, DateOnly? ExpirationDate, string? SpecialInstructions);
 public sealed record NegotiationOfferInput(string? OfferType, DateOnly? MailedDate, DateOnly? DeliveredDate, decimal? Amount, string? Notes);
 public sealed record NegotiationSettlementInput(
     string? SettlementType, decimal? CounterofferAmount, DateOnly? DateReceived, DateOnly? DateSubmitted, string? CounterofferResponse,
     DateOnly? ResponseDateFromAtp, DateOnly? ResponseDateToOwner, string? SettlementNotes);
 
 public sealed record NegotiationNoteDto(Guid Id, DateOnly NoteDate, string Text);
-/// <summary>Type, company, phone and email are read-only: they come from the Library agent of that name.</summary>
-public sealed record NegotiationAgentDto(Guid Id, string AgentName, string? AgentType, string? Company, string? Phone, string? Email);
-public sealed record NegotiationRightOfEntryDto(
-    Guid Id, DateOnly? LetterMailedDate, DateOnly? LetterDeliveredDate, DateOnly? SignedReceivedDate, DateOnly? SentToAtpDate, DateOnly? ExpirationDate, string? SpecialInstructions);
 public sealed record NegotiationOfferDto(Guid Id, string? OfferType, DateOnly? MailedDate, DateOnly? DeliveredDate, decimal? Amount, string? Notes);
 public sealed record NegotiationSettlementDto(
     Guid Id, string? SettlementType, decimal? CounterofferAmount, DateOnly? DateReceived, DateOnly? DateSubmitted, string? CounterofferResponse,
@@ -37,8 +30,7 @@ public sealed record NegotiationDto(
     Guid Id, Guid ParcelId, string Number, string ParcelNumber, string? AssignedTo, decimal? TotalAgreementAmount, string? Notes,
     DateOnly? CounterofferSubmittedToJatDate, DateOnly? CounterofferResponseFromJatDate, string? JatResponse, bool FtaApprovalRequiredForCounteroffer,
     DateOnly? PuaRequestedDate, DateOnly? PuaApprovedDate, decimal? PuaApprovedAmount, DateOnly? PuaExecutedDate, DateOnly? PuaClosedDate,
-    IReadOnlyList<NegotiationNoteDto> StatusNotes, IReadOnlyList<NegotiationAgentDto> Agents, IReadOnlyList<NegotiationRightOfEntryDto> RightsOfEntry,
-    IReadOnlyList<NegotiationOfferDto> Offers, IReadOnlyList<NegotiationSettlementDto> Settlements, DateTime UpdatedAt);
+    IReadOnlyList<NegotiationNoteDto> StatusNotes, IReadOnlyList<NegotiationOfferDto> Offers, IReadOnlyList<NegotiationSettlementDto> Settlements, DateTime UpdatedAt);
 
 internal static class NegotiationRules
 {
@@ -46,21 +38,16 @@ internal static class NegotiationRules
     public const int MaxRows = 50;
 
     public static IQueryable<ParcelNegotiation> WithChildren(IQueryable<ParcelNegotiation> q) =>
-        q.Include(x => x.StatusNotes).Include(x => x.Agents).Include(x => x.RightsOfEntry).Include(x => x.Offers).Include(x => x.Settlements);
+        q.Include(x => x.StatusNotes).Include(x => x.Offers).Include(x => x.Settlements);
 
-    public static NegotiationDto ToDto(ParcelNegotiation n, string parcelNumber, IReadOnlyList<LibraryAgent> library)
-    {
-        LibraryAgent? Find(string name) => library.FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
-        return new(n.Id, n.ParcelId, n.Number, parcelNumber, n.AssignedTo, n.TotalAgreementAmount, n.Notes,
+    public static NegotiationDto ToDto(ParcelNegotiation n, string parcelNumber) =>
+        new(n.Id, n.ParcelId, n.Number, parcelNumber, n.AssignedTo, n.TotalAgreementAmount, n.Notes,
             n.CounterofferSubmittedToJatDate, n.CounterofferResponseFromJatDate, n.JatResponse, n.FtaApprovalRequiredForCounteroffer,
             n.PuaRequestedDate, n.PuaApprovedDate, n.PuaApprovedAmount, n.PuaExecutedDate, n.PuaClosedDate,
             n.StatusNotes.OrderBy(x => x.NoteDate).ThenBy(x => x.CreatedAt).Select(x => new NegotiationNoteDto(x.Id, x.NoteDate, x.Text)).ToList(),
-            n.Agents.OrderBy(x => x.CreatedAt).ThenBy(x => x.AgentName).Select(x => { var a = Find(x.AgentName); return new NegotiationAgentDto(x.Id, x.AgentName, a?.AgentType, a?.Company, a?.Phone, a?.Email); }).ToList(),
-            n.RightsOfEntry.OrderBy(x => x.CreatedAt).Select(x => new NegotiationRightOfEntryDto(x.Id, x.LetterMailedDate, x.LetterDeliveredDate, x.SignedReceivedDate, x.SentToAtpDate, x.ExpirationDate, x.SpecialInstructions)).ToList(),
             n.Offers.OrderBy(x => x.CreatedAt).Select(x => new NegotiationOfferDto(x.Id, x.OfferType, x.MailedDate, x.DeliveredDate, x.Amount, x.Notes)).ToList(),
             n.Settlements.OrderBy(x => x.CreatedAt).Select(x => new NegotiationSettlementDto(x.Id, x.SettlementType, x.CounterofferAmount, x.DateReceived, x.DateSubmitted, x.CounterofferResponse, x.ResponseDateFromAtp, x.ResponseDateToOwner, x.SettlementNotes)).ToList(),
             n.UpdatedAt);
-    }
 
     public static void Apply(ParcelNegotiation n, INegotiationFields f)
     {
@@ -78,18 +65,12 @@ internal static class NegotiationRules
         n.PuaClosedDate = f.PuaClosedDate;
     }
 
-    /// <summary>The five grids as new rows ready to attach; with an id, to replace the ones on an existing record.</summary>
+    /// <summary>The three grids as new rows ready to attach; with an id, to replace the ones on an existing record.</summary>
     public sealed record Children(
-        List<NegotiationNote> Notes, List<NegotiationAgent> Agents, List<NegotiationRightOfEntry> Roe, List<NegotiationOffer> Offers, List<NegotiationSettlement> Settlements);
+        List<NegotiationNote> Notes, List<NegotiationOffer> Offers, List<NegotiationSettlement> Settlements);
 
     public static Children Build(INegotiationFields f) => new(
         (f.StatusNotes ?? Array.Empty<NegotiationNoteInput>()).Select(x => new NegotiationNote { NoteDate = x.NoteDate, Text = x.Text.Trim() }).ToList(),
-        (f.Agents ?? Array.Empty<NegotiationAgentInput>()).Select(x => new NegotiationAgent { AgentName = x.AgentName.Trim() }).ToList(),
-        (f.RightsOfEntry ?? Array.Empty<NegotiationRightOfEntryInput>()).Select(x => new NegotiationRightOfEntry
-        {
-            LetterMailedDate = x.LetterMailedDate, LetterDeliveredDate = x.LetterDeliveredDate, SignedReceivedDate = x.SignedReceivedDate, SentToAtpDate = x.SentToAtpDate,
-            ExpirationDate = x.ExpirationDate, SpecialInstructions = ParcelRecordHelpers.Clean(x.SpecialInstructions),
-        }).ToList(),
         (f.Offers ?? Array.Empty<NegotiationOfferInput>()).Select(x => new NegotiationOffer
         {
             OfferType = ParcelRecordHelpers.Clean(x.OfferType), MailedDate = x.MailedDate, DeliveredDate = x.DeliveredDate, Amount = x.Amount, Notes = ParcelRecordHelpers.Clean(x.Notes),
@@ -104,13 +85,9 @@ internal static class NegotiationRules
     public static void Attach(IRowDbContext db, ParcelNegotiation n, Children c)
     {
         foreach (var x in c.Notes) x.NegotiationId = n.Id;
-        foreach (var x in c.Agents) x.NegotiationId = n.Id;
-        foreach (var x in c.Roe) x.NegotiationId = n.Id;
         foreach (var x in c.Offers) x.NegotiationId = n.Id;
         foreach (var x in c.Settlements) x.NegotiationId = n.Id;
         db.NegotiationNotes.AddRange(c.Notes);
-        db.NegotiationAgents.AddRange(c.Agents);
-        db.NegotiationRightsOfEntry.AddRange(c.Roe);
         db.NegotiationOffers.AddRange(c.Offers);
         db.NegotiationSettlements.AddRange(c.Settlements);
     }
@@ -118,8 +95,6 @@ internal static class NegotiationRules
     public static void RemoveChildren(IRowDbContext db, ParcelNegotiation n)
     {
         db.NegotiationNotes.RemoveRange(n.StatusNotes);
-        db.NegotiationAgents.RemoveRange(n.Agents);
-        db.NegotiationRightsOfEntry.RemoveRange(n.RightsOfEntry);
         db.NegotiationOffers.RemoveRange(n.Offers);
         db.NegotiationSettlements.RemoveRange(n.Settlements);
     }
@@ -140,8 +115,6 @@ public interface INegotiationFields
     DateOnly? PuaExecutedDate { get; }
     DateOnly? PuaClosedDate { get; }
     IReadOnlyList<NegotiationNoteInput>? StatusNotes { get; }
-    IReadOnlyList<NegotiationAgentInput>? Agents { get; }
-    IReadOnlyList<NegotiationRightOfEntryInput>? RightsOfEntry { get; }
     IReadOnlyList<NegotiationOfferInput>? Offers { get; }
     IReadOnlyList<NegotiationSettlementInput>? Settlements { get; }
 }
@@ -166,15 +139,6 @@ public abstract class NegotiationFieldsValidator<T> : AbstractValidator<T> where
 
         RuleFor(x => x.StatusNotes).Must(r => r is null || r.Count <= NegotiationRules.MaxRows).WithMessage("A negotiation can have at most 50 status notes.");
         RuleForEach(x => x.StatusNotes).ChildRules(r => r.RuleFor(i => i.Text).NotEmpty().WithMessage("Each status note needs text.").MaximumLength(4000));
-        RuleFor(x => x.Agents).Must(r => r is null || r.Count <= NegotiationRules.MaxRows).WithMessage("A negotiation can have at most 50 agents.");
-        RuleForEach(x => x.Agents).ChildRules(r => r.RuleFor(i => i.AgentName).NotEmpty().WithMessage("Each agent needs a name.").MaximumLength(200));
-        RuleFor(x => x.RightsOfEntry).Must(r => r is null || r.Count <= NegotiationRules.MaxRows).WithMessage("A negotiation can have at most 50 rights of entry.");
-        RuleForEach(x => x.RightsOfEntry).ChildRules(r =>
-        {
-            r.RuleFor(i => i.SpecialInstructions).MaximumLength(2000);
-            r.RuleFor(i => i.LetterDeliveredDate).GreaterThanOrEqualTo(i => i.LetterMailedDate!.Value)
-                .When(i => i.LetterMailedDate is not null && i.LetterDeliveredDate is not null).WithMessage("A letter cannot be delivered before it is mailed.");
-        });
         RuleFor(x => x.Offers).Must(r => r is null || r.Count <= NegotiationRules.MaxRows).WithMessage("A negotiation can have at most 50 offers.");
         RuleForEach(x => x.Offers).ChildRules(r =>
         {
@@ -217,7 +181,7 @@ public sealed class GetNegotiationQueryHandler : IRequestHandler<GetNegotiationQ
         await _permissions.EnsureAsync(PageKeys.ParcelNegotiation, PermissionAction.Read, ct);
         var parcel = await _parcels.LoadAsync(request.ParcelId, ct);
         var n = await NegotiationRules.WithChildren(_db.ParcelNegotiations.AsNoTracking()).FirstOrDefaultAsync(x => x.ParcelId == parcel.Id, ct);
-        return n is null ? null : NegotiationRules.ToDto(n, parcel.Number, await _db.LibraryAgents.AsNoTracking().ToListAsync(ct));
+        return n is null ? null : NegotiationRules.ToDto(n, parcel.Number);
     }
 }
 
@@ -225,8 +189,8 @@ public sealed class GetNegotiationQueryHandler : IRequestHandler<GetNegotiationQ
 public sealed record SaveNegotiationCommand(
     Guid ParcelId, string? AssignedTo, decimal? TotalAgreementAmount, string? Notes, DateOnly? CounterofferSubmittedToJatDate, DateOnly? CounterofferResponseFromJatDate,
     string? JatResponse, bool FtaApprovalRequiredForCounteroffer, DateOnly? PuaRequestedDate, DateOnly? PuaApprovedDate, decimal? PuaApprovedAmount,
-    DateOnly? PuaExecutedDate, DateOnly? PuaClosedDate, IReadOnlyList<NegotiationNoteInput>? StatusNotes, IReadOnlyList<NegotiationAgentInput>? Agents,
-    IReadOnlyList<NegotiationRightOfEntryInput>? RightsOfEntry, IReadOnlyList<NegotiationOfferInput>? Offers, IReadOnlyList<NegotiationSettlementInput>? Settlements)
+    DateOnly? PuaExecutedDate, DateOnly? PuaClosedDate, IReadOnlyList<NegotiationNoteInput>? StatusNotes,
+    IReadOnlyList<NegotiationOfferInput>? Offers, IReadOnlyList<NegotiationSettlementInput>? Settlements)
     : IRequest<NegotiationDto>, INegotiationFields;
 
 public sealed class SaveNegotiationCommandValidator : NegotiationFieldsValidator<SaveNegotiationCommand>
@@ -282,7 +246,7 @@ public sealed class SaveNegotiationCommandHandler : IRequestHandler<SaveNegotiat
         }
 
         var fresh = await NegotiationRules.WithChildren(_db.ParcelNegotiations.AsNoTracking()).FirstAsync(x => x.Id == record.Id, ct);
-        return NegotiationRules.ToDto(fresh, parcel.Number, await _db.LibraryAgents.AsNoTracking().ToListAsync(ct));
+        return NegotiationRules.ToDto(fresh, parcel.Number);
     }
 }
 

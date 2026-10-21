@@ -18,23 +18,23 @@ public static class Spec
     public static readonly string[] Pages =
     {
         "dashboard", "projects", "parcels", "parties", "title", "survey", "appraisals",
-        "approvals", "negotiations", "agreements", "closing", "payments", "administration", "library", "contactlog", "easements", "ownership", "parcellocation", "titleencumbrances", "titleclosing", "parcelappraisal", "parcelnegotiation", "parcelquestionnaire", "parcelcondemnation", "parcelproperty", "parcelrelocation",
+        "approvals", "negotiations", "agreements", "closing", "payments", "administration", "library", "contactlog", "easements", "parcellocation", "titleencumbrances", "titleclosing", "parcelappraisal", "parcelnegotiation", "parcelquestionnaire", "parcelcondemnation", "parcelproperty", "parcelrelocation",
     };
 
-    //                                  dash proj parc part titl surv appr aprv negt agrm clos paym admn libr cont ease owne loca tenc tcls appr2 negn ques cond prop relo
+    //                                  dash proj parc part titl surv appr aprv negt agrm clos paym admn libr cont ease loca tenc tcls appr2 negn ques cond prop relo
     private static readonly Dictionary<string, string> Rows = new()
     {
-        ["ProjectManager"] = "B P P P B B B S B B B B - B B B B B B B B B B B P B",
-        ["Designer"]       = "B B P P - - - - - - - - - B S S P P B B B B B B B B",
-        ["DesignApprover"] = "B B U B - - - S - - - - - B B B B B B B B B B B B B",
-        ["Surveyor"]       = "B B B B - P - - - - - - - B S P B S B B B B B B B B",
-        ["AppraisalApprover"] = "B B B B B B S S - - - - - B B B B B B B U B B B B B",
-        ["RelocationAgent"] = "B B B S - - - - - - - - - B P B B B B B B B P B B P",
-        ["TitleResearcher"]  = "B B B B P P B - - - - - - B S B U B P S B B B B B B",
-        ["Appraiser"]      = "B B B B B B P S - - - - - B S B B B B B P B B B B B",
-        ["Negotiator"]     = "B B B P B - B B P P S S - B P B S B B S B P B S B B",
-        ["Finance"]        = "B B B B - - - S B B B P - B B B B B B B B B B B B B",
-        ["Admin"]          = "P P P P P P P P P P P P P P P P P P P P P P P P P P",
+        ["ProjectManager"] = "B P P P B B B S B B B B - B B B B B B B B B B P B",
+        ["Designer"]       = "B B P P - - - - - - - - - B S S P B B B B B B B B",
+        ["DesignApprover"] = "B B U B - - - S - - - - - B B B B B B B B B B B B",
+        ["Surveyor"]       = "B B B B - P - - - - - - - B S P S B B B B B B B B",
+        ["AppraisalApprover"] = "B B B B B B S S - - - - - B B B B B B U B B B B B",
+        ["RelocationAgent"] = "B B B S - - - - - - - - - B P B B B B B B P B B P",
+        ["TitleResearcher"]  = "B B B U P P B - - - - - - B S B B P S B B B B B B",
+        ["Appraiser"]      = "B B B B B B P S - - - - - B S B B B B P B B B B B",
+        ["Negotiator"]     = "B B B P B - B B P P S S - B P B B B S B P B S B B",
+        ["Finance"]        = "B B B B - - - S B B B P - B B B B B B B B B B B B",
+        ["Admin"]          = "P P P P P P P P P P P P P P P P P P P P P P P P P",
     };
 
     public static char Level(string role, string page) => Rows[role].Split(' ')[Array.IndexOf(Pages, page)][0];
@@ -54,7 +54,7 @@ public static class Spec
         ["Project"] = "projects", ["Parcel"] = "parcels", ["Party"] = "parties", ["TitleRecord"] = "title",
         ["SurveyRequest"] = "survey", ["Appraisal"] = "appraisals", ["Offer"] = "negotiations",
         ["Agreement"] = "agreements", ["ClosingRecord"] = "closing", ["Payment"] = "payments",
-        ["ContactLog"] = "contactlog", ["Easement"] = "easements", ["Ownership"] = "ownership", ["Encumbrance"] = "titleencumbrances", ["TitleClosing"] = "titleclosing", ["ParcelAppraisal"] = "parcelappraisal", ["ParcelNegotiation"] = "parcelnegotiation", ["ParcelQuestionnaire"] = "parcelquestionnaire", ["ParcelCondemnation"] = "parcelcondemnation", ["ParcelProperty"] = "parcelproperty", ["ParcelRelocation"] = "parcelrelocation",
+        ["ContactLog"] = "contactlog", ["Easement"] = "easements", ["Encumbrance"] = "titleencumbrances", ["TitleClosing"] = "titleclosing", ["ParcelAppraisal"] = "parcelappraisal", ["ParcelNegotiation"] = "parcelnegotiation", ["ParcelQuestionnaire"] = "parcelquestionnaire", ["ParcelCondemnation"] = "parcelcondemnation", ["ParcelProperty"] = "parcelproperty", ["ParcelRelocation"] = "parcelrelocation",
     };
 
     public static IEnumerable<object[]> RoleAndEntityType() =>

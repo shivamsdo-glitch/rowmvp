@@ -1,4 +1,5 @@
 using Aurigo.RowManagement.Application.Auth;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.Application.Persistence;
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Enums;
@@ -58,8 +59,8 @@ public sealed class OverviewQueryHandlers :
         if (string.IsNullOrEmpty(term)) return (null, null);
         if (term.Length > MaxSearchLength) term = term[..MaxSearchLength];
         var byParcel = _db.Parcels.AsNoTracking().Where(p => p.Number.ToLower().Contains(term) || (p.Address != null && p.Address.ToLower().Contains(term))).Select(p => p.Id);
-        var byOwner = _db.ParcelOwnerships.AsNoTracking().Where(o => o.OwnerName.ToLower().Contains(term)).Select(o => o.ParcelId);
-        return (term, await byParcel.Union(byOwner).ToListAsync(ct));
+        var byOwner = await ParcelOwners.ParcelIdsByOwnerAsync(_db, term, ct);
+        return (term, (await byParcel.ToListAsync(ct)).Union(byOwner).ToList());
     }
 
     private sealed record ParcelFacts(string Number, string? Address, string? Owners);
@@ -68,8 +69,7 @@ public sealed class OverviewQueryHandlers :
     {
         var wanted = ids.Distinct().ToList();
         var parcels = await _db.Parcels.AsNoTracking().Where(p => wanted.Contains(p.Id)).Select(p => new { p.Id, p.Number, p.Address }).ToListAsync(ct);
-        var owners = (await _db.ParcelOwnerships.AsNoTracking().Where(o => wanted.Contains(o.ParcelId)).OrderBy(o => o.Sequence).Select(o => new { o.ParcelId, o.OwnerName }).ToListAsync(ct))
-            .GroupBy(o => o.ParcelId).ToDictionary(g => g.Key, g => string.Join("; ", g.Select(x => x.OwnerName)));
+        var owners = (await ParcelOwners.NamesAsync(_db, wanted, null, ct)).ToDictionary(o => o.Key, o => string.Join("; ", o.Value));
         return parcels.ToDictionary(p => p.Id, p => new ParcelFacts(p.Number, p.Address, owners.GetValueOrDefault(p.Id)));
     }
 

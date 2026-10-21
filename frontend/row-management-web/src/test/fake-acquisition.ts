@@ -1,14 +1,14 @@
 import type {
   AcquisitionPlan, AcquisitionRequest, PlanReview, ReportKind, RightOfEntry, RoeReportRow, StaffReport,
 } from '@/api/acquisition'
-import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
+import { fakeTabsApi, type FakeTabs, type FakeTabsOptions } from './fake-tabs'
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 const problem = (status: number, title: string, detail: string, errors?: Record<string, string[]>) => json({ title, status, detail, errors }, status)
 
-export interface FakeAcquisitionOptions extends FakeRecordsOptions {
+export interface FakeAcquisitionOptions extends FakeTabsOptions {
   roes?: (Partial<RightOfEntry> & { parcelId: string })[]
   reviews?: (Partial<PlanReview> & { parcelId: string })[]
   reports?: (Partial<StaffReport> & { parcelId: string; kind: ReportKind })[]
@@ -20,7 +20,7 @@ export interface FakeAcquisitionOptions extends FakeRecordsOptions {
   reportFails?: boolean
 }
 
-export interface FakeAcquisition extends FakeRecords {
+export interface FakeAcquisition extends FakeTabs {
   roes: (RightOfEntry & { parcelId: string })[]
   reviews: (PlanReview & { parcelId: string })[]
   reports: StaffReport[]
@@ -37,7 +37,7 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00
 
 /** An in-memory stand-in for rights of entry, plan reviews, staff reports, requests and the plan, with the server's rules and permission pages. */
 export function fakeAcquisitionApi(opts: FakeAcquisitionOptions): FakeAcquisition {
-  const base = fakeRecordsApi(opts)
+  const base = fakeTabsApi(opts)
   const today = opts.today ?? '2026-10-14'
   let seq = 0
   const id = (p: string) => `${p}${++seq}`
@@ -49,7 +49,7 @@ export function fakeAcquisitionApi(opts: FakeAcquisitionOptions): FakeAcquisitio
 
   const gate = { enabled: opts.gateEnabled ?? false }
   const roes = (opts.roes ?? []).map((r) => ({
-    id: id('roe'), status: 'Requested' as const, requestedOn: null, grantedOn: null, expiresOn: null, grantedBy: null, purpose: null, notes: null, updatedAt: '2026-01-01T00:00:00Z', ...r,
+    id: id('roe'), status: 'Requested' as const, requestedOn: null, grantedOn: null, expiresOn: null, grantedBy: null, purpose: null, notes: null, letterMailedDate: null, letterDeliveredDate: null, sentToAtpDate: null, updatedAt: '2026-01-01T00:00:00Z', ...r,
     effectiveStatus: effective(r.status ?? 'Requested', r.expiresOn ?? null),
   })) as FakeAcquisition['roes']
   const reviews = (opts.reviews ?? []).map((r) => ({
@@ -173,6 +173,7 @@ export function fakeAcquisitionApi(opts: FakeAcquisitionOptions): FakeAcquisitio
     // The server's page and action for each call: reviews and submitting are an update; deciding is an Approvals job.
     const allowed = verb === 'approve' || verb === 'reject' ? can('approvals', 'update')
       : verb === 'submit' || (part === 'plan-reviews' && method === 'POST') ? can('parcels', 'update')
+      : part === 'rights-of-entry' && method !== 'GET' ? can('parcelnegotiation', act)
       : can('parcels', act)
     if (!allowed) return forbidden()
     const parcel = base.parcels.find((p) => p.id === parcelId)
@@ -194,7 +195,7 @@ export function fakeAcquisitionApi(opts: FakeAcquisitionOptions): FakeAcquisitio
       if (body.requestedOn && body.requestedOn > today) errors.RequestedOn = ['The request date cannot be in the future.']
       if (body.grantedOn && body.expiresOn && body.expiresOn < body.grantedOn) errors.GrantedOn = ['Permission cannot end before it was given.']
       if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
-      const fields = { status: body.status, requestedOn: body.requestedOn ?? null, grantedOn: body.grantedOn ?? null, expiresOn: body.expiresOn ?? null, grantedBy: body.grantedBy ?? null, purpose: body.purpose ?? null, notes: body.notes ?? null }
+      const fields = { status: body.status, requestedOn: body.requestedOn ?? null, grantedOn: body.grantedOn ?? null, expiresOn: body.expiresOn ?? null, grantedBy: body.grantedBy ?? null, purpose: body.purpose ?? null, notes: body.notes ?? null, letterMailedDate: body.letterMailedDate ?? null, letterDeliveredDate: body.letterDeliveredDate ?? null, sentToAtpDate: body.sentToAtpDate ?? null }
       if (method === 'PUT') {
         const r = roes.find((x) => x.id === rid && x.parcelId === parcelId)
         if (!r) return problem(404, 'not_found', 'Right of entry was not found.')

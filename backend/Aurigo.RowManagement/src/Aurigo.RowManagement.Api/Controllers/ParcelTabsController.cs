@@ -11,9 +11,6 @@ public sealed record ContactLogBody(
 public sealed record EasementBody(
     string? Number, string? EasementType, string? Description, DateOnly? StartDate, DateOnly? EndDate, string? StartStation, string? EndStation);
 
-public sealed record OwnershipBody(
-    string? OwnerName, string? OwnerType, List<OwnershipAddressInput>? Addresses, List<OwnershipContactInput>? Contacts);
-
 public sealed record EncumbranceBody(
     string? EncumbranceType, string? DocumentTitle, DateOnly? DocumentDate, DateOnly? DateRecorded, string? DocumentNumber, bool IsUnrecorded,
     string? Grantor, string? Grantee, DateOnly? ExceptionSubmittedDate, DateOnly? ExceptionApprovedDate, string? ImpactAnalysis, string? RecommendedCure,
@@ -49,7 +46,7 @@ public sealed record NegotiationEnvelope(NegotiationDto? Record);
 public sealed record NegotiationBody(
     string? AssignedTo, decimal? TotalAgreementAmount, string? Notes, DateOnly? CounterofferSubmittedToJatDate, DateOnly? CounterofferResponseFromJatDate, string? JatResponse,
     bool FtaApprovalRequiredForCounteroffer, DateOnly? PuaRequestedDate, DateOnly? PuaApprovedDate, decimal? PuaApprovedAmount, DateOnly? PuaExecutedDate, DateOnly? PuaClosedDate,
-    List<NegotiationNoteInput>? StatusNotes, List<NegotiationAgentInput>? Agents, List<NegotiationRightOfEntryInput>? RightsOfEntry, List<NegotiationOfferInput>? Offers,
+    List<NegotiationNoteInput>? StatusNotes, List<NegotiationOfferInput>? Offers,
     List<NegotiationSettlementInput>? Settlements);
 
 /// <summary>The Contact Log, Easements, Ownership Details, Title Encumbrances, Title and Closing, Appraisal, Negotiation, Questionnaire, Condemnation, Property Management and Relocation tabs of a parcel (Phase 1.5, ADR 0017). Each is governed by its own page's permissions.</summary>
@@ -80,28 +77,6 @@ public sealed class ParcelTabsController : ControllerBase
     public async Task<IActionResult> RemoveContactLog(Guid parcelId, Guid entryId, CancellationToken ct)
     {
         await _mediator.Send(new RemoveContactLogEntryCommand(parcelId, entryId), ct);
-        return NoContent();
-    }
-
-    [HttpGet("ownerships")]
-    [ProducesResponseType(typeof(IReadOnlyList<OwnershipDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Ownerships(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new ListOwnershipsQuery(parcelId), ct));
-
-    [HttpPost("ownerships")]
-    [ProducesResponseType(typeof(OwnershipDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> AddOwnership(Guid parcelId, [FromBody] OwnershipBody b, CancellationToken ct) =>
-        Created($"/api/v1/parcels/{parcelId}/ownerships", await _mediator.Send(new AddOwnershipCommand(parcelId, b.OwnerName ?? "", b.OwnerType, b.Addresses, b.Contacts), ct));
-
-    [HttpPut("ownerships/{ownershipId:guid}")]
-    [ProducesResponseType(typeof(OwnershipDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateOwnership(Guid parcelId, Guid ownershipId, [FromBody] OwnershipBody b, CancellationToken ct) =>
-        Ok(await _mediator.Send(new UpdateOwnershipCommand(parcelId, ownershipId, b.OwnerName ?? "", b.OwnerType, b.Addresses, b.Contacts), ct));
-
-    [HttpDelete("ownerships/{ownershipId:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> RemoveOwnership(Guid parcelId, Guid ownershipId, CancellationToken ct)
-    {
-        await _mediator.Send(new RemoveOwnershipCommand(parcelId, ownershipId), ct);
         return NoContent();
     }
 
@@ -226,7 +201,7 @@ public sealed class ParcelTabsController : ControllerBase
         Ok(await _mediator.Send(new SaveNegotiationCommand(
             parcelId, b.AssignedTo, b.TotalAgreementAmount, b.Notes, b.CounterofferSubmittedToJatDate, b.CounterofferResponseFromJatDate, b.JatResponse,
             b.FtaApprovalRequiredForCounteroffer, b.PuaRequestedDate, b.PuaApprovedDate, b.PuaApprovedAmount, b.PuaExecutedDate, b.PuaClosedDate,
-            b.StatusNotes, b.Agents, b.RightsOfEntry, b.Offers, b.Settlements), ct));
+            b.StatusNotes, b.Offers, b.Settlements), ct));
 
     [HttpDelete("negotiation")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

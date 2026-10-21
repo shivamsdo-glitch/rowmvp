@@ -7,6 +7,7 @@ import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
+import { useTeamNames } from './team-kit'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -53,6 +54,7 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
   const reviewTypes = useLibraryValues('review_type')
   const recommendations = useLibraryValues('review_recommendation')
   const agents = useAgentNames()
+  const teamNames = useTeamNames(parcelId)
   const [editing, setEditing] = useState<Appraisal | null>(null)
   const [f, setF] = useState(BLANK)
   const [amounts, setAmounts] = useState<AppraisalAmount[]>([])
@@ -179,7 +181,7 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
               <SelectField label="Appraisal type" value={f.type} onChange={set('type')} options={optionsWith(types, f.type)} blankLabel="Select one" error={errors.appraisalType} />
               <SelectField label="Appraiser" value={f.appraiser} onChange={set('appraiser')} options={optionsWith(agents, f.appraiser)} blankLabel="Select one" error={errors.appraiser} />
               <div className="text-sm"><span className="text-xs text-muted-foreground">Appraiser company</span><div>{editing?.appraiserCompany ?? '—'}</div></div>
-              <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(agents, f.assignedTo)} blankLabel="Select one" error={errors.assignedTo} />
+              <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(teamNames, f.assignedTo)} blankLabel="Select one" error={errors.assignedTo} />
               <CheckboxField label="Land planner required" checked={f.landPlanner} onChange={set('landPlanner')} />
               <TextField label="Appraisal requested date" type="date" value={f.requested} onChange={set('requested')} error={errors.requestedDate} />
               <TextField label="Appraisal received date" type="date" value={f.received} onChange={set('received')} error={errors.receivedDate} />

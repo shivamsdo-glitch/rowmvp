@@ -71,33 +71,34 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
     // ── the jobs ──
 
     [PgFact]
-    public async Task AT_PM_30_A_project_manager_records_changes_and_removes_a_right_of_entry_and_it_appears_in_the_report()
+    public async Task AT_PM_30_A_negotiator_records_changes_and_removes_a_right_of_entry_and_it_appears_in_the_report()
     {
         var pm = await _api.As("ProjectManager");
+        var ng = await _api.As("Negotiator");
         var parcel = await NewParcel(pm);
 
-        var granted = await Ok<RightOfEntryDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(by: "  Alex Marlowe "), Json), HttpStatusCode.Created);
+        var granted = await Ok<RightOfEntryDto>(await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(by: "  Alex Marlowe "), Json), HttpStatusCode.Created);
         granted.EffectiveStatus.Should().Be("Granted");
         granted.GrantedBy.Should().Be("Alex Marlowe");
 
-        var noDate = await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(granted: null), Json);
+        var noDate = await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(granted: null), Json);
         noDate.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await noDate.Content.ReadAsStringAsync()).Should().Contain("Enter the date permission was given");
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(granted: 3), Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, "granted in the future");
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(granted: -10, ends: -20), Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, "ends before it was given");
+        (await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(granted: 3), Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, "granted in the future");
+        (await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(granted: -10, ends: -20), Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, "ends before it was given");
 
-        var ended = await Ok<RightOfEntryDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(requested: -60, granted: -50, ends: -1), Json), HttpStatusCode.Created);
+        var ended = await Ok<RightOfEntryDto>(await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(requested: -60, granted: -50, ends: -1), Json), HttpStatusCode.Created);
         ended.EffectiveStatus.Should().Be("Expired");
 
-        var revoked = await Ok<RightOfEntryDto>(await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{granted.Id}", Roe("Revoked"), Json));
+        var revoked = await Ok<RightOfEntryDto>(await ng.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{granted.Id}", Roe("Revoked"), Json));
         revoked.EffectiveStatus.Should().Be("Revoked");
 
         var report = await Ok<PagedResult<RightOfEntryReportRowDto>>(await pm.Http.GetAsync($"/api/v1/rights-of-entry?projectId={parcel.ProjectId}"));
         report.Items.Select(r => r.EffectiveStatus).Should().BeEquivalentTo("Revoked", "Expired");
         report.Items.Should().OnlyContain(r => r.ParcelNumber == parcel.Number && r.ProjectId == parcel.ProjectId);
 
-        (await pm.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{revoked.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await pm.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{revoked.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ng.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{revoked.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await ng.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{revoked.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await PgTestDatabase.ScalarAsync(_api.Database, "select count(*) from audit_log where entity_type = 'RightOfEntry' and entity_id = @id and action = 'Delete'", ("id", revoked.Id))).Should().Be(1);
     }
 
@@ -105,13 +106,14 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
     public async Task AT_X_40_Anyone_who_can_see_parcels_filters_the_report_of_rights_of_entry_by_status_and_expiry()
     {
         var pm = await _api.As("ProjectManager");
+        var ng = await _api.As("Negotiator");
         var project = await NewProject(pm);
         var one = await NewParcel(pm, project.Id);
         var two = await NewParcel(pm, project.Id);
-        await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{one.Id}/rights-of-entry", Roe(ends: 10), Json);
-        await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{one.Id}/rights-of-entry", Roe(ends: 200), Json);
-        await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{two.Id}/rights-of-entry", Roe(requested: -60, granted: -50, ends: -2), Json);
-        await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{two.Id}/rights-of-entry", Roe("Requested", requested: -1, granted: null, ends: null), Json);
+        await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{one.Id}/rights-of-entry", Roe(ends: 10), Json);
+        await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{one.Id}/rights-of-entry", Roe(ends: 200), Json);
+        await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{two.Id}/rights-of-entry", Roe(requested: -60, granted: -50, ends: -2), Json);
+        await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{two.Id}/rights-of-entry", Roe("Requested", requested: -1, granted: null, ends: null), Json);
 
         foreach (var role in AllRoles)
         {
@@ -314,7 +316,7 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
 
     [PgTheory]
     [MemberData(nameof(Roles))]
-    public async Task Each_role_can_do_exactly_what_the_parcels_approvals_and_projects_pages_allow(string role)
+    public async Task Each_role_can_do_exactly_what_the_parcels_negotiation_approvals_and_projects_pages_allow(string role)
     {
         var admin = await _api.As("Admin");
         var author = await _api.As("ProjectManager");
@@ -339,8 +341,9 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
         (await Status(user.Http.GetAsync($"/api/v1/acquisition-requests/{request.Id}"))).Should().Be(Expect(Can("approvals", "read"), HttpStatusCode.OK));
 
         // writing on the parcel
-        (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(by: $"By {role}"), Json))).Should().Be(Expect(Can("parcels", "create"), HttpStatusCode.Created));
-        (await Status(user.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{seedRoe.Id}", Roe(by: $"Edited by {role}"), Json))).Should().Be(Expect(Can("parcels", "update"), HttpStatusCode.OK));
+        // rights of entry are kept on the Negotiation tab, so they follow that page; reading them stays with Parcels
+        (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(by: $"By {role}"), Json))).Should().Be(Expect(Can("parcelnegotiation", "create"), HttpStatusCode.Created));
+        (await Status(user.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{seedRoe.Id}", Roe(by: $"Edited by {role}"), Json))).Should().Be(Expect(Can("parcelnegotiation", "update"), HttpStatusCode.OK));
         (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/plan-reviews", new { discipline = "Engineer", outcome = "Approved", reviewedOn = Today(), reviewerName = $"By {role}" }, Json))).Should().Be(Expect(Can("parcels", "update"), HttpStatusCode.Created));
         (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/staff-reports", new { kind = "CertificateOfNecessity", title = $"By {role}", body = "x" }, Json))).Should().Be(Expect(Can("parcels", "create"), HttpStatusCode.Created));
 
@@ -354,9 +357,9 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
 
         // deleting
         (await Status(user.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/plan-reviews/{seedReview.Id}"))).Should().Be(Expect(Can("parcels", "delete"), HttpStatusCode.OK));
-        (await Status(user.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{seedRoe.Id}"))).Should().Be(Expect(Can("parcels", "delete"), HttpStatusCode.NoContent));
+        (await Status(user.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry/{seedRoe.Id}"))).Should().Be(Expect(Can("parcelnegotiation", "delete"), HttpStatusCode.NoContent));
 
-        if (!Can("parcels", "create"))
+        if (!Can("parcelnegotiation", "create"))
             (await PgTestDatabase.ScalarAsync(_api.Database, "select count(*) from rights_of_entry where granted_by = @g", ("g", $"By {role}"))).Should().Be(0, "a refused request changes nothing");
     }
 
@@ -434,13 +437,13 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
     {
         var pm = await _api.As("ProjectManager");
         var parcel = await NewParcel(pm);
-        await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(), Json);
+        await (await _api.As("Negotiator")).Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(), Json);
         (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/split", new { parts = new[] { new { areaSqFt = 40m } } }, Json)).StatusCode.Should().Be(HttpStatusCode.Created);
 
         (await Ok<List<RightOfEntryDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry"))).Should().ContainSingle();
         foreach (var res in new[]
         {
-            await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(), Json),
+            await (await _api.As("Negotiator")).Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", Roe(), Json),
             await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/plan-reviews", new { discipline = "Engineer", outcome = "Approved", reviewedOn = Today(), reviewerName = "x" }, Json),
             await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/staff-reports", new { kind = "StaffReport", title = "x", body = "x" }, Json),
         })
@@ -500,8 +503,8 @@ public class AcquisitionApiTests : IClassFixture<PgApi>
         (await Ok<StaffReportDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/staff-reports", new { kind = "StaffReport", title = script, body = "Robert'); DROP TABLE parcels;--" }, Json), HttpStatusCode.Created)).Title.Should().Be(script);
         (await Ok<AcquisitionRequestDto>(await pm.Http.PostAsJsonAsync("/api/v1/acquisition-requests", new { requesterType = "External", requesterName = script, property = "x' OR '1'='1" }, Json), HttpStatusCode.Created)).RequesterName.Should().Be(script);
 
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", new { status = "Requested", purpose = new string('x', 501) }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", new { status = "Requested", grantedBy = new string('x', 201) }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await (await _api.As("Negotiator")).Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", new { status = "Requested", purpose = new string('x', 501) }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await (await _api.As("Negotiator")).Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/rights-of-entry", new { status = "Requested", grantedBy = new string('x', 201) }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/staff-reports", new { kind = "CertificateOfNecessity", title = "T", body = new string('x', 8001) }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/staff-reports", new { kind = "Wizard", title = "T", body = "B" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/plan-reviews", new { discipline = "Wizard", outcome = "Approved", reviewedOn = Today(), reviewerName = "x" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);

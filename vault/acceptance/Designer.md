@@ -1,7 +1,7 @@
 # Designer — acceptance cases
 
 **Who:** the ROW Designer. Adds and updates parcels from the plans and ROW maps: the parcel details, ownership, location, contacts and easements. The Design Approver (read + update on Parcels) reviews and approves them.
-**Sees:** everything in the lifecycle; creates, changes and removes Parcels and Ownership details; Contact Log and Easements are create/read/update; cannot touch title, appraisal, negotiation or payments.
+**Sees:** everything in the lifecycle; creates, changes and removes Parcels and Ownership interests; Contact Log and Easements are create/read/update; cannot touch title, appraisal, negotiation or payments.
 **Also run:** every case in [Everyone.md](Everyone.md) as this role.
 
 ## Jobs possible today
@@ -15,4 +15,4 @@
 
 ## Changelog
 - Phase 1.5 slice 5a: AT-DE-40, 41 automated. The "read and update" access level (Design Approver on Parcels, matrix of 2026-10-19) is now a real default. ADR 0017.
-- Phase 1.5 slice 5c: AT-DE-42, 43 automated (Ownership details with the derived owner name; the read-only Parcel location tab). ADR 0017.
+- Phase 1.5 slice 5c: AT-DE-42, 43 automated (Ownership interests (ownership and parties merged, ADR 0023) with the derived owner name; the read-only Parcel location tab). ADR 0017.

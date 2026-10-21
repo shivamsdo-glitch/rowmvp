@@ -1,4 +1,4 @@
-import type { ParcelParties, Party, PartyLink, PartyLinkInput, PartyRole, PartySummary, PartyUsage } from '@/api/parties'
+import type { ParcelParties, Party, PartyAddress, PartyContact, PartyLink, PartyLinkInput, PartyRole, PartySummary, PartyUsage } from '@/api/parties'
 import { CARRIES_SHARE, CATEGORY_OF, HAS_LEASE, ROLE_LABEL } from '@/api/parties'
 import { fakeParcelsApi, type FakeParcels, type FakeParcelsOptions } from './fake-parcels'
 
@@ -14,6 +14,7 @@ interface StoredLink {
   parcelId: string | null
   role: PartyRole
   sharePercent: number | null
+  ownerType: string | null
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null
@@ -50,20 +51,31 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
   const parties: Party[] = (opts.parties ?? []).map((p) => ({
     id: id('party'), kind: 'Person', legalName: null, email: null, phone: null, addressLine1: null, addressLine2: null, city: null, state: null,
     postalCode: null, notes: null, taxIdType: null, taxIdMasked: null, hasTaxId: false, w9ReceivedOn: null, reportable1099: false, linkCount: 0,
-    updatedAt: '2026-01-01T00:00:00Z', ...p,
+    addresses: [], contacts: [], updatedAt: '2026-01-01T00:00:00Z', ...p,
   }))
   const links: StoredLink[] = (opts.links ?? []).map((l) => ({
-    id: id('link'), tractId: null, parcelId: null, sharePercent: null, notes: null, leaseOnFile: false, leaseDetails: null, insuranceDetails: null, ...l,
+    id: id('link'), tractId: null, parcelId: null, sharePercent: null, ownerType: null, notes: null, leaseOnFile: false, leaseDetails: null, insuranceDetails: null, ...l,
   }))
   const receivedTaxIds: FakePeople['receivedTaxIds'] = []
 
-  const recount = () => parties.forEach((p) => { p.linkCount = links.filter((l) => l.partyId === p.id).length })
+  /** The parcel's owner name is the owners linked to the parcel and to its tract (the server derives it the same way). */
+  const OWNER_ROLES: PartyRole[] = ['FeeOwner', 'EasementHolder', 'LifeEstateHolder', 'OtherInterest']
+  const syncOwners = () => {
+    for (const parcel of base.parcels) {
+      const names = links
+        .filter((l) => OWNER_ROLES.includes(l.role) && (l.parcelId === parcel.id || (!!parcel.parentTractId && l.tractId === parcel.parentTractId)))
+        .map((l) => parties.find((p) => p.id === l.partyId)?.name)
+        .filter((n): n is string => !!n)
+      parcel.ownerName = names.length ? [...new Set(names)].join('; ') : null
+    }
+  }
+  const recount = () => { parties.forEach((p) => { p.linkCount = links.filter((l) => l.partyId === p.id).length }); syncOwners() }
   recount()
   const summary = (p: Party): PartySummary => ({ id: p.id, kind: p.kind, name: p.name, city: p.city, state: p.state, phone: p.phone, email: p.email, hasTaxId: p.hasTaxId, linkCount: p.linkCount })
   const tractNumber = (tractId: string | null) => base.tracts.find((t) => t.id === tractId)?.number ?? null
 
   const dto = (l: StoredLink): PartyLink => ({
-    id: l.id, category: CATEGORY_OF[l.role], role: l.role, sharePercent: l.sharePercent, notes: l.notes, leaseOnFile: l.leaseOnFile, leaseDetails: l.leaseDetails,
+    id: l.id, category: CATEGORY_OF[l.role], role: l.role, sharePercent: l.sharePercent, ownerType: l.ownerType, notes: l.notes, leaseOnFile: l.leaseOnFile, leaseDetails: l.leaseDetails,
     insuranceDetails: l.insuranceDetails, source: l.tractId ? 'Tract' : 'Parcel', parentTractId: l.tractId, tractNumber: tractNumber(l.tractId), parcelId: l.parcelId,
     party: summary(parties.find((p) => p.id === l.partyId)!),
   })
@@ -89,6 +101,9 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
       addressLine1: b.addressLine1 ?? null, addressLine2: b.addressLine2 ?? null, city: b.city ?? null, state: b.state ? String(b.state).toUpperCase() : null,
       postalCode: b.postalCode ?? null, notes: b.notes ?? null, updatedAt: '2026-10-14T00:00:00Z',
     })
+    // A list replaces the saved rows; leaving it out keeps them.
+    if (Array.isArray(b.addresses)) p.addresses = b.addresses.map((a: PartyAddress) => ({ id: id('adr'), ...a }))
+    if (Array.isArray(b.contacts)) p.contacts = b.contacts.map((c: PartyContact) => ({ id: id('ctc'), ...c }))
   }
 
   /** Adds a link the way the server does; returns the response. */
@@ -98,6 +113,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
     if (input.newParty) for (const [k, v] of Object.entries(validateParty(input.newParty))) errors[`NewParty.${k}`] = v
     if (input.sharePercent !== null && !CARRIES_SHARE.includes(input.role)) errors.SharePercent = ['Only fee owners, easement holders and life-estate holders have a share.']
     else if (input.sharePercent !== null && (input.sharePercent <= 0 || input.sharePercent > 100)) errors.SharePercent = ['A share must be more than 0 and at most 100 percent.']
+    if (input.ownerType && CATEGORY_OF[input.role] !== 'Ownership') errors.OwnerType = ['An owner type applies to ownership interests only.']
     if (!HAS_LEASE.includes(input.role) && (input.leaseOnFile || input.leaseDetails || input.insuranceDetails)) errors.LeaseDetails = ['Lease and insurance details apply to tenants only.']
     if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
 
@@ -120,14 +136,14 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
     if (!party) {
       party = {
         id: id('party'), kind: input.newParty!.kind, name: '', legalName: null, email: null, phone: null, addressLine1: null, addressLine2: null, city: null,
-        state: null, postalCode: null, notes: null, taxIdType: null, taxIdMasked: null, hasTaxId: false, w9ReceivedOn: null, reportable1099: false, linkCount: 0, updatedAt: '',
+        state: null, postalCode: null, notes: null, taxIdType: null, taxIdMasked: null, hasTaxId: false, w9ReceivedOn: null, reportable1099: false, linkCount: 0, addresses: [], contacts: [], updatedAt: '',
       }
       applyParty(party, input.newParty)
       parties.push(party)
     }
     const link: StoredLink = {
       id: id('link'), partyId: party.id, tractId: where.tractId ?? null, parcelId: where.parcelId ?? null, role: input.role, sharePercent: input.sharePercent,
-      notes: input.notes, leaseOnFile: input.leaseOnFile, leaseDetails: input.leaseDetails, insuranceDetails: input.insuranceDetails,
+      ownerType: input.ownerType ?? null, notes: input.notes, leaseOnFile: input.leaseOnFile, leaseDetails: input.leaseDetails, insuranceDetails: input.insuranceDetails,
     }
     links.push(link)
     recount()
@@ -187,7 +203,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
           const others = links.filter((l) => l.id !== link.id && l.tractId === link.tractId && l.parcelId === link.parcelId && l.role === link.role && l.sharePercent !== null).reduce((s, l) => s + l.sharePercent!, 0)
           if (others + body.sharePercent > 100.0000001) return problem(409, 'share_exceeds_whole', `The shares would add up to more than 100 percent. ${Math.max(0, 100 - others)} percent is unclaimed.`)
         }
-        Object.assign(link, { sharePercent: body.sharePercent ?? null, notes: body.notes ?? null, leaseOnFile: !!body.leaseOnFile, leaseDetails: body.leaseDetails ?? null, insuranceDetails: body.insuranceDetails ?? null })
+        Object.assign(link, { sharePercent: body.sharePercent ?? null, ownerType: body.ownerType ?? null, notes: body.notes ?? null, leaseOnFile: !!body.leaseOnFile, leaseDetails: body.leaseDetails ?? null, insuranceDetails: body.insuranceDetails ?? null })
         return json(dto(link))
       }
       if (method === 'DELETE') {
@@ -219,7 +235,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
         if (!can('create')) return forbidden()
         const errors = validateParty(body)
         if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
-        const party = { id: id('party'), kind: 'Person', legalName: null, taxIdType: null, taxIdMasked: null, hasTaxId: false, w9ReceivedOn: null, reportable1099: false, linkCount: 0 } as unknown as Party
+        const party = { id: id('party'), kind: 'Person', legalName: null, taxIdType: null, taxIdMasked: null, hasTaxId: false, w9ReceivedOn: null, reportable1099: false, linkCount: 0, addresses: [], contacts: [] } as unknown as Party
         applyParty(party, body)
         parties.push(party)
         return json(party, 201)
@@ -246,6 +262,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
       const errors = validateParty(body)
       if (Object.keys(errors).length) return problem(400, 'validation_failed', 'Validation failed.', errors)
       applyParty(party, body)
+      syncOwners()
       return json(party)
     }
     if (method === 'DELETE' && !sub) {

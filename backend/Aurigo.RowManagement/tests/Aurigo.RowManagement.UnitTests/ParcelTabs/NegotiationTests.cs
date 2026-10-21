@@ -9,8 +9,8 @@ public class NegotiationTests
     private static SaveNegotiationCommand Cmd(
         decimal? total = null, DateOnly? jatSubmitted = null, DateOnly? jatResponse = null, DateOnly? puaRequested = null, DateOnly? puaApproved = null,
         DateOnly? puaExecuted = null, DateOnly? puaClosed = null, IReadOnlyList<NegotiationOfferInput>? offers = null, IReadOnlyList<NegotiationNoteInput>? notes = null,
-        IReadOnlyList<NegotiationAgentInput>? agents = null, IReadOnlyList<NegotiationSettlementInput>? settlements = null, IReadOnlyList<NegotiationRightOfEntryInput>? roe = null) =>
-        new(Guid.NewGuid(), null, total, null, jatSubmitted, jatResponse, null, false, puaRequested, puaApproved, null, puaExecuted, puaClosed, notes, agents, roe, offers, settlements);
+        IReadOnlyList<NegotiationSettlementInput>? settlements = null) =>
+        new(Guid.NewGuid(), null, total, null, jatSubmitted, jatResponse, null, false, puaRequested, puaApproved, null, puaExecuted, puaClosed, notes, offers, settlements);
 
     private static bool Valid(SaveNegotiationCommand c) => new SaveNegotiationCommandValidator().Validate(c).IsValid;
     private static DateOnly D(int month, int day) => new(2026, month, day);
@@ -32,16 +32,14 @@ public class NegotiationTests
         Valid(Cmd(puaRequested: D(7, 2), puaApproved: D(7, 1))).Should().BeFalse();
         Valid(Cmd(puaExecuted: D(7, 2), puaClosed: D(7, 1))).Should().BeFalse();
         Valid(Cmd(offers: new[] { new NegotiationOfferInput(null, D(5, 2), D(5, 1), null, null) })).Should().BeFalse();
-        Valid(Cmd(roe: new[] { new NegotiationRightOfEntryInput(D(5, 2), D(5, 1), null, null, null, null) })).Should().BeFalse();
         Valid(Cmd(settlements: new[] { new NegotiationSettlementInput(null, null, D(5, 2), D(5, 1), null, null, null, null) })).Should().BeFalse();
     }
 
     [Fact]
-    public void AT_NE_42_Notes_and_agents_need_text_and_each_grid_holds_at_most_fifty_rows()
+    public void AT_NE_42_Notes_need_text_and_each_grid_holds_at_most_fifty_rows()
     {
         Valid(Cmd(notes: new[] { new NegotiationNoteInput(D(5, 1), "Called.") })).Should().BeTrue();
         Valid(Cmd(notes: new[] { new NegotiationNoteInput(D(5, 1), " ") })).Should().BeFalse();
-        Valid(Cmd(agents: new[] { new NegotiationAgentInput("") })).Should().BeFalse();
         Valid(Cmd(offers: Enumerable.Range(0, 50).Select(_ => new NegotiationOfferInput(null, null, null, 1m, null)).ToList())).Should().BeTrue();
         Valid(Cmd(offers: Enumerable.Range(0, 51).Select(_ => new NegotiationOfferInput(null, null, null, 1m, null)).ToList())).Should().BeFalse();
     }

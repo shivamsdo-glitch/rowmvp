@@ -283,12 +283,27 @@ public sealed class DemoDataSeedStep : ISeedStep
         if (parcel is null) return;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        ParcelTeamMember Member(TeamRole role, string name, string? org, bool consultant) =>
-            new() { ParcelId = parcel.Id, Role = role, Name = name, NameKey = name.ToUpperInvariant(), Organization = org, IsConsultant = consultant };
-        _db.ParcelTeamMembers.AddRange(
-            Member(TeamRole.ProjectLead, "Dana Whitfield", "Agency ROW office", false),
-            Member(TeamRole.Negotiator, "Riley Okafor", "Okafor Land Services", true),
-            Member(TeamRole.Appraiser, "Allison Jackson", "CBRE, Inc.", true));
+        // The team is picked from the Library, so the demo Library gets the three people (add-only: an agency's own list is left alone).
+        (string Name, string Type, string Company)[] people =
+        {
+            ("Dana Whitfield", "Project Lead", "Agency ROW office"),
+            ("Riley Okafor", "Negotiator", "Okafor Land Services"),
+            ("Allison Jackson", "Appraiser", "CBRE, Inc."),
+        };
+        foreach (var (name, type, company) in people)
+        {
+            var key = $"{name.ToUpperInvariant()}|{type.ToUpperInvariant()}|{company.ToUpperInvariant()}"; // the Library's unique key for an agent
+            var agent = await _db.LibraryAgents.FirstOrDefaultAsync(a => a.NormalizedKey == key, ct);
+            if (agent is null)
+            {
+                agent = new LibraryAgent { TenantId = WellKnownIds.DevTenant, Name = name, AgentType = type, Company = company, IsActive = true, NormalizedKey = key };
+                _db.LibraryAgents.Add(agent);
+            }
+            _db.ParcelTeamMembers.Add(new ParcelTeamMember
+            {
+                ParcelId = parcel.Id, AgentId = agent.Id, Role = type, Name = name, NameKey = name.ToUpperInvariant(), Organization = company,
+            });
+        }
         _db.ParcelDiaryEntries.AddRange(
             new ParcelDiaryEntry { ParcelId = parcel.Id, OccurredOn = today.AddDays(-28), Method = DiaryMethod.Call, Direction = DiaryDirection.Outgoing, ContactName = "Alex Marlowe", Summary = "Introduced the project and explained the offer process.", Outcome = "Asked for the plans by email." },
             new ParcelDiaryEntry { ParcelId = parcel.Id, OccurredOn = today.AddDays(-14), Method = DiaryMethod.Meeting, Direction = DiaryDirection.Incoming, ContactName = "Jordan Reyes", Summary = "Owner's attorney met us on site to walk the frontage.", Outcome = "Agreed to review the offer package within two weeks." });

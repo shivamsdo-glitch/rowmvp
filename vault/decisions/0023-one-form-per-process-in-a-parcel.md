@@ -1,0 +1,18 @@
+# ADR 0023 — One form per process inside a parcel (ownership + parties merged, team from the Library, right of entry in Negotiation)
+
+**Status:** accepted (Phase 1.5). Requested by the user on 2026-10-21: "A single process cannot have one form in one section and another form in another section." Supersedes parts of ADR 0011 (team), 0012 (right of entry), 0017 (ownership tab) and 0019 (negotiation agents / right of entry).
+
+## What changed
+1. **Ownership details and Parties are one tab, "Ownership interests"** (page key `parties`). The standalone `ownership` page key, tab, tables (`ParcelOwnership*`) and endpoints are gone. A person or organization is entered once (a `Party`) and linked to the parcel by role; an owner link also carries the **owner type** (Library list `owner_type`, only for ownership-category roles). Addresses and contacts live on the party (`PartyAddress`, `PartyContact`) and are edited in the same form that adds or changes the owner ("Add all the details including contacts here"). The parcel's derived **Owner name** and the Title & Closing **vested owner name** now read these links (`ParcelOwners`). Tract-child parcels still record owners on the tract (ADR 0009).
+2. **Team is picked from the Library.** The parcel Team tab is only two dropdowns: an **Agent type** and a **Person** of that type from the Library's Agents list (`LibraryAgent`, ADR 0010/0015), plus notes. No name or contact is typed on the parcel; company, phone and email are the Library person's. The same person cannot be on one parcel twice. `ParcelTeamMember.AgentId` is the link; `Role` is the agent type at the time of assignment. The default Library agent-type list was extended (Project Lead, Row Designer, Surveyor, Title Researcher, Appraisal Coordinator, Appraiser, Appraisal Reviewer, Negotiator, Broker, Counsel, Relocation, FHWA Representative, Land Planner, Community Engagement, Site Work).
+3. **"Assigned to" comes from the parcel's team**, not from the whole Library (Title & Closing and Negotiation forms).
+4. **Right of entry lives only in the Negotiation tab.** The separate "Right of entry" parcel tab and the copy inside the Negotiation record are replaced by one form there. The record gained the negotiation copy's fields (letter mailed / delivered, sent to ATP). Reads stay on `parcels` (the report page, every role); **writes need `parcelnegotiation`** (Negotiator, Admin). Project Manager can read but no longer writes a right of entry.
+5. **Negotiation "Agents" grid removed**: people are assigned once, on the Team tab.
+6. **Save tax information** always saved; the form gave no feedback. It now shows a success or error banner. (The merged owner form also removes one of the two places tax information was entered.)
+
+## Data
+Migration `MergeOwnershipTeamRightOfEntry` keeps what people entered: ownership rows become parties linked to the parcel as fee owners (ids, addresses, contacts, attachments and owner type kept); negotiation rights of entry join the one right-of-entry list (a signed letter means permission was granted that day); old team roles become the matching Library type names. Team members already on a parcel keep their typed name (no Library link until re-picked). Negotiation agents are dropped (the "assigned to" name already held the person). Existing tenants must add agent types and people to the Library (defaults seed only new tenants).
+
+## Not changed / flagged
+- Relocation's own "Agents" grid is a different record (people serving that relocation case) and was not touched.
+- Two people adding an owner on the same parcel at once can conflict by design when share-carrying roles would exceed 100%.

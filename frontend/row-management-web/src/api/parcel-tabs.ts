@@ -87,53 +87,6 @@ export const documentsApi = (api: ApiClient) => ({
   remove: (id: string) => api.delete(`/api/v1/documents/${id}`),
 })
 
-export interface OwnershipAddress {
-  id?: string
-  addressType: string | null
-  address: string | null
-  contactPerson: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-}
-
-export interface OwnershipContact {
-  id?: string
-  contactType: string | null
-  name: string
-  phone: string | null
-  email: string | null
-  address: string | null
-  isActive: boolean
-  isPrimary: boolean
-}
-
-export interface Ownership {
-  id: string
-  parcelId: string
-  ownershipNumber: number
-  parcelNumber: string
-  ownerName: string
-  ownerType: string | null
-  addresses: OwnershipAddress[]
-  contacts: OwnershipContact[]
-  updatedAt: string
-}
-
-export interface OwnershipInput {
-  ownerName: string
-  ownerType: string | null
-  addresses: OwnershipAddress[]
-  contacts: OwnershipContact[]
-}
-
-export const ownershipApi = (api: ApiClient) => ({
-  list: (parcelId: string) => api.get<Ownership[]>(`/api/v1/parcels/${parcelId}/ownerships`),
-  add: (parcelId: string, body: OwnershipInput) => api.post<Ownership>(`/api/v1/parcels/${parcelId}/ownerships`, body),
-  update: (parcelId: string, id: string, body: OwnershipInput) => api.put<Ownership>(`/api/v1/parcels/${parcelId}/ownerships/${id}`, body),
-  remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/ownerships/${id}`),
-})
-
 export interface Encumbrance {
   id: string
   parcelId: string
@@ -205,7 +158,7 @@ export interface TitleClosing {
   parcelId: string
   number: string
   parcelNumber: string
-  /** Read-only: the parcel's ownerships of type "Vested Owner". */
+  /** Read-only: the parcel's owners of owner type "Vested Owner". */
   vestedOwnerName: string | null
   assignedTo: string | null
   titleCompany: string | null
@@ -287,17 +240,6 @@ export const appraisalsApi = (api: ApiClient) => ({
 })
 
 export interface NegotiationNote { id?: string; noteDate: string; text: string }
-/** Type, company, phone and email are read-only: they come from the Library agent of that name. */
-export interface NegotiationAgent { id?: string; agentName: string; agentType: string | null; company: string | null; phone: string | null; email: string | null }
-export interface NegotiationRightOfEntry {
-  id?: string
-  letterMailedDate: string | null
-  letterDeliveredDate: string | null
-  signedReceivedDate: string | null
-  sentToAtpDate: string | null
-  expirationDate: string | null
-  specialInstructions: string | null
-}
 export interface NegotiationOffer { id?: string; offerType: string | null; mailedDate: string | null; deliveredDate: string | null; amount: number | null; notes: string | null }
 export interface NegotiationSettlement {
   id?: string
@@ -329,14 +271,12 @@ export interface Negotiation {
   puaExecutedDate: string | null
   puaClosedDate: string | null
   statusNotes: NegotiationNote[]
-  agents: NegotiationAgent[]
-  rightsOfEntry: NegotiationRightOfEntry[]
   offers: NegotiationOffer[]
   settlements: NegotiationSettlement[]
   updatedAt: string
 }
 
-export type NegotiationInput = Omit<Negotiation, 'id' | 'parcelId' | 'number' | 'parcelNumber' | 'updatedAt' | 'agents'> & { agents: { agentName: string }[] }
+export type NegotiationInput = Omit<Negotiation, 'id' | 'parcelId' | 'number' | 'parcelNumber' | 'updatedAt'>
 
 export const negotiationApi = (api: ApiClient) => ({
   get: (parcelId: string) => api.get<{ record: Negotiation | null }>(`/api/v1/parcels/${parcelId}/negotiation`),
@@ -391,7 +331,7 @@ export interface Condemnation {
   parcelId: string
   number: string
   parcelNumber: string
-  /** Read-only: the parcel's ownerships of type "Vested Owner". */
+  /** Read-only: the parcel's owners of owner type "Vested Owner". */
   vestedOwnerName: string | null
   details: DetailValues
   statusNotes: StatusNote[]
@@ -442,7 +382,7 @@ export interface Relocation {
   id: string
   parcelId: string
   parcelNumber: string
-  /** Read-only: the parcel's ownerships of type "Vested Owner". */
+  /** Read-only: the parcel's owners of owner type "Vested Owner". */
   vestedOwnerName: string | null
   details: DetailValues
   statusNotes: StatusNote[]

@@ -1,5 +1,3 @@
-using Aurigo.RowManagement.Domain.Enums;
-
 namespace Aurigo.RowManagement.Application.Calculations;
 
 /// <summary>Pure rules for a parcel's team, diary and notes (ROW-019..021). The clock is passed in.</summary>
@@ -23,16 +21,6 @@ public static class ParcelRecordRules
         return null;
     }
 
-    public static string DescribeRole(TeamRole role) => role switch
-    {
-        TeamRole.ProjectLead => "project lead",
-        TeamRole.AppraisalCoordinator => "appraisal coordinator",
-        TeamRole.Appraiser => "appraiser",
-        TeamRole.Reviewer => "reviewer",
-        TeamRole.Negotiator => "negotiator",
-        TeamRole.Counsel => "counsel",
-        TeamRole.RelocationAgent => "relocation agent",
-        TeamRole.Fhwa => "FHWA representative",
-        _ => "team member",
-    };
+    /// <summary>A role (a Library agent type) as it reads in a sentence: lower case, "team member" when none is given.</summary>
+    public static string DescribeRole(string? role) => string.IsNullOrWhiteSpace(role) ? "team member" : role.Trim().ToLowerInvariant();
 }

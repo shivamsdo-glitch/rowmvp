@@ -60,6 +60,29 @@ export const CATEGORY_LABEL: Record<PartyCategory, string> = {
   Abutter: 'Abutters and interested parties',
 }
 
+/** One address of a party (a grid on the party's form). `id` is set on saved rows only. */
+export interface PartyAddress {
+  id?: string
+  addressType: string | null
+  address: string | null
+  contactPerson: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+}
+
+/** A contact person of a party (a grid on the party's form). */
+export interface PartyContact {
+  id?: string
+  contactType: string | null
+  name: string
+  phone: string | null
+  email: string | null
+  address: string | null
+  isActive: boolean
+  isPrimary: boolean
+}
+
 export interface PartySummary {
   id: string
   kind: PartyKind
@@ -92,6 +115,8 @@ export interface Party {
   w9ReceivedOn: string | null
   reportable1099: boolean
   linkCount: number
+  addresses: PartyAddress[]
+  contacts: PartyContact[]
   updatedAt: string
 }
 
@@ -107,6 +132,9 @@ export interface PartyInput {
   state: string | null
   postalCode: string | null
   notes: string | null
+  /** Leave out to keep the saved rows; a list replaces them. */
+  addresses?: PartyAddress[]
+  contacts?: PartyContact[]
 }
 
 export interface PartyLink {
@@ -114,6 +142,8 @@ export interface PartyLink {
   category: PartyCategory
   role: PartyRole
   sharePercent: number | null
+  /** A value of the Library's Owner type list, for ownership interests ("Vested Owner", "Prior Owner"...). */
+  ownerType: string | null
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null
@@ -152,6 +182,7 @@ export interface PartyLinkInput {
   newParty: PartyInput | null
   role: PartyRole
   sharePercent: number | null
+  ownerType?: string | null
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null
@@ -160,6 +191,7 @@ export interface PartyLinkInput {
 
 export interface PartyLinkChange {
   sharePercent: number | null
+  ownerType?: string | null
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null

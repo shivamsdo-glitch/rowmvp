@@ -186,7 +186,6 @@ public class PartyTests
     [InlineData(RoleNames.ProjectManager, true)]
     [InlineData(RoleNames.Negotiator, true)]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.TitleResearcher, false)]
     [InlineData(RoleNames.Appraiser, false)]
     [InlineData(RoleNames.Finance, false)]
     public async Task ROW_014_Only_roles_with_the_parties_page_can_change_parties_but_all_can_read(string role, bool canWrite)
@@ -205,6 +204,22 @@ public class PartyTests
         var tax = () => c.SetTax.Handle(new SetPartyTaxInfoCommand(existing, TaxIdType.Ssn, "123-45-6789", null, false), default);
         if (canWrite) await tax.Should().NotThrowAsync();
         else await tax.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task ROW_014_A_title_researcher_can_edit_owners_on_the_Ownership_interests_tab_but_not_add_or_remove_them()
+    {
+        var store = await Provision();
+        await using var pm = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+        var existing = await MakeParty(pm);
+        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.TitleResearcher);
+
+        await c.Update.Handle(new UpdatePartyCommand(existing, PartyKind.Person, "Pat Owner Jr", null, null, null, null, null, null, null, null, null,
+            new[] { new PartyAddressInput("Tax Card Mailing Address", "1 Main St", null, "Austin", "TX", "78701") }, null), default);
+
+        (await c.Get.Handle(new GetPartyQuery(existing), default)).Addresses.Should().ContainSingle();
+        await Thrown<ForbiddenException>(() => c.Create.Handle(NewParty("Second"), default));
+        await Thrown<ForbiddenException>(() => c.Delete.Handle(new DeletePartyCommand(existing), default));
     }
 
     // ── tax information (ROW-018) ──
@@ -491,7 +506,6 @@ public class PartyTests
     [InlineData(RoleNames.ProjectManager, true)]
     [InlineData(RoleNames.Negotiator, true)]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.TitleResearcher, false)]
     [InlineData(RoleNames.Appraiser, false)]
     [InlineData(RoleNames.Finance, false)]
     public async Task ROW_014_Only_roles_that_may_edit_parties_can_link_change_or_remove_them(string role, bool canWrite)

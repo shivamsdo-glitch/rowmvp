@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck } from 'lucide-react'
@@ -71,6 +71,39 @@ export function PartyDetailPage({ partyId }: { partyId: string }) {
             <Fact label="Last updated">{dateText(p.updatedAt)}</Fact>
           </dl>
           {p.notes && <p className="mt-3 whitespace-pre-wrap text-sm"><span className="text-xs text-muted-foreground">Notes: </span>{p.notes}</p>}
+          {p.addresses.length > 0 && (
+            <div className="mt-4">
+              <DataTable caption="Addresses" headers={['Address type', 'Address', 'Contact person', 'City', 'State', 'Zip']}>
+                {p.addresses.map((a, i) => (
+                  <tr key={a.id ?? i}>
+                    <td className="px-3 py-2">{a.addressType ?? '—'}</td>
+                    <td className="px-3 py-2">{a.address ?? '—'}</td>
+                    <td className="px-3 py-2">{a.contactPerson ?? '—'}</td>
+                    <td className="px-3 py-2">{a.city ?? '—'}</td>
+                    <td className="px-3 py-2">{a.state ?? '—'}</td>
+                    <td className="px-3 py-2">{a.zip ?? '—'}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </div>
+          )}
+          {p.contacts.length > 0 && (
+            <div className="mt-4">
+              <DataTable caption="Contacts" headers={['Contact type', 'Name', 'Phone number', 'Email', 'Address', 'Active', 'Is primary']}>
+                {p.contacts.map((c, i) => (
+                  <tr key={c.id ?? i}>
+                    <td className="px-3 py-2">{c.contactType ?? '—'}</td>
+                    <td className="px-3 py-2">{c.name}</td>
+                    <td className="px-3 py-2">{c.phone ?? '—'}</td>
+                    <td className="px-3 py-2">{c.email ?? '—'}</td>
+                    <td className="px-3 py-2">{c.address ?? '—'}</td>
+                    <td className="px-3 py-2">{c.isActive ? 'Yes' : 'No'}</td>
+                    <td className="px-3 py-2">{c.isPrimary ? 'Yes' : 'No'}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </div>
+          )}
         </Section>
       )}
 
@@ -165,6 +198,9 @@ function TaxSection({ party: p, canUpdate }: { party: Party; canUpdate: boolean 
   const [fields, setFields] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
+  const savedRef = useRef<HTMLParagraphElement>(null)
+  // The form is long and the page scrolls, so bring the confirmation into view when a save succeeds.
+  useEffect(() => { if (saved) savedRef.current?.scrollIntoView?.({ block: 'nearest' }) }, [saved])
 
   const refresh = () => Promise.all([queryClient.invalidateQueries({ queryKey: ['party'] }), queryClient.invalidateQueries({ queryKey: ['parties'] })])
 
@@ -240,9 +276,9 @@ function TaxSection({ party: p, canUpdate }: { party: Party; canUpdate: boolean 
             <CheckboxField label="Reportable on a 1099" checked={r1099} onChange={setR1099} />
           </div>
           <FormError error={error} />
-          {saved && <p role="status" className="text-sm text-foreground">Tax information saved.</p>}
+          {saved && <p ref={savedRef} role="status" className="rounded-md border border-ok/40 bg-ok/10 px-3 py-2 text-sm font-medium">Tax information saved.</p>}
           <div className="flex gap-2">
-            <button type="submit" disabled={busy} className={buttonClassName('default')}>Save tax information</button>
+            <button type="submit" disabled={busy} className={buttonClassName('default')}>{busy ? 'Saving…' : 'Save tax information'}</button>
             {p.hasTaxId && (
               <button type="button" disabled={busy} className={buttonClassName('outline')} onClick={() => void clear()}>Remove tax ID number</button>
             )}

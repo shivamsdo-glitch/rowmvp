@@ -212,7 +212,7 @@ test.describe('Project Manager · parcels', () => {
     await openParcel(page, parcel.id, 'Parcel 001')
 
     // Interests (ROW-234).
-    await page.getByRole('tab', { name: 'Interests' }).click()
+    await page.getByRole('tab', { name: 'Interests', exact: true }).click()
     await expect(page.getByText('No interests recorded')).toBeVisible()
     const interest = page.getByRole('form', { name: 'Add an interest' })
     await interest.getByRole('button', { name: 'Add interest' }).click()
@@ -722,7 +722,7 @@ for (const role of ROLES) {
       await openParcel(page, parcel.id, 'Parcel 001')
       await expect(page.getByRole('button', { name: 'Edit parcel' }), `${role} Edit parcel`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
       await expect(page.getByRole('button', { name: 'Split', exact: true }), `${role} Split`).toHaveCount(canCreate(role) ? 1 : 0)
-      await page.getByRole('tab', { name: 'Interests' }).click()
+      await page.getByRole('tab', { name: 'Interests', exact: true }).click()
       await expect(page.getByRole('row', { name: /Remainder/ })).toBeVisible()
       await expect(page.getByRole('form', { name: 'Add an interest' }), `${role} add interest`).toHaveCount(canCreate(role) ? 1 : 0)
       await expect(page.getByRole('button', { name: 'Remove Remainder interest' }), `${role} remove interest`).toHaveCount(canDelete(role) ? 1 : 0)

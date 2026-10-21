@@ -15,11 +15,11 @@ import {
   CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, Pill, SelectField, TextField,
 } from '../projects/form-kit'
 import { PartyLinksPanel } from '../parties/PartyLinksPanel'
-import { RightOfEntryTab, ReviewsReportsTab } from './AcquisitionTabs'
+import { ReviewsReportsTab } from './AcquisitionTabs'
 import { DiaryTab, NotesTab, TeamTab } from './ParcelRecordTabs'
 import { ParcelForm } from './ParcelForm'
 import { ContactLogTab, EasementsTab } from './ParcelTabs'
-import { OwnershipTab, ParcelLocationTab } from './OwnershipTabs'
+import { ParcelLocationTab } from './OwnershipTabs'
 import { EncumbrancesTab } from './TitleTabs'
 import { TitleClosingTab } from './TitleClosingTab'
 import { AppraisalTab } from './AppraisalTab'
@@ -31,12 +31,12 @@ import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from '
 const NOTICE_MILESTONE = 'Notice to owner'
 
 const TABS = [
-  ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Parties'], ['diary', 'Diary'], ['notes', 'Notes'], ['roe', 'Right of entry'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
-  ['ownership', 'Ownership details'], ['parcellocation', 'Parcel location'], ['titleencumbrances', 'Title encumbrances'], ['titleclosing', 'Title and closing'], ['parcelappraisal', 'Appraisal'], ['parcelnegotiation', 'Negotiation'], ['parcelquestionnaire', 'Questionnaire'], ['parcelcondemnation', 'Condemnation'], ['parcelproperty', 'Property management & disposition'], ['parcelrelocation', 'Relocation'], ['contactlog', 'Contact log'], ['easements', 'Easements'],
+  ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Ownership interests'], ['diary', 'Diary'], ['notes', 'Notes'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
+  ['parcellocation', 'Parcel location'], ['titleencumbrances', 'Title encumbrances'], ['titleclosing', 'Title and closing'], ['parcelappraisal', 'Appraisal'], ['parcelnegotiation', 'Negotiation'], ['parcelquestionnaire', 'Questionnaire'], ['parcelcondemnation', 'Condemnation'], ['parcelproperty', 'Property management & disposition'], ['parcelrelocation', 'Relocation'], ['contactlog', 'Contact log'], ['easements', 'Easements'],
 ] as const
 type TabKey = (typeof TABS)[number][0]
 /** Tabs with their own page permission: shown only to roles that can read that page. */
-const PAGE_TABS: readonly string[] = ['ownership', 'parcellocation', 'contactlog', 'easements', 'titleencumbrances', 'titleclosing', 'parcelappraisal', 'parcelnegotiation', 'parcelquestionnaire', 'parcelcondemnation', 'parcelproperty', 'parcelrelocation']
+const PAGE_TABS: readonly string[] = ['parcellocation', 'contactlog', 'easements', 'titleencumbrances', 'titleclosing', 'parcelappraisal', 'parcelnegotiation', 'parcelquestionnaire', 'parcelcondemnation', 'parcelproperty', 'parcelrelocation']
 
 /** Runs a save or delete, keeping the screen's error and busy state and refreshing what depends on the parcel. */
 function useParcelActions(parcelId: string) {
@@ -146,16 +146,14 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
           {tab === 'team' && <TeamTab parcelId={p.id} editable={live} />}
           {tab === 'diary' && <DiaryTab parcelId={p.id} editable={live} />}
           {tab === 'notes' && <NotesTab parcelId={p.id} editable={live} />}
-          {tab === 'roe' && <RightOfEntryTab parcelId={p.id} editable={live} />}
           {tab === 'reviews' && <ReviewsReportsTab parcelId={p.id} editable={live} />}
-          {tab === 'parties' && (manager.can('parties') ? <PartyLinksPanel target={{ kind: 'parcel', parcelId: p.id }} editable={live} /> : <p className="text-sm text-muted-foreground">Your role cannot see parties.</p>)}
+          {tab === 'parties' && (manager.can('parties') ? <PartyLinksPanel target={{ kind: 'parcel', parcelId: p.id }} editable={live} /> : <p className="text-sm text-muted-foreground">Your role cannot see ownership interests.</p>)}
           {tab === 'interests' && <InterestsTab parcel={p} editable={live} />}
           {tab === 'milestones' && <MilestonesTab parcel={p} editable={live} />}
           {tab === 'workflow' && <WorkflowTab parcel={p} editable={live} />}
           {tab === 'visits' && <VisitsTab parcel={p} editable={live} />}
           {tab === 'contactlog' && <ContactLogTab parcelId={p.id} editable={live} />}
           {tab === 'easements' && <EasementsTab parcelId={p.id} editable={live} />}
-          {tab === 'ownership' && <OwnershipTab parcelId={p.id} editable={live} />}
           {tab === 'titleencumbrances' && <EncumbrancesTab parcelId={p.id} editable={live} />}
           {tab === 'titleclosing' && <TitleClosingTab parcelId={p.id} editable={live} />}
           {tab === 'parcelcondemnation' && <CondemnationTab parcel={p} editable={live} />}

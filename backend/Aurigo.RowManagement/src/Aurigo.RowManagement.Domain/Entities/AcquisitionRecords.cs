@@ -15,7 +15,12 @@ public class RightOfEntry : EntityBase
     /// <summary>Who gave the permission, as written (an owner or their representative).</summary>
     public string? GrantedBy { get; set; }
     public string? Purpose { get; set; }
+    /// <summary>Special instructions for the entry.</summary>
     public string? Notes { get; set; }
+    // The letter to the owner and its hand-off to the agency's title partner (ADR 0023: the Negotiation tab's one right-of-entry form).
+    public DateOnly? LetterMailedDate { get; set; }
+    public DateOnly? LetterDeliveredDate { get; set; }
+    public DateOnly? SentToAtpDate { get; set; }
 }
 
 /// <summary>A request to acquire a property, made by someone inside or outside the agency, awaiting approval (ROW-080).</summary>

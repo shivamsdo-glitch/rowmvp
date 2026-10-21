@@ -1,8 +1,10 @@
 import type { PagePermission } from '@/api/auth'
+import type { MyDashboard, TeamDashboard } from '@/api/dashboard'
+import { emptyDashboard, sampleTeam } from './fake-dashboard'
 
 const ALL_PAGES = [
   'dashboard', 'projects', 'parcels', 'parties', 'title', 'survey', 'appraisals',
-  'approvals', 'negotiations', 'agreements', 'closing', 'payments', 'administration', 'library', 'contactlog', 'easements', 'ownership', 'parcellocation', 'titleencumbrances', 'titleclosing', 'parcelappraisal', 'parcelnegotiation', 'parcelquestionnaire', 'parcelcondemnation', 'parcelproperty', 'parcelrelocation',
+  'approvals', 'negotiations', 'agreements', 'closing', 'payments', 'administration', 'library', 'contactlog', 'easements', 'parcellocation', 'titleencumbrances', 'titleclosing', 'parcelappraisal', 'parcelnegotiation', 'parcelquestionnaire', 'parcelcondemnation', 'parcelproperty', 'parcelrelocation',
 ]
 
 /** Permission rows for a user who can read `readable` pages and nothing else. */
@@ -21,7 +23,7 @@ function json(body: unknown, status = 200) {
  * A fetch stand-in for the auth endpoints. Give `readable` (pages the user can read) or full `rows`.
  * A request without the expected token is a 401, like the real API.
  */
-export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean }) {
+export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission[]; role?: string; token?: string; meFails?: boolean; dashboard?: MyDashboard; team?: TeamDashboard | 'forbidden'; dashboardFails?: boolean }) {
   const token = opts.token ?? 'good-token'
   const role = opts.role ?? 'Admin'
   return async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -47,6 +49,15 @@ export function fakeAuthFetch(opts: { readable?: string[]; rows?: PagePermission
       return json({ id: 'u1', fullName: 'Dev User', initials: 'DU', email: 'dev@row.local', roles: [role], tenantId: 't1', tenantName: 'Demo DOT' })
     }
     if (url === '/api/v1/auth/permissions') return json(opts.rows ?? permissionsFor(opts.readable ?? []))
+    // The dashboard: by default a person with nothing done and nothing waiting; only managers may ask for the team view.
+    if (url === '/api/v1/dashboard/me') {
+      if (opts.dashboardFails) return json({ title: 'server_error' }, 500)
+      return json(opts.dashboard ?? emptyDashboard({ roles: [role], isManager: role === 'Admin' || role === 'ProjectManager' }))
+    }
+    if (url === '/api/v1/dashboard/team') {
+      if (opts.team === 'forbidden' || !(role === 'Admin' || role === 'ProjectManager' || opts.team)) return json({ title: 'forbidden' }, 403)
+      return json(opts.team ?? sampleTeam())
+    }
     // The dashboard's next-actions card asks for reminders; an agency with no parcels has none.
     if (url.startsWith('/api/v1/reminders')) return json([])
     return json({ title: 'not_found' }, 404)

@@ -38,7 +38,8 @@ public static class DefaultLibrary
         new(LibraryKeys.PossessionType, "Possession type", CustomFieldType.List, new[] { "PUA", "Closing", "Notice of Deposit", "Judgement" }),
         new(LibraryKeys.AgentType, "Agent type", CustomFieldType.List, new[]
         {
-            "Row Designer", "Surveyor", "Title Researcher", "Appraiser", "Negotiator", "Broker", "Relocation", "Land Planner", "Community Engagement", "Site Work",
+            "Project Lead", "Row Designer", "Surveyor", "Title Researcher", "Appraisal Coordinator", "Appraiser", "Appraisal Reviewer", "Negotiator", "Broker",
+            "Counsel", "Relocation", "FHWA Representative", "Land Planner", "Community Engagement", "Site Work",
         }),
         new(LibraryKeys.ContactType, "Contact type", CustomFieldType.List, new[] { "Broker" }),
         new(LibraryKeys.CadNumber, "CAD number", CustomFieldType.Text, Array.Empty<string>()),

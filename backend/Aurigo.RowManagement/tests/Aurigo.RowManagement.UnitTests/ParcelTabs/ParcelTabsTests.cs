@@ -96,71 +96,22 @@ public class ParcelTabsTests
         DefaultRolePermissions.TemplateFor("SuperUser", PageKeys.Easements).Should().BeNull();
     }
 
-    // ── Ownership Details (slice 5c) ──
-
-    private static AddOwnershipCommand Owner(
-        string name = "Kamali", IReadOnlyList<OwnershipAddressInput>? addresses = null, IReadOnlyList<OwnershipContactInput>? contacts = null) =>
-        new(Guid.NewGuid(), name, "Fee Owner", addresses, contacts);
-
-    private static OwnershipContactInput C(string name = "Dev", bool primary = false, string? phone = null, string? email = null) =>
-        new("Broker", name, phone, email, null, true, primary);
-
-    private static bool Valid(AddOwnershipCommand c) => new AddOwnershipCommandValidator().Validate(c).IsValid;
-
     [Theory]
-    [InlineData("Kamali", true)]
-    [InlineData("", false)]
-    [InlineData("   ", false)]
-    public void AT_DE_42_An_ownership_needs_an_owner_name(string name, bool valid) => Valid(Owner(name)).Should().Be(valid);
-
-    [Fact]
-    public void AT_DE_42_Only_one_contact_can_be_primary()
-    {
-        Valid(Owner(contacts: new[] { C("A", true), C("B") })).Should().BeTrue();
-        Valid(Owner(contacts: new[] { C("A"), C("B") })).Should().BeTrue();
-        Valid(Owner(contacts: new[] { C("A", true), C("B", true) })).Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData("(112) 345-6789", true)]
-    [InlineData("+1 512-555-0100 x12", true)]
-    [InlineData("abc", false)]
-    [InlineData("", true)]
-    public void AT_DE_42_A_contact_phone_must_look_like_a_phone_number(string phone, bool valid) => Valid(Owner(contacts: new[] { C(phone: phone) })).Should().Be(valid);
-
-    [Theory]
-    [InlineData("kamali@aurigo.com", true)]
-    [InlineData("kamali", false)]
-    [InlineData("", true)]
-    public void AT_DE_42_A_contact_email_must_be_an_email_address(string email, bool valid) => Valid(Owner(contacts: new[] { C(email: email) })).Should().Be(valid);
-
-    [Fact]
-    public void AT_DE_42_Each_contact_needs_a_name_and_text_has_length_limits()
-    {
-        Valid(Owner(contacts: new[] { C("") })).Should().BeFalse();
-        Valid(Owner(new string('n', 201))).Should().BeFalse();
-        Valid(Owner(addresses: new[] { new OwnershipAddressInput(null, new string('a', 301), null, null, null, null) })).Should().BeFalse();
-        Valid(Owner(addresses: new[] { new OwnershipAddressInput(null, null, null, null, null, new string('9', 21)) })).Should().BeFalse();
-        Valid(Owner(addresses: Enumerable.Range(0, 51).Select(_ => new OwnershipAddressInput(null, "x", null, null, null, null)).ToList())).Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData("ProjectManager", "R", "R")]
-    [InlineData("Designer", "CRUD", "CRUD")]
-    [InlineData("DesignApprover", "R", "R")]
-    [InlineData("Surveyor", "R", "CRU")]
-    [InlineData("TitleResearcher", "RU", "R")]
-    [InlineData("Appraiser", "R", "R")]
-    [InlineData("AppraisalApprover", "R", "R")]
-    [InlineData("Negotiator", "CRU", "R")]
-    [InlineData("RelocationAgent", "R", "R")]
-    [InlineData("Finance", "R", "R")]
-    [InlineData("Admin", "CRUD", "CRUD")]
-    public void AT_X_48_The_default_access_to_Ownership_and_Parcel_Location_follows_the_approved_matrix(string role, string ownership, string location)
+    [InlineData("ProjectManager", "R")]
+    [InlineData("Designer", "CRUD")]
+    [InlineData("DesignApprover", "R")]
+    [InlineData("Surveyor", "CRU")]
+    [InlineData("TitleResearcher", "R")]
+    [InlineData("Appraiser", "R")]
+    [InlineData("AppraisalApprover", "R")]
+    [InlineData("Negotiator", "R")]
+    [InlineData("RelocationAgent", "R")]
+    [InlineData("Finance", "R")]
+    [InlineData("Admin", "CRUD")]
+    public void AT_X_48_The_default_access_to_Parcel_Location_follows_the_approved_matrix(string role, string location)
     {
         static string Letters(PermissionFlags f) => (f.Create ? "C" : "") + (f.Read ? "R" : "") + (f.Update ? "U" : "") + (f.Delete ? "D" : "");
 
-        Letters(PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.Ownership))).Should().Be(ownership, $"{role} Ownership");
         Letters(PermissionTemplateCalculator.FlagsFor(DefaultRolePermissions.TemplateFor(role, PageKeys.ParcelLocation))).Should().Be(location, $"{role} Parcel Location");
     }
 

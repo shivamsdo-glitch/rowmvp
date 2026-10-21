@@ -3,6 +3,15 @@ import type {
 } from '@/api/parcels'
 import { fakeProjectsApi, type FakeProjects, type FakeProjectsOptions } from './fake-projects'
 
+/** The Library's agents as the parcel forms see them (the Team tab and the "Assigned to" lists pick from these). */
+export const FAKE_LIBRARY_AGENTS = [
+  { id: 'ag1', name: 'Casey Closer', agentType: 'Negotiator', company: 'Stateside ROW', phone: '555-0101', email: 'casey@example.test', isActive: true },
+  { id: 'ag2', name: 'Pat Agent', agentType: 'Broker', company: null, phone: null, email: null, isActive: true },
+  { id: 'ag3', name: 'Old Hand', agentType: 'Broker', company: null, phone: null, email: null, isActive: false },
+  { id: 'ag4', name: 'Dana Whitfield', agentType: 'Project Lead', company: 'Agency ROW office', phone: null, email: null, isActive: true },
+  { id: 'ag5', name: 'Allison Jackson', agentType: 'Appraiser', company: 'CBRE, Inc.', phone: null, email: null, isActive: true },
+]
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
@@ -39,6 +48,7 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['owner_type', 'Owner type', ['CAD Owner', 'Fee Owner', 'Vested Owner']],
   ['address_type', 'Address type', ['Tax Card Mailing Address']],
   ['contact_type', 'Contact type', ['Broker']],
+  ['agent_type', 'Agent type', ['Project Lead', 'Appraiser', 'Negotiator', 'Broker', 'Counsel']],
   ['appraisal_type', 'Appraisal type', ['Full Appraisal', 'Review']],
   ['appraisal_amount_type', 'Appraisal amount type', ['Land', 'Damages']],
   ['review_type', 'Review type', ['Desk Review']],
@@ -247,13 +257,7 @@ export function fakeParcelsApi(opts: FakeParcelsOptions): FakeParcels {
     }
 
     // ── library lists the parcel forms pick from ──
-    if (path === '/api/v1/library/agents' && method === 'GET') {
-      return json([
-        { id: 'ag1', name: 'Casey Closer', agentType: 'Negotiator', company: null, phone: null, email: null, isActive: true },
-        { id: 'ag2', name: 'Pat Agent', agentType: 'Broker', company: null, phone: null, email: null, isActive: true },
-        { id: 'ag3', name: 'Old Hand', agentType: 'Broker', company: null, phone: null, email: null, isActive: false },
-      ])
-    }
+    if (path === '/api/v1/library/agents' && method === 'GET') return json(FAKE_LIBRARY_AGENTS)
     if (path.startsWith('/api/v1/library/fields') && method === 'GET') {
       const lists = LIBRARY_LISTS.map(([key, label, values], i) => ({
         id: `lf-${key}`, key, label, fieldType: 'List', isSystem: true, isLibraryDriven: true,

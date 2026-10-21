@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Aurigo.RowManagement.Application.Common;
+using Aurigo.RowManagement.Application.Library;
 using Aurigo.RowManagement.Application.ParcelRecords;
 using Aurigo.RowManagement.Application.Parcels;
 using Aurigo.RowManagement.Application.Projects;
@@ -39,7 +40,16 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         return await Ok<ParcelDto>(await user.Http.PostAsJsonAsync("/api/v1/parcels", new { projectId = project.Id, areaSqFt = 100m, acquisitionType = "Standard" }, Json), HttpStatusCode.Created);
     }
 
-    private static object Member(string name, string role = "Negotiator") => new { role, name, organization = "Okafor Land Services", isConsultant = true, email = "riley@example.com", phone = "555-123-4567" };
+    private static object Member(Guid agentId, string? notes = null) => new { agentId, notes };
+
+    /// <summary>A person in the Library's Agents list (the only way onto a team); the name is made unique so runs never collide.</summary>
+    private async Task<(Guid Id, string Name)> NewAgent(string name = "Riley Okafor", string type = "Negotiator")
+    {
+        var admin = await _api.As("Admin");
+        var unique = $"{name} {Guid.NewGuid().ToString("N")[..6]}";
+        var agent = await Ok<LibraryAgentDto>(await admin.Http.PostAsJsonAsync("/api/v1/library/agents", new { name = unique, agentType = type, company = "Okafor Land Services", phone = "555-123-4567", email = "riley@example.com" }, Json), HttpStatusCode.Created);
+        return (agent.Id, unique);
+    }
     private static object Entry(string date, string contact = "Alex Marlowe", string summary = "Explained the offer.") =>
         new { occurredOn = date, method = "Call", direction = "Outgoing", contactName = contact, summary, outcome = "Will call back" };
     private static string Today(int addDays = 0) => DateTime.UtcNow.AddDays(addDays).ToString("yyyy-MM-dd");
@@ -63,21 +73,25 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
     {
         var pm = await _api.As("ProjectManager");
         var parcel = await NewParcel(pm);
+        var riley = await NewAgent("Riley Okafor", "Negotiator");
+        var dana = await NewAgent("Dana Whitfield", "Project Lead");
+        var sam = await NewAgent("Sam Reviewer", "Negotiator");
 
-        var riley = await Ok<TeamMemberDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("  Riley   Okafor "), Json), HttpStatusCode.Created);
-        await Ok<TeamMemberDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", new { role = "ProjectLead", name = "Dana Whitfield", isConsultant = false }, Json), HttpStatusCode.Created);
-        var dup = await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("RILEY okafor"), Json);
+        var added = await Ok<ParcelTeamMemberDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(riley.Id), Json), HttpStatusCode.Created);
+        added.Should().Match<ParcelTeamMemberDto>(m => m.Role == "Negotiator" && m.Name == riley.Name && m.Organization == "Okafor Land Services" && m.Email == "riley@example.com" && m.AgentId == riley.Id);
+        await Ok<ParcelTeamMemberDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(dana.Id, "Lead"), Json), HttpStatusCode.Created);
+        var dup = await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(riley.Id), Json);
         dup.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await dup.Content.ReadAsStringAsync()).Should().Contain("team_member_exists");
 
-        var team = await Ok<List<TeamMemberDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/team"));
-        team.Select(m => (m.Role.ToString(), m.Name)).Should().Equal(("ProjectLead", "Dana Whitfield"), ("Negotiator", "Riley Okafor"));
+        var team = await Ok<List<ParcelTeamMemberDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/team"));
+        team.Select(m => (m.Role, m.Name)).Should().Equal(("Negotiator", riley.Name), ("Project Lead", dana.Name));
 
-        var changed = await Ok<TeamMemberDto>(await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team/{riley.Id}", new { role = "Appraiser", name = "Riley Okafor", isConsultant = false, notes = "Moved over" }, Json));
-        changed.Role.ToString().Should().Be("Appraiser");
-        (await pm.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/team/{riley.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await pm.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/team/{riley.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await Ok<List<TeamMemberDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/team"))).Should().ContainSingle();
+        var changed = await Ok<ParcelTeamMemberDto>(await pm.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team/{added.Id}", Member(sam.Id, "Moved over"), Json));
+        changed.Should().Match<ParcelTeamMemberDto>(m => m.Name == sam.Name && m.Notes == "Moved over");
+        (await pm.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/team/{added.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await pm.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/team/{added.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Ok<List<ParcelTeamMemberDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/team"))).Should().ContainSingle();
     }
 
     [PgFact]
@@ -149,7 +163,9 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
     {
         var admin = await _api.As("Admin");
         var parcel = await NewParcel(admin);
-        var seedMember = await Ok<TeamMemberDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("Seed Counsel", "Counsel"), Json), HttpStatusCode.Created);
+        var counsel = await NewAgent("Seed Counsel", "Counsel");
+        var another = await NewAgent("Another Reviewer", "Appraisal Reviewer");
+        var seedMember = await Ok<ParcelTeamMemberDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(counsel.Id), Json), HttpStatusCode.Created);
         var seedEntry = await Ok<DiaryEntryDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", Entry(Today(), "Seed"), Json), HttpStatusCode.Created);
         var seedNote = await Ok<ParcelNoteDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = "seed" }, Json), HttpStatusCode.Created);
         var user = await _api.As(role);
@@ -160,8 +176,8 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         (await Status(user.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/notes"))).Should().Be(Expect(Can("parcels", "read"), HttpStatusCode.OK));
         (await Status(user.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/diary"))).Should().Be(Expect(Can("negotiations", "read"), HttpStatusCode.OK));
 
-        (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member($"By {role}", "Other"), Json))).Should().Be(Expect(Can("parcels", "create"), HttpStatusCode.Created));
-        (await Status(user.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team/{seedMember.Id}", new { role = "Counsel", name = "Seed Counsel", isConsultant = true, notes = $"by {role}" }, Json)))
+        (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(another.Id), Json))).Should().Be(Expect(Can("parcels", "create"), HttpStatusCode.Created));
+        (await Status(user.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team/{seedMember.Id}", Member(counsel.Id, $"by {role}"), Json)))
             .Should().Be(Expect(Can("parcels", "update"), HttpStatusCode.OK));
         (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = $"by {role}" }, Json))).Should().Be(Expect(Can("parcels", "create"), HttpStatusCode.Created));
         (await Status(user.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", Entry(Today(), $"By {role}"), Json))).Should().Be(Expect(Can("negotiations", "create"), HttpStatusCode.Created));
@@ -185,12 +201,13 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
     // ── races, tenancy, schema, input ──
 
     [PgFact]
-    public async Task Ten_people_assigning_the_same_person_to_the_same_role_at_once_produce_exactly_one_assignment()
+    public async Task Ten_people_assigning_the_same_Library_person_at_once_produce_exactly_one_assignment()
     {
         var pm = await _api.As("ProjectManager");
         var parcel = await NewParcel(pm);
+        var riley = await NewAgent();
 
-        var results = await Task.WhenAll(Enumerable.Range(0, 10).Select(i => pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(i % 2 == 0 ? "Riley Okafor" : "RILEY  OKAFOR"), Json)));
+        var results = await Task.WhenAll(Enumerable.Range(0, 10).Select(i => pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(riley.Id), Json)));
 
         results.Count(r => r.StatusCode == HttpStatusCode.Created).Should().Be(1);
         results.Where(r => r.StatusCode != HttpStatusCode.Created).Select(r => r.StatusCode).Should().OnlyContain(s => s == HttpStatusCode.Conflict);
@@ -204,7 +221,8 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         var mine = await _api.As("Admin");
         var theirs = await _api.As("Admin", OtherTenant);
         var parcel = await NewParcel(mine);
-        var member = await Ok<TeamMemberDto>(await mine.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("Secret Person"), Json), HttpStatusCode.Created);
+        var secret = await NewAgent("Secret Person");
+        var member = await Ok<ParcelTeamMemberDto>(await mine.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(secret.Id), Json), HttpStatusCode.Created);
         var note = await Ok<ParcelNoteDto>(await mine.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = "secret" }, Json), HttpStatusCode.Created);
         var entry = await Ok<DiaryEntryDto>(await mine.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", Entry(Today()), Json), HttpStatusCode.Created);
 
@@ -212,13 +230,13 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         {
             (await theirs.Http.GetAsync($"/api/v1/parcels/{parcel.Id}/{part}")).StatusCode.Should().Be(HttpStatusCode.NotFound, part);
         }
-        (await theirs.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("Intruder"), Json)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await theirs.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(secret.Id), Json)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await theirs.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = "x" }, Json)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await theirs.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", Entry(Today()), Json)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await theirs.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/team/{member.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await theirs.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/notes/{note.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await theirs.Http.DeleteAsync($"/api/v1/parcels/{parcel.Id}/diary/{entry.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await PgTestDatabase.ScalarAsync(_api.Database, "select count(*) from parcel_team_members where name = 'Intruder'")).Should().Be(0);
+        (await PgTestDatabase.ScalarAsync(_api.Database, "select count(*) from parcel_team_members where parcel_id = @p", ("p", parcel.Id))).Should().Be(1, "only the owner agency's member exists");
     }
 
     [PgFact]
@@ -227,6 +245,7 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         var pm = await _api.As("ProjectManager");
         var admin = await _api.As("Admin");
         var parcel = await NewParcel(pm);
+        var late = await NewAgent("Late Arrival");
         await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = "before the split" }, Json);
         (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/split", new { parts = new[] { new { areaSqFt = 40m } } }, Json)).StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -234,7 +253,7 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         foreach (var res in new[]
         {
             await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = "late" }, Json),
-            await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("Late"), Json),
+            await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(late.Id), Json),
             await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", Entry(Today()), Json),
         })
         {
@@ -251,8 +270,8 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         var indexes = (await PgTestDatabase.QueryAsync(_api.Database, "select indexname from pg_indexes where tablename in ('parcel_team_members', 'parcel_diary_entries', 'parcel_notes')")).Select(r => (string)r[0]!).ToList();
         indexes.Should().Contain(new[] { "ix_parcel_team_members_parcel_id_role_name_key", "ix_parcel_diary_entries_parcel_id_occurred_on", "ix_parcel_notes_parcel_id" });
 
-        const string insert = "insert into parcel_team_members (id, tenant_id, parcel_id, role, name, name_key, is_consultant, created_at, created_by, updated_at, updated_by) " +
-                              "values (gen_random_uuid(), @t, @p, 'Counsel', 'X', 'X', false, now(), @t, now(), @t)";
+        const string insert = "insert into parcel_team_members (id, tenant_id, parcel_id, role, name, name_key, created_at, created_by, updated_at, updated_by) " +
+                              "values (gen_random_uuid(), @t, @p, 'Counsel', 'X', 'X', now(), @t, now(), @t)";
         await PgTestDatabase.QueryAsync(_api.Database, insert, ("t", pm.TenantId), ("p", parcel.Id));
         var again = () => PgTestDatabase.QueryAsync(_api.Database, insert, ("t", pm.TenantId), ("p", parcel.Id));
         (await again.Should().ThrowAsync<Npgsql.PostgresException>()).Which.SqlState.Should().Be("23505");
@@ -279,14 +298,18 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         var ng = await _api.As("Negotiator");
         var parcel = await NewParcel(pm);
         var script = "<script>alert('x')</script>";
+        var robert = await NewAgent("Robert'); DROP TABLE parcels;--");
+        var plain = await NewAgent("Plain Person");
 
         (await Ok<ParcelNoteDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/notes", new { text = script }, Json), HttpStatusCode.Created)).Text.Should().Be(script);
-        (await Ok<TeamMemberDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member("Robert'); DROP TABLE parcels;--"), Json), HttpStatusCode.Created)).Name.Should().Contain("DROP TABLE");
+        (await Ok<ParcelTeamMemberDto>(await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(robert.Id, script), Json), HttpStatusCode.Created)).Should()
+            .Match<ParcelTeamMemberDto>(m => m.Name.Contains("DROP TABLE") && m.Notes == script);
         (await pm.PostJson($"/api/v1/parcels/{parcel.Id}/notes", JsonSerializer.Serialize(new { text = "null\0char" }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await pm.PostJson($"/api/v1/parcels/{parcel.Id}/notes", JsonSerializer.Serialize(new { text = new string('x', 4001) }))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(new string('x', 201)), Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", new { role = "Wizard", name = "X" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", new { role = "Other", name = "X", email = "nope" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(plain.Id, new string('x', 501)), Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", new { agentId = Guid.Empty }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, "a person must be picked");
+        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", new { name = "Typed Name" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest, "a name cannot be typed in");
+        (await pm.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/team", Member(Guid.NewGuid()), Json)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", new { occurredOn = "not a date", method = "Call", direction = "Outgoing", contactName = "A", summary = "x" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", new { occurredOn = "1900-01-01", method = "Call", direction = "Outgoing", contactName = "A", summary = "x" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await ng.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/diary", new { occurredOn = Today(), method = "Telepathy", direction = "Outgoing", contactName = "A", summary = "x" }, Json)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -303,7 +326,7 @@ public class ParcelRecordApiTests : IClassFixture<PgApi>
         var parcels = await Ok<PagedResult<ParcelSummaryDto>>(await pm.Http.GetAsync($"/api/v1/parcels?projectId={bridge.Id}"));
         var id = parcels.Items.Single(p => p.Number == "001").Id;
 
-        (await Ok<List<TeamMemberDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{id}/team"))).Select(m => m.Name).Should().Contain(new[] { "Dana Whitfield", "Riley Okafor", "Allison Jackson" });
+        (await Ok<List<ParcelTeamMemberDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{id}/team"))).Select(m => m.Name).Should().Contain(new[] { "Dana Whitfield", "Riley Okafor", "Allison Jackson" });
         (await Ok<List<DiaryEntryDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{id}/diary"))).Should().HaveCount(2);
         (await Ok<List<ParcelNoteDto>>(await pm.Http.GetAsync($"/api/v1/parcels/{id}/notes"))).Should().Contain(n => n.Text.Contains("email"));
     }

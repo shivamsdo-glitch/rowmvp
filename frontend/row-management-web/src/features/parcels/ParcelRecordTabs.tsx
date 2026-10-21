@@ -1,16 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Printer, Trash2 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { libraryApi } from '@/api/library'
 import {
-  DIARY_METHODS, DIARY_METHOD_LABEL, TEAM_ROLES, TEAM_ROLE_LABEL, parcelRecordsApi,
-  type DiaryDirection, type DiaryMethod, type TeamMember, type TeamRole,
+  DIARY_METHODS, DIARY_METHOD_LABEL, parcelRecordsApi,
+  type DiaryDirection, type DiaryMethod, type TeamMember,
 } from '@/api/parcel-records'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
+import { optionsWith, useLibraryValues } from '../library/library-kit'
 import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, Pill, SelectField, TextField } from '../projects/form-kit'
 
-const ROLE_OPTIONS = TEAM_ROLES.map((r) => ({ value: r, label: TEAM_ROLE_LABEL[r] }))
 const METHOD_OPTIONS = DIARY_METHODS.map((m) => ({ value: m, label: DIARY_METHOD_LABEL[m] }))
 const DIRECTION_OPTIONS = [{ value: 'Outgoing' as const, label: 'We contacted them' }, { value: 'Incoming' as const, label: 'They contacted us' }]
 
@@ -54,38 +56,41 @@ function useRecordAction(parcelId: string) {
 
 // ── Team (ROW-019) ──────────────────────────────────────────────────────
 
+/** The parcel team: people are picked from the Library's Agents list by agent type, never typed (ADR 0023). */
 export function TeamTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
   const { manager } = useAuth()
   const api = parcelRecordsApi(manager.api)
   const team = useQuery({ queryKey: ['parcel-records', parcelId, 'team'], queryFn: () => api.team(parcelId) })
+  const agents = useQuery({ queryKey: ['library', 'agents'], queryFn: () => libraryApi(manager.api).agents(), retry: false })
+  const types = useLibraryValues('agent_type')
   const a = useRecordAction(parcelId)
   const [editing, setEditing] = useState<TeamMember | null>(null)
-  const [role, setRole] = useState<TeamRole | ''>('Negotiator')
-  const [name, setName] = useState('')
-  const [org, setOrg] = useState('')
-  const [consultant, setConsultant] = useState(false)
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
+  const [type, setType] = useState('')
+  const [agentId, setAgentId] = useState('')
   const [notes, setNotes] = useState('')
-  const [nameError, setNameError] = useState<string | null>(null)
+  const [pickError, setPickError] = useState<string | null>(null)
   const canAdd = editable && manager.can('parcels', 'create')
   const canEdit = editable && manager.can('parcels', 'update')
   const canRemove = editable && manager.can('parcels', 'delete')
 
+  const active = (agents.data ?? []).filter((x) => x.isActive)
+  const ofType = active.filter((x) => x.agentType === type)
+  const chosen = active.find((x) => x.id === agentId)
+
   function reset() {
-    setEditing(null); setRole('Negotiator'); setName(''); setOrg(''); setConsultant(false); setEmail(''); setPhone(''); setNotes('')
+    setEditing(null); setType(''); setAgentId(''); setNotes(''); setPickError(null)
   }
   function begin(m: TeamMember) {
-    a.clear(); setNameError(null)
-    setEditing(m); setRole(m.role); setName(m.name); setOrg(m.organization ?? ''); setConsultant(m.isConsultant)
-    setEmail(m.email ?? ''); setPhone(m.phone ?? ''); setNotes(m.notes ?? '')
+    a.clear(); setPickError(null)
+    setEditing(m); setType(m.role); setAgentId(m.agentId ?? ''); setNotes(m.notes ?? '')
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim()) { setNameError('Name is required.'); return }
-    setNameError(null)
-    const body = { role: role || ('Other' as TeamRole), name: name.trim(), organization: orNull(org), isConsultant: consultant, email: orNull(email), phone: orNull(phone), notes: orNull(notes) }
+    if (!type) { setPickError('Choose the type of person.'); return }
+    if (!agentId) { setPickError('Choose a person from the Library.'); return }
+    setPickError(null)
+    const body = { agentId, notes: orNull(notes) }
     if (await a.run(() => (editing ? api.updateTeam(parcelId, editing.id, body) : api.addTeam(parcelId, body)))) reset()
   }
 
@@ -97,21 +102,22 @@ export function TeamTab({ parcelId, editable }: { parcelId: string; editable: bo
     <>
       <Section title="Parcel team">
         {team.data.length === 0 ? (
-          <EmptyState title="No one is assigned yet" description="Assign the project lead, appraiser, negotiator and others to this parcel." />
+          <EmptyState title="No one is assigned yet" description="Assign the project lead, appraiser, negotiator and others to this parcel. People and their types are kept in the Library." />
         ) : (
-          <DataTable caption="Parcel team" headers={['Role', 'Name', 'Organization', 'Contact', ...(showActions ? ['Actions'] : [])]}>
+          <DataTable caption="Parcel team" headers={['Type', 'Name', 'Company', 'Contact', 'Notes', ...(showActions ? ['Actions'] : [])]}>
             {team.data.map((m) => (
               <tr key={m.id}>
-                <td className="px-3 py-2">{TEAM_ROLE_LABEL[m.role]}</td>
-                <td className="px-3 py-2 font-medium">{m.name} {m.isConsultant && <Pill tone="neutral">Consultant</Pill>}</td>
+                <td className="px-3 py-2">{m.role}</td>
+                <td className="px-3 py-2 font-medium">{m.name}</td>
                 <td className="px-3 py-2">{m.organization ?? '—'}</td>
                 <td className="px-3 py-2">{[m.phone, m.email].filter(Boolean).join(' · ') || '—'}</td>
+                <td className="px-3 py-2">{m.notes ?? '—'}</td>
                 {showActions && (
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
-                      {canEdit && <button type="button" aria-label={`Edit ${m.name}, ${TEAM_ROLE_LABEL[m.role]}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(m)}><Pencil size={14} aria-hidden /></button>}
+                      {canEdit && <button type="button" aria-label={`Edit ${m.name}, ${m.role}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(m)}><Pencil size={14} aria-hidden /></button>}
                       {canRemove && (
-                        <button type="button" aria-label={`Remove ${m.name}, ${TEAM_ROLE_LABEL[m.role]}`} disabled={a.busy} className={buttonClassName('ghost', 'sm')} onClick={() => void a.run(() => api.removeTeam(parcelId, m.id))}>
+                        <button type="button" aria-label={`Remove ${m.name}, ${m.role}`} disabled={a.busy} className={buttonClassName('ghost', 'sm')} onClick={() => void a.run(() => api.removeTeam(parcelId, m.id))}>
                           <Trash2 size={14} aria-hidden />
                         </button>
                       )}
@@ -127,14 +133,20 @@ export function TeamTab({ parcelId, editable }: { parcelId: string; editable: bo
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change team member' : 'Assign a team member'} className="max-w-3xl space-y-3 rounded-lg border bg-card p-4">
           <h3 className="text-sm font-semibold">{editing ? `Change ${editing.name}` : 'Assign a team member'}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <SelectField label="Role" required value={role} onChange={setRole} options={ROLE_OPTIONS} error={a.fields.role} />
-            <TextField label="Name" required value={name} onChange={setName} maxLength={200} error={nameError ?? a.fields.name} />
-            <TextField label="Organization" value={org} onChange={setOrg} maxLength={200} error={a.fields.organization} />
-            <CheckboxField label="Consultant (not agency staff)" checked={consultant} onChange={setConsultant} />
-            <TextField label="Email" value={email} onChange={setEmail} maxLength={200} error={a.fields.email} />
-            <TextField label="Phone" value={phone} onChange={setPhone} maxLength={40} error={a.fields.phone} />
+            <SelectField label="Type" required value={type} onChange={(v) => { setType(v); setAgentId('') }} options={optionsWith(types, type)} blankLabel="Select one" error={pickError && !type ? pickError : undefined} />
+            <SelectField
+              label="Person" required value={agentId} onChange={setAgentId} disabled={!type}
+              options={ofType.map((x) => ({ value: x.id, label: x.company ? `${x.name} (${x.company})` : x.name }))}
+              blankLabel={type ? 'Select one' : 'Choose a type first'} error={pickError && type ? pickError : a.fields.agentId}
+            />
             <TextField label="Notes" value={notes} onChange={setNotes} maxLength={500} error={a.fields.notes} />
           </div>
+          {type && ofType.length === 0 && (
+            <p className="text-xs text-muted-foreground">No active {type.toLowerCase()} is in the Library yet. Add one under <Link to="/library" className="text-primary hover:underline">Library → Agents</Link>.</p>
+          )}
+          {chosen && (
+            <p className="text-xs text-muted-foreground">From the Library: {[chosen.company, chosen.phone, chosen.email].filter(Boolean).join(' · ') || 'no company or contact details'}.</p>
+          )}
           <FormError error={a.error} />
           <div className="flex gap-2">
             <button type="submit" disabled={a.busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Assign'}</button>

@@ -23,6 +23,10 @@ public interface IPartyFields
     string? State { get; }
     string? PostalCode { get; }
     string? Notes { get; }
+    /// <summary>The party's addresses; null leaves the saved ones as they are, a list replaces them.</summary>
+    IReadOnlyList<PartyAddressInput>? Addresses { get; }
+    /// <summary>The party's contact people; null leaves the saved ones as they are, a list replaces them.</summary>
+    IReadOnlyList<PartyContactInput>? Contacts { get; }
 }
 
 internal static class PartyRules
@@ -43,6 +47,34 @@ internal static class PartyRules
         p.PostalCode = Clean(f.PostalCode);
         p.Notes = Clean(f.Notes);
     }
+
+    /// <summary>
+    /// Replaces the party's addresses and contacts with the ones sent (when any are sent). The party must have been loaded with its
+    /// children when it already exists, so the old rows can be removed.
+    /// </summary>
+    public static void ApplyChildren(IRowDbContext db, Party p, IPartyFields f)
+    {
+        if (f.Addresses is { } addresses)
+        {
+            db.PartyAddresses.RemoveRange(p.Addresses.ToList());
+            p.Addresses = addresses.Select(a => new PartyAddress
+            {
+                PartyId = p.Id, AddressType = Clean(a.AddressType), Address = Clean(a.Address), ContactPerson = Clean(a.ContactPerson),
+                City = Clean(a.City), State = Clean(a.State), Zip = Clean(a.Zip),
+            }).ToList();
+            db.PartyAddresses.AddRange(p.Addresses);
+        }
+        if (f.Contacts is { } contacts)
+        {
+            db.PartyContacts.RemoveRange(p.Contacts.ToList());
+            p.Contacts = contacts.Select(c => new PartyContact
+            {
+                PartyId = p.Id, ContactType = Clean(c.ContactType), Name = c.Name.Trim(), Phone = Clean(c.Phone), Email = Clean(c.Email),
+                Address = Clean(c.Address), IsActive = c.IsActive, IsPrimary = c.IsPrimary,
+            }).ToList();
+            db.PartyContacts.AddRange(p.Contacts);
+        }
+    }
 }
 
 /// <summary>The checks every way of entering a party shares.</summary>
@@ -61,6 +93,26 @@ public abstract class PartyFieldsValidator<T> : FluentValidation.AbstractValidat
         RuleFor(x => x.State).Matches(@"^[A-Za-z]{2}$").WithMessage("Use the two-letter state code.").When(x => !string.IsNullOrWhiteSpace(x.State));
         RuleFor(x => x.PostalCode).Matches(@"^[0-9A-Za-z \-]{3,10}$").WithMessage("Enter a valid ZIP or postal code.").When(x => !string.IsNullOrWhiteSpace(x.PostalCode));
         RuleFor(x => x.Notes).MaximumLength(1000);
+        RuleFor(x => x.Addresses).Must(a => a is null || a.Count <= 50).WithMessage("A party can have at most 50 addresses.");
+        RuleForEach(x => x.Addresses).ChildRules(a =>
+        {
+            a.RuleFor(i => i.AddressType).MaximumLength(100);
+            a.RuleFor(i => i.Address).MaximumLength(300);
+            a.RuleFor(i => i.ContactPerson).MaximumLength(200);
+            a.RuleFor(i => i.City).MaximumLength(100);
+            a.RuleFor(i => i.State).MaximumLength(50);
+            a.RuleFor(i => i.Zip).MaximumLength(20);
+        });
+        RuleFor(x => x.Contacts).Must(c => c is null || c.Count <= 50).WithMessage("A party can have at most 50 contacts.");
+        RuleFor(x => x.Contacts).Must(c => c is null || c.Count(i => i.IsPrimary) <= 1).WithMessage("Only one contact can be the primary contact.");
+        RuleForEach(x => x.Contacts).ChildRules(c =>
+        {
+            c.RuleFor(i => i.Name).NotEmpty().WithMessage("Each contact needs a name.").MaximumLength(200);
+            c.RuleFor(i => i.ContactType).MaximumLength(100);
+            c.RuleFor(i => i.Phone).Matches(@"^[\d\s().+\-xX#]{3,40}$").WithMessage("Enter a valid phone number.").When(i => !string.IsNullOrWhiteSpace(i.Phone));
+            c.RuleFor(i => i.Email).EmailAddress().WithMessage("Enter a valid email address.").MaximumLength(200).When(i => !string.IsNullOrWhiteSpace(i.Email));
+            c.RuleFor(i => i.Address).MaximumLength(300);
+        });
     }
 }
 
@@ -72,7 +124,7 @@ public sealed class PartyService
     public PartyService(IRowDbContext db) => _db = db;
 
     public async Task<Party> LoadPartyAsync(Guid id, CancellationToken ct) =>
-        await _db.Parties.FirstOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Party", id);
+        await _db.Parties.Include(p => p.Addresses).Include(p => p.Contacts).FirstOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Party", id);
 
     // ── shaping ──────────────────────────────────────────────────────────
 
@@ -82,7 +134,11 @@ public sealed class PartyService
     public static PartyDto ToDto(Party p, int linkCount) => new(
         p.Id, p.Kind, p.Name, p.LegalName, p.Email, p.Phone, p.AddressLine1, p.AddressLine2, p.City, p.State, p.PostalCode, p.Notes,
         p.TaxIdType, p.TaxIdType is { } type && p.TaxIdLast4 is { } last4 ? TaxId.Mask(type, last4) : null,
-        p.TaxIdProtected is not null, p.W9ReceivedOn, p.Reportable1099, linkCount, p.UpdatedAt);
+        p.TaxIdProtected is not null, p.W9ReceivedOn, p.Reportable1099, linkCount,
+        p.Addresses.OrderBy(a => a.CreatedAt).ThenBy(a => a.Address).Select(a => new PartyAddressDto(a.Id, a.AddressType, a.Address, a.ContactPerson, a.City, a.State, a.Zip)).ToList(),
+        p.Contacts.OrderByDescending(c => c.IsPrimary).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(c => new PartyContactDto(c.Id, c.ContactType, c.Name, c.Phone, c.Email, c.Address, c.IsActive, c.IsPrimary)).ToList(),
+        p.UpdatedAt);
 
     public async Task<IReadOnlyDictionary<Guid, int>> LinkCountsAsync(IReadOnlyCollection<Guid> partyIds, CancellationToken ct) =>
         await _db.PartyLinks.Where(l => partyIds.Contains(l.PartyId)).GroupBy(l => l.PartyId)
@@ -104,7 +160,7 @@ public sealed class PartyService
         return links
             .Where(l => parties.ContainsKey(l.PartyId))
             .Select(l => new PartyLinkDto(
-                l.Id, PartyRoles.CategoryOf(l.Role), l.Role, l.SharePercent, l.Notes, l.LeaseOnFile, l.LeaseDetails, l.InsuranceDetails,
+                l.Id, PartyRoles.CategoryOf(l.Role), l.Role, l.SharePercent, l.OwnerType, l.Notes, l.LeaseOnFile, l.LeaseDetails, l.InsuranceDetails,
                 l.ParentTractId is not null ? "Tract" : "Parcel", l.ParentTractId, l.ParentTractId is { } t ? tracts.GetValueOrDefault(t) : null, l.ParcelId,
                 ToSummary(parties[l.PartyId], counts.GetValueOrDefault(l.PartyId))))
             .OrderBy(d => d.Role).ThenBy(d => d.Party.Name, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Id)
@@ -151,7 +207,7 @@ public sealed class PartyService
             foreach (var l in distinct)
                 _db.PartyLinks.Add(new PartyLink
                 {
-                    PartyId = l.PartyId, ParcelId = parcelId, Role = l.Role, SharePercent = l.SharePercent, Notes = l.Notes,
+                    PartyId = l.PartyId, ParcelId = parcelId, Role = l.Role, SharePercent = l.SharePercent, OwnerType = l.OwnerType, Notes = l.Notes,
                     LeaseOnFile = l.LeaseOnFile, LeaseDetails = l.LeaseDetails, InsuranceDetails = l.InsuranceDetails,
                 });
     }

@@ -14,11 +14,16 @@ public sealed record PartyDto(
     Guid Id, PartyKind Kind, string Name, string? LegalName, string? Email, string? Phone,
     string? AddressLine1, string? AddressLine2, string? City, string? State, string? PostalCode, string? Notes,
     TaxIdType? TaxIdType, string? TaxIdMasked, bool HasTaxId, DateOnly? W9ReceivedOn, bool Reportable1099,
-    int LinkCount, DateTime UpdatedAt);
+    int LinkCount, IReadOnlyList<PartyAddressDto> Addresses, IReadOnlyList<PartyContactDto> Contacts, DateTime UpdatedAt);
+
+public sealed record PartyAddressInput(string? AddressType, string? Address, string? ContactPerson, string? City, string? State, string? Zip);
+public sealed record PartyContactInput(string? ContactType, string Name, string? Phone, string? Email, string? Address, bool IsActive, bool IsPrimary);
+public sealed record PartyAddressDto(Guid Id, string? AddressType, string? Address, string? ContactPerson, string? City, string? State, string? Zip);
+public sealed record PartyContactDto(Guid Id, string? ContactType, string Name, string? Phone, string? Email, string? Address, bool IsActive, bool IsPrimary);
 
 /// <summary>One party's relationship to a tract or parcel. <see cref="Source"/> is "Parcel" or "Tract" (a parcel also sees its tract's).</summary>
 public sealed record PartyLinkDto(
-    Guid Id, PartyCategory Category, PartyRole Role, decimal? SharePercent, string? Notes,
+    Guid Id, PartyCategory Category, PartyRole Role, decimal? SharePercent, string? OwnerType, string? Notes,
     bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails,
     string Source, Guid? ParentTractId, string? TractNumber, Guid? ParcelId, PartySummaryDto Party);
 

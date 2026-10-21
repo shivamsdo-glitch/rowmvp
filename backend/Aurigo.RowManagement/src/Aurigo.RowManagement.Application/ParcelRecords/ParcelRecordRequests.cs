@@ -14,8 +14,8 @@ namespace Aurigo.RowManagement.Application.ParcelRecords;
 
 // ── DTOs ────────────────────────────────────────────────────────────────
 
-public sealed record TeamMemberDto(
-    Guid Id, Guid ParcelId, TeamRole Role, string Name, string? Organization, bool IsConsultant, string? Email, string? Phone, string? Notes, DateTime UpdatedAt);
+public sealed record ParcelTeamMemberDto(
+    Guid Id, Guid ParcelId, string Role, Guid? AgentId, string Name, string? Organization, string? Email, string? Phone, string? Notes, DateTime UpdatedAt);
 
 /// <summary><see cref="AuthorName"/> is who made the entry, when the account is known.</summary>
 public sealed record DiaryEntryDto(
@@ -34,17 +34,17 @@ internal static class ParcelRecordHelpers
         return users.ToDictionary(u => u.Id, u => u.FullName);
     }
 
-    public static TeamMemberDto ToDto(this ParcelTeamMember m) =>
-        new(m.Id, m.ParcelId, m.Role, m.Name, m.Organization, m.IsConsultant, m.Email, m.Phone, m.Notes, m.UpdatedAt);
+    public static ParcelTeamMemberDto ToDto(this ParcelTeamMember m) =>
+        new(m.Id, m.ParcelId, m.Role, m.AgentId, m.Name, m.Organization, m.Email, m.Phone, m.Notes, m.UpdatedAt);
 
     public static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }
 
 // ── Team (ROW-019) ──────────────────────────────────────────────────────
 
-public sealed record ListParcelTeamQuery(Guid ParcelId) : IRequest<IReadOnlyList<TeamMemberDto>>;
+public sealed record ListParcelTeamQuery(Guid ParcelId) : IRequest<IReadOnlyList<ParcelTeamMemberDto>>;
 
-public sealed class ListParcelTeamQueryHandler : IRequestHandler<ListParcelTeamQuery, IReadOnlyList<TeamMemberDto>>
+public sealed class ListParcelTeamQueryHandler : IRequestHandler<ListParcelTeamQuery, IReadOnlyList<ParcelTeamMemberDto>>
 {
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
@@ -57,7 +57,7 @@ public sealed class ListParcelTeamQueryHandler : IRequestHandler<ListParcelTeamQ
         _parcels = parcels;
     }
 
-    public async Task<IReadOnlyList<TeamMemberDto>> Handle(ListParcelTeamQuery request, CancellationToken ct)
+    public async Task<IReadOnlyList<ParcelTeamMemberDto>> Handle(ListParcelTeamQuery request, CancellationToken ct)
     {
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Read, ct);
         var parcel = await _parcels.LoadAsync(request.ParcelId, ct);
@@ -66,40 +66,48 @@ public sealed class ListParcelTeamQueryHandler : IRequestHandler<ListParcelTeamQ
     }
 }
 
-public interface ITeamFields
+/// <summary>
+/// A team member is a person picked from the Library's Agents list: the role is the agent's type and the name, company, phone and email
+/// are copied from the Library, so nothing about a person is typed on the parcel. Only a note is the parcel's own.
+/// </summary>
+public static class TeamMemberRules
 {
-    TeamRole Role { get; }
-    string Name { get; }
-    string? Organization { get; }
-    bool IsConsultant { get; }
-    string? Email { get; }
-    string? Phone { get; }
-    string? Notes { get; }
+    public static async Task<LibraryAgent> LoadAgentAsync(IRowDbContext db, Guid agentId, CancellationToken ct)
+    {
+        var agent = await db.LibraryAgents.FirstOrDefaultAsync(a => a.Id == agentId, ct) ?? throw new NotFoundException("Library agent", agentId);
+        if (!agent.IsActive) throw new InvalidRequestException("agent_inactive", $"{agent.Name} is switched off in the Library. Choose someone else or switch them back on.");
+        return agent;
+    }
+
+    public static void Apply(ParcelTeamMember member, LibraryAgent agent, string? notes)
+    {
+        member.AgentId = agent.Id;
+        member.Role = agent.AgentType;
+        member.Name = ParcelRecordRules.CleanName(agent.Name);
+        member.NameKey = ParcelRecordRules.NameKey(member.Name);
+        member.Organization = ParcelRecordHelpers.Clean(agent.Company);
+        member.Email = ParcelRecordHelpers.Clean(agent.Email);
+        member.Phone = ParcelRecordHelpers.Clean(agent.Phone);
+        member.Notes = ParcelRecordHelpers.Clean(notes);
+    }
+
+    public static ConflictException Exists(ParcelTeamMember m) =>
+        new("team_member_exists", $"{m.Name} is already on this parcel as {ParcelRecordRules.DescribeRole(m.Role)}.");
 }
 
-public abstract class TeamFieldsValidator<T> : AbstractValidator<T> where T : ITeamFields
+public sealed record AddTeamMemberCommand(Guid ParcelId, Guid AgentId, string? Notes) : IRequest<ParcelTeamMemberDto>;
+
+public sealed class AddTeamMemberCommandValidator : AbstractValidator<AddTeamMemberCommand>
 {
-    protected TeamFieldsValidator()
+    public AddTeamMemberCommandValidator()
     {
-        RuleFor(x => x.Role).IsInEnum();
-        RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.").MaximumLength(200);
-        RuleFor(x => x.Organization).MaximumLength(200);
-        RuleFor(x => x.Email).EmailAddress().WithMessage("Enter a valid email address.").MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Email));
-        RuleFor(x => x.Phone).Matches(@"^[\d\s().+\-xX#]{3,40}$").WithMessage("Enter a valid phone number.").When(x => !string.IsNullOrWhiteSpace(x.Phone));
+        RuleFor(x => x.ParcelId).NotEmpty();
+        RuleFor(x => x.AgentId).NotEmpty().WithMessage("Choose a person from the Library.");
         RuleFor(x => x.Notes).MaximumLength(500);
     }
 }
 
-public sealed record AddTeamMemberCommand(
-    Guid ParcelId, TeamRole Role, string Name, string? Organization, bool IsConsultant, string? Email, string? Phone, string? Notes)
-    : IRequest<TeamMemberDto>, ITeamFields;
-
-public sealed class AddTeamMemberCommandValidator : TeamFieldsValidator<AddTeamMemberCommand>
-{
-    public AddTeamMemberCommandValidator() => RuleFor(x => x.ParcelId).NotEmpty();
-}
-
-public sealed class AddTeamMemberCommandHandler : IRequestHandler<AddTeamMemberCommand, TeamMemberDto>
+public sealed class AddTeamMemberCommandHandler : IRequestHandler<AddTeamMemberCommand, ParcelTeamMemberDto>
 {
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
@@ -112,21 +120,16 @@ public sealed class AddTeamMemberCommandHandler : IRequestHandler<AddTeamMemberC
         _parcels = parcels;
     }
 
-    public async Task<TeamMemberDto> Handle(AddTeamMemberCommand request, CancellationToken ct)
+    public async Task<ParcelTeamMemberDto> Handle(AddTeamMemberCommand request, CancellationToken ct)
     {
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Create, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
-        var name = ParcelRecordRules.CleanName(request.Name);
-        var key = ParcelRecordRules.NameKey(name);
-        if (await _db.ParcelTeamMembers.AnyAsync(m => m.ParcelId == parcel.Id && m.Role == request.Role && m.NameKey == key, ct))
-            throw new ConflictException("team_member_exists", $"{name} is already the {ParcelRecordRules.DescribeRole(request.Role)} on this parcel.");
+        var agent = await TeamMemberRules.LoadAgentAsync(_db, request.AgentId, ct);
+        var member = new ParcelTeamMember { ParcelId = parcel.Id };
+        TeamMemberRules.Apply(member, agent, request.Notes);
+        if (await _db.ParcelTeamMembers.AnyAsync(m => m.ParcelId == parcel.Id && m.Role == member.Role && m.NameKey == member.NameKey, ct))
+            throw TeamMemberRules.Exists(member);
 
-        var member = new ParcelTeamMember
-        {
-            ParcelId = parcel.Id, Role = request.Role, Name = name, NameKey = key, Organization = ParcelRecordHelpers.Clean(request.Organization),
-            IsConsultant = request.IsConsultant, Email = ParcelRecordHelpers.Clean(request.Email), Phone = ParcelRecordHelpers.Clean(request.Phone),
-            Notes = ParcelRecordHelpers.Clean(request.Notes),
-        };
         _db.ParcelTeamMembers.Add(member);
         try
         {
@@ -135,26 +138,26 @@ public sealed class AddTeamMemberCommandHandler : IRequestHandler<AddTeamMemberC
         catch (DbUpdateException)
         {
             _db.ChangeTracker.Clear();
-            throw new ConflictException("team_member_exists", $"{name} is already the {ParcelRecordRules.DescribeRole(request.Role)} on this parcel.");
+            throw TeamMemberRules.Exists(member);
         }
         return member.ToDto();
     }
 }
 
-public sealed record UpdateTeamMemberCommand(
-    Guid ParcelId, Guid MemberId, TeamRole Role, string Name, string? Organization, bool IsConsultant, string? Email, string? Phone, string? Notes)
-    : IRequest<TeamMemberDto>, ITeamFields;
+public sealed record UpdateTeamMemberCommand(Guid ParcelId, Guid MemberId, Guid AgentId, string? Notes) : IRequest<ParcelTeamMemberDto>;
 
-public sealed class UpdateTeamMemberCommandValidator : TeamFieldsValidator<UpdateTeamMemberCommand>
+public sealed class UpdateTeamMemberCommandValidator : AbstractValidator<UpdateTeamMemberCommand>
 {
     public UpdateTeamMemberCommandValidator()
     {
         RuleFor(x => x.ParcelId).NotEmpty();
         RuleFor(x => x.MemberId).NotEmpty();
+        RuleFor(x => x.AgentId).NotEmpty().WithMessage("Choose a person from the Library.");
+        RuleFor(x => x.Notes).MaximumLength(500);
     }
 }
 
-public sealed class UpdateTeamMemberCommandHandler : IRequestHandler<UpdateTeamMemberCommand, TeamMemberDto>
+public sealed class UpdateTeamMemberCommandHandler : IRequestHandler<UpdateTeamMemberCommand, ParcelTeamMemberDto>
 {
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
@@ -167,25 +170,16 @@ public sealed class UpdateTeamMemberCommandHandler : IRequestHandler<UpdateTeamM
         _parcels = parcels;
     }
 
-    public async Task<TeamMemberDto> Handle(UpdateTeamMemberCommand request, CancellationToken ct)
+    public async Task<ParcelTeamMemberDto> Handle(UpdateTeamMemberCommand request, CancellationToken ct)
     {
         await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Update, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var member = await _db.ParcelTeamMembers.FirstOrDefaultAsync(m => m.Id == request.MemberId && m.ParcelId == parcel.Id, ct)
                      ?? throw new NotFoundException("Team member", request.MemberId);
-        var name = ParcelRecordRules.CleanName(request.Name);
-        var key = ParcelRecordRules.NameKey(name);
-        if (await _db.ParcelTeamMembers.AnyAsync(m => m.ParcelId == parcel.Id && m.Role == request.Role && m.NameKey == key && m.Id != member.Id, ct))
-            throw new ConflictException("team_member_exists", $"{name} is already the {ParcelRecordRules.DescribeRole(request.Role)} on this parcel.");
-
-        member.Role = request.Role;
-        member.Name = name;
-        member.NameKey = key;
-        member.Organization = ParcelRecordHelpers.Clean(request.Organization);
-        member.IsConsultant = request.IsConsultant;
-        member.Email = ParcelRecordHelpers.Clean(request.Email);
-        member.Phone = ParcelRecordHelpers.Clean(request.Phone);
-        member.Notes = ParcelRecordHelpers.Clean(request.Notes);
+        var agent = await TeamMemberRules.LoadAgentAsync(_db, request.AgentId, ct);
+        TeamMemberRules.Apply(member, agent, request.Notes);
+        if (await _db.ParcelTeamMembers.AnyAsync(m => m.ParcelId == parcel.Id && m.Role == member.Role && m.NameKey == member.NameKey && m.Id != member.Id, ct))
+            throw TeamMemberRules.Exists(member);
         try
         {
             await _db.SaveChangesAsync(ct);
@@ -193,7 +187,7 @@ public sealed class UpdateTeamMemberCommandHandler : IRequestHandler<UpdateTeamM
         catch (DbUpdateException)
         {
             _db.ChangeTracker.Clear();
-            throw new ConflictException("team_member_exists", $"{name} is already the {ParcelRecordRules.DescribeRole(request.Role)} on this parcel.");
+            throw TeamMemberRules.Exists(member);
         }
         return member.ToDto();
     }

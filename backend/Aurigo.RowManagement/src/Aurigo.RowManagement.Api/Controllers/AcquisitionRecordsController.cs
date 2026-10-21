@@ -12,7 +12,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Aurigo.RowManagement.Api.Controllers;
 
-public sealed record RightOfEntryBody(RightOfEntryStatus Status, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn, string? GrantedBy, string? Purpose, string? Notes);
+public sealed record RightOfEntryBody(
+    RightOfEntryStatus Status, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn, string? GrantedBy, string? Purpose, string? Notes,
+    DateOnly? LetterMailedDate = null, DateOnly? LetterDeliveredDate = null, DateOnly? SentToAtpDate = null);
 public sealed record PlanReviewBody(ReviewDiscipline Discipline, ReviewOutcome Outcome, DateOnly ReviewedOn, string ReviewerName, string? Notes);
 public sealed record StaffReportCreateBody(ReportKind Kind, string Title, string Body);
 public sealed record StaffReportEditBody(string Title, string Body);
@@ -36,12 +38,12 @@ public sealed class ParcelAcquisitionController : ControllerBase
     [HttpPost("rights-of-entry")]
     [ProducesResponseType(typeof(RightOfEntryDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> AddRoe(Guid parcelId, [FromBody] RightOfEntryBody b, CancellationToken ct) =>
-        Created($"/api/v1/parcels/{parcelId}/rights-of-entry", await _mediator.Send(new AddRightOfEntryCommand(parcelId, b.Status, b.RequestedOn, b.GrantedOn, b.ExpiresOn, b.GrantedBy, b.Purpose, b.Notes), ct));
+        Created($"/api/v1/parcels/{parcelId}/rights-of-entry", await _mediator.Send(new AddRightOfEntryCommand(parcelId, b.Status, b.RequestedOn, b.GrantedOn, b.ExpiresOn, b.GrantedBy, b.Purpose, b.Notes, b.LetterMailedDate, b.LetterDeliveredDate, b.SentToAtpDate), ct));
 
     [HttpPut("rights-of-entry/{id:guid}")]
     [ProducesResponseType(typeof(RightOfEntryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateRoe(Guid parcelId, Guid id, [FromBody] RightOfEntryBody b, CancellationToken ct) =>
-        Ok(await _mediator.Send(new UpdateRightOfEntryCommand(parcelId, id, b.Status, b.RequestedOn, b.GrantedOn, b.ExpiresOn, b.GrantedBy, b.Purpose, b.Notes), ct));
+        Ok(await _mediator.Send(new UpdateRightOfEntryCommand(parcelId, id, b.Status, b.RequestedOn, b.GrantedOn, b.ExpiresOn, b.GrantedBy, b.Purpose, b.Notes, b.LetterMailedDate, b.LetterDeliveredDate, b.SentToAtpDate), ct));
 
     [HttpDelete("rights-of-entry/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

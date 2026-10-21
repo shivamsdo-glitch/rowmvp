@@ -7,6 +7,7 @@ import { buttonClassName } from '@/components/ui/button'
 import { ErrorState, LoadingRows } from '@/components/ui/states'
 import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
+import { useTeamNames } from './team-kit'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -49,6 +50,7 @@ export function TitleClosingTab({ parcelId, editable }: { parcelId: string; edit
   const companies = useLibraryValues('title_company')
   const conveyanceTypes = useLibraryValues('conveyance_type')
   const agents = useAgentNames()
+  const teamNames = useTeamNames(parcelId)
   const record = q.data?.record ?? null
   const [f, setF] = useState(BLANK)
   const [conveyances, setConveyances] = useState<ConveyanceDocument[]>([])
@@ -145,7 +147,7 @@ export function TitleClosingTab({ parcelId, editable }: { parcelId: string; edit
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="text-sm"><span className="text-xs text-muted-foreground">ID</span><div>{record?.number ?? 'Assigned when saved'}</div></div>
             <div className="text-sm"><span className="text-xs text-muted-foreground">Vested owner name</span><div>{record?.vestedOwnerName ?? '—'}</div></div>
-            <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(agents, f.assignedTo)} blankLabel="Select one" disabled={disabled} error={errors.assignedTo} />
+            <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(teamNames, f.assignedTo)} blankLabel="Select one" disabled={disabled} error={errors.assignedTo} />
             <SelectField label="Title company" value={f.titleCompany} onChange={set('titleCompany')} options={optionsWith(companies, f.titleCompany)} blankLabel="Select one" disabled={disabled} error={errors.titleCompany} />
             <SelectField label="Title/closing agent" value={f.agent} onChange={set('agent')} options={optionsWith(agents, f.agent)} blankLabel="Select one" disabled={disabled} error={errors.titleClosingAgent} />
             <TextField label="GF number" value={f.gf} onChange={set('gf')} maxLength={100} disabled={disabled} error={errors.gfNumber} />

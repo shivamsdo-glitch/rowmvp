@@ -18,7 +18,11 @@ export interface RightOfEntry {
   expiresOn: string | null
   grantedBy: string | null
   purpose: string | null
+  /** Special instructions for the entry. */
   notes: string | null
+  letterMailedDate: string | null
+  letterDeliveredDate: string | null
+  sentToAtpDate: string | null
   updatedAt: string
 }
 
@@ -30,6 +34,9 @@ export interface RightOfEntryInput {
   grantedBy: string | null
   purpose: string | null
   notes: string | null
+  letterMailedDate: string | null
+  letterDeliveredDate: string | null
+  sentToAtpDate: string | null
 }
 
 export interface RoeReportRow {

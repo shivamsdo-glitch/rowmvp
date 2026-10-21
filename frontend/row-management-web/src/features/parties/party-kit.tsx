@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { PARTY_KINDS, PARTY_ROLES, ROLE_LABEL, CATEGORY_OF, type Party, type PartyInput, type PartyKind, type PartyRole } from '@/api/parties'
+import { PARTY_KINDS, PARTY_ROLES, ROLE_LABEL, CATEGORY_OF, type Party, type PartyAddress, type PartyContact, type PartyInput, type PartyKind, type PartyRole } from '@/api/parties'
 import { SelectField, TextField, orNull } from '../projects/form-kit'
+import { PartyAddressesEditor, PartyContactsEditor } from './PartyGrids'
 
 export const KIND_LABEL: Record<PartyKind, string> = { Person: 'Person', Organization: 'Organization' }
 export const KIND_OPTIONS = PARTY_KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] }))
@@ -22,21 +23,25 @@ export interface PartyDraft {
   state: string
   postalCode: string
   notes: string
+  addresses: PartyAddress[]
+  contacts: PartyContact[]
 }
 
 export const emptyDraft = (): PartyDraft => ({
-  kind: 'Person', name: '', legalName: '', email: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', postalCode: '', notes: '',
+  kind: 'Person', name: '', legalName: '', email: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', postalCode: '', notes: '', addresses: [], contacts: [],
 })
 
 export const draftOf = (p: Party): PartyDraft => ({
   kind: p.kind, name: p.name, legalName: p.legalName ?? '', email: p.email ?? '', phone: p.phone ?? '', addressLine1: p.addressLine1 ?? '',
   addressLine2: p.addressLine2 ?? '', city: p.city ?? '', state: p.state ?? '', postalCode: p.postalCode ?? '', notes: p.notes ?? '',
+  addresses: p.addresses ?? [], contacts: p.contacts ?? [],
 })
 
 export const inputOf = (d: PartyDraft): PartyInput => ({
   kind: d.kind, name: d.name.trim(), legalName: orNull(d.legalName), email: orNull(d.email), phone: orNull(d.phone),
   addressLine1: orNull(d.addressLine1), addressLine2: orNull(d.addressLine2), city: orNull(d.city), state: orNull(d.state),
   postalCode: orNull(d.postalCode), notes: orNull(d.notes),
+  addresses: d.addresses.map(({ id: _id, ...a }) => a), contacts: d.contacts.map(({ id: _id, ...c }) => c),
 })
 
 /** The server's field messages for a party typed inside another request (`NewParty.Name` → `name`). */
@@ -79,6 +84,8 @@ export function PartyFields({
       <div className="sm:col-span-2">
         <TextField label={`${p}Notes`} value={draft.notes} onChange={set('notes')} maxLength={1000} error={errors.notes} />
       </div>
+      <PartyAddressesEditor rows={draft.addresses} onChange={set('addresses')} />
+      <PartyContactsEditor rows={draft.contacts} onChange={set('contacts')} />
     </div>
   )
 }

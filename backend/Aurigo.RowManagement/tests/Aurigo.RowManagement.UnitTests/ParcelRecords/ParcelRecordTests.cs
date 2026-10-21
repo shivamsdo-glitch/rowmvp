@@ -77,8 +77,21 @@ public class ParcelRecordTests
 
     private static async Task<T> Thrown<T>(Func<Task> act) where T : Exception => (await act.Should().ThrowAsync<T>()).Which;
 
-    private static AddTeamMemberCommand Member(Guid parcel, TeamRole role = TeamRole.Negotiator, string name = "Riley Okafor") =>
-        new(parcel, role, name, "Okafor Land Services", true, "riley@example.com", "555-123-4567", null);
+    /// <summary>A person in the Library's Agents list (the only way onto a team), by name and type.</summary>
+    private static async Task<Guid> AddAgent(string store, Guid tenant, string name = "Riley Okafor", string type = "Negotiator", bool active = true)
+    {
+        await using var db = TestDb.Create(store, tenant, TestDb.UserA);
+        var agent = new LibraryAgent
+        {
+            Name = name, AgentType = type, Company = "Okafor Land Services", Email = "riley@example.com", Phone = "555-123-4567", IsActive = active,
+            NormalizedKey = $"{name}|{type}|{Guid.NewGuid()}".ToUpperInvariant(),
+        };
+        db.LibraryAgents.Add(agent);
+        await db.SaveChangesAsync();
+        return agent.Id;
+    }
+
+    private static AddTeamMemberCommand Member(Guid parcel, Guid agent, string? notes = null) => new(parcel, agent, notes);
 
     // ── pure rules ──
 
@@ -100,40 +113,59 @@ public class ParcelRecordTests
     }
 
     [Fact]
-    public void ROW_019_Every_role_has_a_plain_name()
+    public void ROW_019_A_role_reads_as_plain_lower_case_text_and_a_blank_one_as_team_member()
     {
-        foreach (var role in Enum.GetValues<TeamRole>()) ParcelRecordRules.DescribeRole(role).Should().NotBeNullOrWhiteSpace();
+        ParcelRecordRules.DescribeRole("Title Researcher").Should().Be("title researcher");
+        ParcelRecordRules.DescribeRole(null).Should().Be("team member");
+        ParcelRecordRules.DescribeRole("  ").Should().Be("team member");
     }
 
     // ── team (ROW-019) ──
 
     [Fact]
-    public async Task ROW_019_People_are_assigned_roles_on_a_parcel_and_listed_by_role()
+    public async Task ROW_019_People_are_picked_from_the_Library_and_take_their_type_and_contact_details_from_it()
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
+        var riley = await AddAgent(store, TestDb.TenantA, "Riley Okafor", "Negotiator");
+        var dana = await AddAgent(store, TestDb.TenantA, "Dana Whitfield", "Project Lead");
         await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
 
-        await c.AddTeam.Handle(Member(parcel, TeamRole.Negotiator, "  Riley   Okafor "), default);
-        await c.AddTeam.Handle(Member(parcel, TeamRole.ProjectLead, "Dana Whitfield") with { IsConsultant = false, Organization = null }, default);
+        await c.AddTeam.Handle(Member(parcel, riley), default);
+        await c.AddTeam.Handle(Member(parcel, dana, "Lead"), default);
 
         var team = await c.Team.Handle(new ListParcelTeamQuery(parcel), default);
-        team.Select(m => (m.Role, m.Name)).Should().Equal((TeamRole.ProjectLead, "Dana Whitfield"), (TeamRole.Negotiator, "Riley Okafor"));
-        team.Single(m => m.Name == "Riley Okafor").IsConsultant.Should().BeTrue();
+        team.Select(m => (m.Role, m.Name)).Should().Equal(("Negotiator", "Riley Okafor"), ("Project Lead", "Dana Whitfield"));
+        team.Single(m => m.Name == "Riley Okafor").Should().Match<ParcelTeamMemberDto>(m =>
+            m.AgentId == riley && m.Organization == "Okafor Land Services" && m.Email == "riley@example.com" && m.Phone == "555-123-4567");
     }
 
     [Fact]
-    public async Task ROW_019_The_same_person_in_the_same_role_twice_is_refused_but_another_role_or_parcel_is_fine()
+    public async Task ROW_019_Only_an_active_Library_person_can_be_picked()
+    {
+        var store = await Provision();
+        var (parcel, _) = await AddParcel(store, TestDb.TenantA);
+        var off = await AddAgent(store, TestDb.TenantA, "Sam Off", "Reviewer", active: false);
+        var elsewhere = await AddAgent(store, TestDb.TenantB, "Other Tenant", "Reviewer");
+        await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
+
+        (await Thrown<InvalidRequestException>(() => c.AddTeam.Handle(Member(parcel, off), default))).Code.Should().Be("agent_inactive");
+        await Thrown<NotFoundException>(() => c.AddTeam.Handle(Member(parcel, elsewhere), default));
+        await Thrown<NotFoundException>(() => c.AddTeam.Handle(Member(parcel, Guid.NewGuid()), default));
+    }
+
+    [Fact]
+    public async Task ROW_019_The_same_person_twice_is_refused_but_another_parcel_is_fine()
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
         var (other, _) = await AddParcel(store, TestDb.TenantA);
+        var riley = await AddAgent(store, TestDb.TenantA);
         await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
-        await c.AddTeam.Handle(Member(parcel), default);
+        await c.AddTeam.Handle(Member(parcel, riley), default);
 
-        (await Thrown<ConflictException>(() => c.AddTeam.Handle(Member(parcel, name: "riley okafor"), default))).Code.Should().Be("team_member_exists");
-        await c.AddTeam.Handle(Member(parcel, TeamRole.Counsel), default);
-        await c.AddTeam.Handle(Member(other), default);
+        (await Thrown<ConflictException>(() => c.AddTeam.Handle(Member(parcel, riley), default))).Code.Should().Be("team_member_exists");
+        await c.AddTeam.Handle(Member(other, riley), default);
     }
 
     [Fact]
@@ -141,13 +173,18 @@ public class ParcelRecordTests
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
+        var riley = await AddAgent(store, TestDb.TenantA);
+        var sam = await AddAgent(store, TestDb.TenantA, "Sam Reviewer", "Reviewer");
+        var pat = await AddAgent(store, TestDb.TenantA, "Pat Reviewer", "Reviewer");
         await using var c = new Ctx(store, TestDb.TenantA, RoleNames.ProjectManager);
-        var a = await c.AddTeam.Handle(Member(parcel), default);
-        await c.AddTeam.Handle(Member(parcel, TeamRole.Reviewer, "Sam Reviewer"), default);
+        var a = await c.AddTeam.Handle(Member(parcel, riley), default);
+        var b = await c.AddTeam.Handle(Member(parcel, sam), default);
 
-        var changed = await c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, a.Id, TeamRole.Appraiser, "Riley Okafor", null, false, null, null, "Moved over"), default);
-        changed.Should().Match<TeamMemberDto>(m => m.Role == TeamRole.Appraiser && !m.IsConsultant && m.Notes == "Moved over");
-        (await Thrown<ConflictException>(() => c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, a.Id, TeamRole.Reviewer, "SAM reviewer", null, false, null, null, null), default)))
+        var changed = await c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, a.Id, riley, "Moved over"), default);
+        changed.Notes.Should().Be("Moved over");
+        var swapped = await c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, a.Id, pat, null), default);
+        swapped.Should().Match<ParcelTeamMemberDto>(m => m.Role == "Reviewer" && m.Name == "Pat Reviewer");
+        (await Thrown<ConflictException>(() => c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, b.Id, pat, null), default)))
             .Code.Should().Be("team_member_exists");
 
         await c.RemoveTeam.Handle(new RemoveTeamMemberCommand(parcel, a.Id), default);
@@ -155,13 +192,14 @@ public class ParcelRecordTests
         await Thrown<NotFoundException>(() => c.RemoveTeam.Handle(new RemoveTeamMemberCommand(parcel, a.Id), default));
     }
 
-    [Theory]
-    [InlineData("", "a@b.co", "555-1234", "Name is required")]
-    [InlineData("Riley", "nope", "555-1234", "valid email")]
-    [InlineData("Riley", "a@b.co", "call me", "valid phone")]
-    public void ROW_019_Bad_team_details_are_refused_at_the_boundary(string name, string email, string phone, string expected) =>
-        new AddTeamMemberCommandValidator().Validate(new AddTeamMemberCommand(Guid.NewGuid(), TeamRole.Other, name, null, false, email, phone, null))
-            .Errors.Should().Contain(e => e.ErrorMessage.Contains(expected));
+    [Fact]
+    public void ROW_019_A_team_member_needs_a_Library_person_and_a_short_note()
+    {
+        var v = new AddTeamMemberCommandValidator();
+        v.Validate(new AddTeamMemberCommand(Guid.NewGuid(), Guid.Empty, null)).Errors.Should().Contain(e => e.ErrorMessage.Contains("Library"));
+        v.Validate(new AddTeamMemberCommand(Guid.NewGuid(), Guid.NewGuid(), new string('x', 501))).IsValid.Should().BeFalse();
+        v.Validate(new AddTeamMemberCommand(Guid.NewGuid(), Guid.NewGuid(), "ok")).IsValid.Should().BeTrue();
+    }
 
     // ── diary (ROW-020) ──
 
@@ -279,9 +317,10 @@ public class ParcelRecordTests
     {
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA, ParcelState.Split);
+        var agent = await AddAgent(store, TestDb.TenantA);
         await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Admin);
 
-        (await Thrown<ConflictException>(() => c.AddTeam.Handle(Member(parcel), default))).Code.Should().Be("parcel_not_active");
+        (await Thrown<ConflictException>(() => c.AddTeam.Handle(Member(parcel, agent), default))).Code.Should().Be("parcel_not_active");
         (await Thrown<ConflictException>(() => c.AddDiary.Handle(new AddDiaryEntryCommand(parcel, Today, DiaryMethod.Call, DiaryDirection.Outgoing, "A", null, "x", null), default))).Code.Should().Be("parcel_not_active");
         (await Thrown<ConflictException>(() => c.AddNote.Handle(new AddParcelNoteCommand(parcel, "x"), default))).Code.Should().Be("parcel_not_active");
         (await c.Team.Handle(new ListParcelTeamQuery(parcel), default)).Should().BeEmpty();
@@ -297,7 +336,7 @@ public class ParcelRecordTests
         await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Admin);
 
         await Thrown<NotFoundException>(() => c.Team.Handle(new ListParcelTeamQuery(theirs), default));
-        await Thrown<NotFoundException>(() => c.AddTeam.Handle(Member(theirs), default));
+        await Thrown<NotFoundException>(() => c.AddTeam.Handle(Member(theirs, Guid.NewGuid()), default));
         await Thrown<NotFoundException>(() => c.Diary.Handle(new ListParcelDiaryQuery(theirs), default));
         await Thrown<NotFoundException>(() => c.AddDiary.Handle(new AddDiaryEntryCommand(theirs, Today, DiaryMethod.Call, DiaryDirection.Outgoing, "A", null, "x", null), default));
         await Thrown<NotFoundException>(() => c.Notes.Handle(new ListParcelNotesQuery(theirs), default));
@@ -311,14 +350,14 @@ public class ParcelRecordTests
         var (a, _) = await AddParcel(store, TestDb.TenantA);
         var (b, _) = await AddParcel(store, TestDb.TenantA);
         await using var c = new Ctx(store, TestDb.TenantA, RoleNames.Admin);
-        var member = await c.AddTeam.Handle(Member(a), default);
+        var member = await c.AddTeam.Handle(Member(a, await AddAgent(store, TestDb.TenantA)), default);
         var entry = await c.AddDiary.Handle(new AddDiaryEntryCommand(a, Today, DiaryMethod.Call, DiaryDirection.Outgoing, "A", null, "x", null), default);
         var note = await c.AddNote.Handle(new AddParcelNoteCommand(a, "x"), default);
 
         await Thrown<NotFoundException>(() => c.RemoveTeam.Handle(new RemoveTeamMemberCommand(b, member.Id), default));
         await Thrown<NotFoundException>(() => c.RemoveDiary.Handle(new RemoveDiaryEntryCommand(b, entry.Id), default));
         await Thrown<NotFoundException>(() => c.RemoveNote.Handle(new RemoveParcelNoteCommand(b, note.Id), default));
-        await Thrown<NotFoundException>(() => c.UpdateTeam.Handle(new UpdateTeamMemberCommand(b, member.Id, TeamRole.Other, "X", null, false, null, null, null), default));
+        await Thrown<NotFoundException>(() => c.UpdateTeam.Handle(new UpdateTeamMemberCommand(b, member.Id, Guid.NewGuid(), null), default));
     }
 
     [Theory]
@@ -333,7 +372,9 @@ public class ParcelRecordTests
         var store = await Provision();
         var (parcel, _) = await AddParcel(store, TestDb.TenantA);
         await using var admin = new Ctx(store, TestDb.TenantA, RoleNames.Admin);
-        var member = await admin.AddTeam.Handle(Member(parcel, TeamRole.Counsel, "Seed Counsel"), default);
+        var agent = await AddAgent(store, TestDb.TenantA, "Seed Counsel", "Counsel");
+        var member = await admin.AddTeam.Handle(Member(parcel, agent), default);
+        var another = await AddAgent(store, TestDb.TenantA, "By Role", "Reviewer");
         var entry = await admin.AddDiary.Handle(new AddDiaryEntryCommand(parcel, Today, DiaryMethod.Call, DiaryDirection.Outgoing, "Seed", null, "x", null), default);
         var note = await admin.AddNote.Handle(new AddParcelNoteCommand(parcel, "seed"), default);
         await using var c = new Ctx(store, TestDb.TenantA, role);
@@ -350,8 +391,8 @@ public class ParcelRecordTests
             if (allowed) await act.Should().NotThrowAsync();
             else await act.Should().ThrowAsync<ForbiddenException>();
         }
-        await Check(() => c.AddTeam.Handle(Member(parcel, TeamRole.Other, $"By {role}"), default), teamAndNotes);
-        await Check(() => c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, member.Id, TeamRole.Counsel, "Seed Counsel", null, false, null, null, $"by {role}"), default), teamAndNotes);
+        await Check(() => c.AddTeam.Handle(Member(parcel, another), default), teamAndNotes);
+        await Check(() => c.UpdateTeam.Handle(new UpdateTeamMemberCommand(parcel, member.Id, agent, $"by {role}"), default), teamAndNotes);
         await Check(() => c.AddNote.Handle(new AddParcelNoteCommand(parcel, $"by {role}"), default), notesToo);
         await Check(() => c.AddDiary.Handle(new AddDiaryEntryCommand(parcel, Today, DiaryMethod.Call, DiaryDirection.Outgoing, $"By {role}", null, "x", null), default), diary);
         await Check(() => c.RemoveDiary.Handle(new RemoveDiaryEntryCommand(parcel, entry.Id), default), diary);

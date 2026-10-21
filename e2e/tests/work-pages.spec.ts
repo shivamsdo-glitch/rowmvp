@@ -24,7 +24,7 @@ async function scene(request: APIRequestContext) {
   const parcel = await make()
   const bare = await make()
   const owner = `Zebulon${newId().replace(/-/g, '').slice(0, 8)}`
-  expect((await request.post(`/api/v1/parcels/${parcel.id}/ownerships`, { headers, data: { ownerName: owner, ownerType: 'Fee Owner' } })).status()).toBe(201)
+  expect((await request.post(`/api/v1/parcels/${parcel.id}/parties`, { headers, data: { newParty: { kind: 'Person', name: owner }, role: 'FeeOwner', ownerType: 'Fee Owner', leaseOnFile: false } })).status()).toBe(201)
   return { parcel, bare, owner, headers }
 }
 

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Aurigo.RowManagement.Application.Parcels;
 using Aurigo.RowManagement.Application.ParcelTabs;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.Application.Projects;
 using Aurigo.RowManagement.IntegrationTests.Support;
 using FluentAssertions;
@@ -98,7 +99,7 @@ public class CondemnationApiTests : IClassFixture<PgApi>
     {
         var parcel = await LifecycleSupport.NewParcel(_api);
         var designer = await _api.As("Designer");
-        await LifecycleSupport.Ok<OwnershipDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/ownerships", new { ownerName = "Vested One", ownerType = "Vested Owner" }, LifecycleSupport.Json), HttpStatusCode.Created);
+        await LifecycleSupport.Ok<PartyLinkDto>(await designer.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/parties", new { newParty = new { kind = "Person", name = "Vested One" }, role = "FeeOwner", ownerType = "Vested Owner", leaseOnFile = false }, LifecycleSupport.Json), HttpStatusCode.Created);
         var ng = await _api.As("Negotiator");
 
         var saved = await LifecycleSupport.Ok<CondemnationDto>(await ng.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/condemnation", Body(), LifecycleSupport.Json));
@@ -331,7 +332,7 @@ public class RelocationApiTests : IClassFixture<PgApi>
         var admin = await _api.As("Admin");
         var name = $"Agent {Guid.NewGuid().ToString("N")[..6]}";
         (await LifecycleSupport.Status(admin.Http.PostAsJsonAsync("/api/v1/library/agents", new { name, agentType = "Relocation", company = "Move Co", phone = "555-0100", email = "m@example.com" }, LifecycleSupport.Json))).Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
-        await LifecycleSupport.Ok<OwnershipDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/ownerships", new { ownerName = "Vested One", ownerType = "Vested Owner" }, LifecycleSupport.Json), HttpStatusCode.Created);
+        await LifecycleSupport.Ok<PartyLinkDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/parties", new { newParty = new { kind = "Person", name = "Vested One" }, role = "FeeOwner", ownerType = "Vested Owner", leaseOnFile = false }, LifecycleSupport.Json), HttpStatusCode.Created);
 
         var made = await LifecycleSupport.Ok<RelocationDto>(await admin.Http.PostAsJsonAsync($"/api/v1/parcels/{parcel.Id}/relocations", Body("R-1", null, new() { ["agents"] = new[] { new { agentName = name } } }), LifecycleSupport.Json), HttpStatusCode.Created);
 

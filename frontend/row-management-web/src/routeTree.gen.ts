@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdministrationRouteImport } from './routes/_app/administration'
 import { Route as AppAppraisalsRouteImport } from './routes/_app/appraisals'
 import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
+import { Route as AppHelpRouteImport } from './routes/_app/help'
 import { Route as AppLibraryRouteImport } from './routes/_app/library'
 import { Route as AppNegotiationsRouteImport } from './routes/_app/negotiations'
 import { Route as AppRequestsRouteImport } from './routes/_app/requests'
@@ -55,6 +56,11 @@ const AppAppraisalsRoute = AppAppraisalsRouteImport.update({
 const AppForbiddenRoute = AppForbiddenRouteImport.update({
   id: '/forbidden',
   path: '/forbidden',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHelpRoute = AppHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLibraryRoute = AppLibraryRouteImport.update({
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/administration': typeof AppAdministrationRoute
   '/appraisals': typeof AppAppraisalsRoute
   '/forbidden': typeof AppForbiddenRoute
+  '/help': typeof AppHelpRoute
   '/library': typeof AppLibraryRoute
   '/negotiations': typeof AppNegotiationsRoute
   '/requests': typeof AppRequestsRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/administration': typeof AppAdministrationRoute
   '/appraisals': typeof AppAppraisalsRoute
   '/forbidden': typeof AppForbiddenRoute
+  '/help': typeof AppHelpRoute
   '/library': typeof AppLibraryRoute
   '/negotiations': typeof AppNegotiationsRoute
   '/requests': typeof AppRequestsRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/_app/administration': typeof AppAdministrationRoute
   '/_app/appraisals': typeof AppAppraisalsRoute
   '/_app/forbidden': typeof AppForbiddenRoute
+  '/_app/help': typeof AppHelpRoute
   '/_app/library': typeof AppLibraryRoute
   '/_app/negotiations': typeof AppNegotiationsRoute
   '/_app/requests': typeof AppRequestsRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/administration'
     | '/appraisals'
     | '/forbidden'
+    | '/help'
     | '/library'
     | '/negotiations'
     | '/requests'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/administration'
     | '/appraisals'
     | '/forbidden'
+    | '/help'
     | '/library'
     | '/negotiations'
     | '/requests'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/_app/administration'
     | '/_app/appraisals'
     | '/_app/forbidden'
+    | '/_app/help'
     | '/_app/library'
     | '/_app/negotiations'
     | '/_app/requests'
@@ -285,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/forbidden'
       fullPath: '/forbidden'
       preLoaderRoute: typeof AppForbiddenRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/help': {
+      id: '/_app/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof AppHelpRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/library': {
@@ -378,6 +397,7 @@ interface AppRouteChildren {
   AppAdministrationRoute: typeof AppAdministrationRoute
   AppAppraisalsRoute: typeof AppAppraisalsRoute
   AppForbiddenRoute: typeof AppForbiddenRoute
+  AppHelpRoute: typeof AppHelpRoute
   AppLibraryRoute: typeof AppLibraryRoute
   AppNegotiationsRoute: typeof AppNegotiationsRoute
   AppRequestsRoute: typeof AppRequestsRoute
@@ -397,6 +417,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdministrationRoute: AppAdministrationRoute,
   AppAppraisalsRoute: AppAppraisalsRoute,
   AppForbiddenRoute: AppForbiddenRoute,
+  AppHelpRoute: AppHelpRoute,
   AppLibraryRoute: AppLibraryRoute,
   AppNegotiationsRoute: AppNegotiationsRoute,
   AppRequestsRoute: AppRequestsRoute,

@@ -25,6 +25,39 @@ public class PartyConfiguration : IEntityTypeConfiguration<Party>
         b.Property(x => x.TaxIdProtected).HasMaxLength(200);
         b.Property(x => x.TaxIdLast4).HasMaxLength(4);
         b.HasIndex(x => new { x.TenantId, x.Name });
+        b.HasMany(x => x.Addresses).WithOne().HasForeignKey(a => a.PartyId).OnDelete(DeleteBehavior.Restrict);
+        b.HasMany(x => x.Contacts).WithOne().HasForeignKey(c => c.PartyId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class PartyAddressConfiguration : IEntityTypeConfiguration<PartyAddress>
+{
+    public void Configure(EntityTypeBuilder<PartyAddress> b)
+    {
+        b.ToTable("party_addresses");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.AddressType).HasMaxLength(100);
+        b.Property(x => x.Address).HasMaxLength(300);
+        b.Property(x => x.ContactPerson).HasMaxLength(200);
+        b.Property(x => x.City).HasMaxLength(100);
+        b.Property(x => x.State).HasMaxLength(50);
+        b.Property(x => x.Zip).HasMaxLength(20);
+        b.HasIndex(x => x.PartyId);
+    }
+}
+
+public class PartyContactConfiguration : IEntityTypeConfiguration<PartyContact>
+{
+    public void Configure(EntityTypeBuilder<PartyContact> b)
+    {
+        b.ToTable("party_contacts");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.ContactType).HasMaxLength(100);
+        b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+        b.Property(x => x.Phone).HasMaxLength(40);
+        b.Property(x => x.Email).HasMaxLength(200);
+        b.Property(x => x.Address).HasMaxLength(300);
+        b.HasIndex(x => x.PartyId);
     }
 }
 
@@ -36,6 +69,7 @@ public class PartyLinkConfiguration : IEntityTypeConfiguration<PartyLink>
         b.HasKey(x => x.Id);
         b.Property(x => x.Role).HasConversion<string>().HasMaxLength(30);
         b.Property(x => x.SharePercent).HasPrecision(7, 4);
+        b.Property(x => x.OwnerType).HasMaxLength(100);
         b.Property(x => x.Notes).HasMaxLength(500);
         b.Property(x => x.LeaseDetails).HasMaxLength(1000);
         b.Property(x => x.InsuranceDetails).HasMaxLength(1000);

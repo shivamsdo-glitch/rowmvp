@@ -10,6 +10,7 @@ import { renderApp } from '@/test/render-app'
 beforeEach(() => sessionStorage.clear())
 
 const canCreate = (role: string) => ['S', 'P'].includes(levelFor(role, 'parties') ?? '')
+const canUpdate = (role: string) => ['U', 'S', 'P'].includes(levelFor(role, 'parties') ?? '')
 const canDelete = (role: string) => levelFor(role, 'parties') === 'P'
 const canReadParties = (role: string) => levelFor(role, 'parties') !== null
 
@@ -106,7 +107,7 @@ describe('Parties list (ROW-014, 018)', () => {
     await user.click(screen.getByRole('button', { name: 'New party' }))
     const form = screen.getByRole('form', { name: 'Create a party' })
     await user.type(within(form).getByLabelText(/^Name/), 'Sam Seller')
-    await user.type(within(form).getByLabelText(/^State/), 'il')
+    await user.type(within(form).getAllByLabelText(/^State/)[0], 'il')
     await user.click(within(form).getByRole('button', { name: 'Create party' }))
 
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/parties\/party/))
@@ -199,7 +200,7 @@ describe('Party detail and W-9 tax information (ROW-018)', () => {
   it.each(ROLES.map((r) => [r]))('%s: tax information is editable only with update rights, and the page is open to read for %s', async (role) => {
     open('/parties/party-pat', role)
     await screen.findByRole('heading', { name: 'Pat Owner' })
-    const canEdit = ['S', 'P'].includes(levelFor(role, 'parties') ?? '')
+    const canEdit = ['U', 'S', 'P'].includes(levelFor(role, 'parties') ?? '')
     if (canEdit) expect(screen.getByRole('form', { name: 'Tax information' })).toBeInTheDocument()
     else {
       expect(screen.queryByRole('form', { name: 'Tax information' })).not.toBeInTheDocument()
@@ -261,7 +262,7 @@ describe('Party detail and W-9 tax information (ROW-018)', () => {
 describe('Parcel parties tab (ROW-014..017)', () => {
   const openTab = async (parcel: string, role = 'ProjectManager', extra: Partial<FakePeopleOptions> = {}) => {
     const ctx = open(`/parcels/${parcel}`, role, extra)
-    await ctx.user.click(await screen.findByRole('tab', { name: 'Parties' }))
+    await ctx.user.click(await screen.findByRole('tab', { name: 'Ownership interests' }))
     return ctx
   }
 
@@ -368,8 +369,8 @@ describe('Parcel parties tab (ROW-014..017)', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit Pat Owner, Attorney' }))
     const form = screen.getByRole('form', { name: 'Edit Pat Owner, Attorney' })
 
-    await user.clear(within(form).getByLabelText('Notes'))
-    await user.type(within(form).getByLabelText('Notes'), 'Retained for the taking')
+    await user.clear(within(form).getByLabelText('Role notes'))
+    await user.type(within(form).getByLabelText('Role notes'), 'Retained for the taking')
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
 
     expect(await screen.findByText('Retained for the taking')).toBeInTheDocument()
@@ -380,19 +381,19 @@ describe('Parcel parties tab (ROW-014..017)', () => {
     open('/parcels/pc-tract', role)
     await screen.findByRole('heading', { name: /Parcel 001/ })
     if (!canReadParties(role)) return
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Parties' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Ownership interests' }))
     await screen.findByRole('region', { name: 'Contacts' })
 
     expect(screen.queryByRole('button', { name: 'Add a person or organization' }) !== null).toBe(canCreate(role))
     expect(screen.queryByRole('button', { name: 'Remove Pat Owner, Attorney' }) !== null).toBe(canDelete(role))
-    expect(screen.queryByRole('button', { name: 'Edit Pat Owner, Attorney' }) !== null).toBe(canCreate(role))
+    expect(screen.queryByRole('button', { name: 'Edit Pat Owner, Attorney' }) !== null).toBe(canUpdate(role))
   })
 
   it('cannot change a parcel that was split or combined', async () => {
     const { user } = open('/parcels/pc-gone', 'ProjectManager', {
       parcels: [{ id: 'pc-gone', projectId: 'p1', number: '009', state: 'Split' }],
     })
-    await user.click(await screen.findByRole('tab', { name: 'Parties' }))
+    await user.click(await screen.findByRole('tab', { name: 'Ownership interests' }))
     await screen.findByRole('region', { name: 'Contacts' })
     expect(screen.queryByRole('button', { name: 'Add a person or organization' })).not.toBeInTheDocument()
   })

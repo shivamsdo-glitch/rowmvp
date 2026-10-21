@@ -15,7 +15,7 @@ namespace Aurigo.RowManagement.Application.RightsOfEntry;
 
 public sealed record RightOfEntryDto(
     Guid Id, Guid ParcelId, RightOfEntryStatus Status, string EffectiveStatus, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn,
-    string? GrantedBy, string? Purpose, string? Notes, DateTime UpdatedAt);
+    string? GrantedBy, string? Purpose, string? Notes, DateOnly? LetterMailedDate, DateOnly? LetterDeliveredDate, DateOnly? SentToAtpDate, DateTime UpdatedAt);
 
 /// <summary>One row of the report of every right of entry (ROW-077).</summary>
 public sealed record RightOfEntryReportRowDto(
@@ -25,7 +25,7 @@ public sealed record RightOfEntryReportRowDto(
 internal static class RightOfEntryMapper
 {
     public static RightOfEntryDto ToDto(this RightOfEntry r, DateOnly today) =>
-        new(r.Id, r.ParcelId, r.Status, RightOfEntryRules.Effective(r.Status, r.ExpiresOn, today), r.RequestedOn, r.GrantedOn, r.ExpiresOn, r.GrantedBy, r.Purpose, r.Notes, r.UpdatedAt);
+        new(r.Id, r.ParcelId, r.Status, RightOfEntryRules.Effective(r.Status, r.ExpiresOn, today), r.RequestedOn, r.GrantedOn, r.ExpiresOn, r.GrantedBy, r.Purpose, r.Notes, r.LetterMailedDate, r.LetterDeliveredDate, r.SentToAtpDate, r.UpdatedAt);
 
     public static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
@@ -74,6 +74,9 @@ public interface IRightOfEntryFields
     string? GrantedBy { get; }
     string? Purpose { get; }
     string? Notes { get; }
+    DateOnly? LetterMailedDate { get; }
+    DateOnly? LetterDeliveredDate { get; }
+    DateOnly? SentToAtpDate { get; }
 }
 
 public abstract class RightOfEntryFieldsValidator<T> : AbstractValidator<T> where T : IRightOfEntryFields
@@ -85,12 +88,17 @@ public abstract class RightOfEntryFieldsValidator<T> : AbstractValidator<T> wher
             RuleFor(x => rule(x)).Must(d => d is null || (d.Value.Year >= 1990 && d.Value.Year <= 2100)).WithMessage("Enter a valid date.");
         RuleFor(x => x.GrantedBy).MaximumLength(200);
         RuleFor(x => x.Purpose).MaximumLength(500);
-        RuleFor(x => x.Notes).MaximumLength(1000);
+        RuleFor(x => x.Notes).MaximumLength(2000);
+        foreach (var rule in new Func<T, DateOnly?>[] { x => x.LetterMailedDate, x => x.LetterDeliveredDate, x => x.SentToAtpDate })
+            RuleFor(x => rule(x)).Must(d => d is null || (d.Value.Year >= 1990 && d.Value.Year <= 2100)).WithMessage("Enter a valid date.");
+        RuleFor(x => x.LetterDeliveredDate).GreaterThanOrEqualTo(x => x.LetterMailedDate!.Value)
+            .When(x => x.LetterMailedDate is not null && x.LetterDeliveredDate is not null).WithMessage("A letter cannot be delivered before it is mailed.");
     }
 }
 
 public sealed record AddRightOfEntryCommand(
-    Guid ParcelId, RightOfEntryStatus Status, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn, string? GrantedBy, string? Purpose, string? Notes)
+    Guid ParcelId, RightOfEntryStatus Status, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn, string? GrantedBy, string? Purpose, string? Notes,
+    DateOnly? LetterMailedDate = null, DateOnly? LetterDeliveredDate = null, DateOnly? SentToAtpDate = null)
     : IRequest<RightOfEntryDto>, IRightOfEntryFields;
 
 public sealed class AddRightOfEntryCommandValidator : RightOfEntryFieldsValidator<AddRightOfEntryCommand>
@@ -113,7 +121,7 @@ public sealed class AddRightOfEntryCommandHandler : IRequestHandler<AddRightOfEn
 
     public async Task<RightOfEntryDto> Handle(AddRightOfEntryCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Create, ct);
+        await _permissions.EnsureAsync(PageKeys.ParcelNegotiation, PermissionAction.Create, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var today = await _parcels.TodayForProjectAsync(parcel.ProjectId, ct);
         RightOfEntryMapper.ThrowIfProblems(request.Status, request.RequestedOn, request.GrantedOn, request.ExpiresOn, today);
@@ -121,6 +129,7 @@ public sealed class AddRightOfEntryCommandHandler : IRequestHandler<AddRightOfEn
         {
             ParcelId = parcel.Id, Status = request.Status, RequestedOn = request.RequestedOn, GrantedOn = request.GrantedOn, ExpiresOn = request.ExpiresOn,
             GrantedBy = RightOfEntryMapper.Clean(request.GrantedBy), Purpose = RightOfEntryMapper.Clean(request.Purpose), Notes = RightOfEntryMapper.Clean(request.Notes),
+            LetterMailedDate = request.LetterMailedDate, LetterDeliveredDate = request.LetterDeliveredDate, SentToAtpDate = request.SentToAtpDate,
         };
         _db.RightsOfEntry.Add(roe);
         await _db.SaveChangesAsync(ct);
@@ -129,7 +138,8 @@ public sealed class AddRightOfEntryCommandHandler : IRequestHandler<AddRightOfEn
 }
 
 public sealed record UpdateRightOfEntryCommand(
-    Guid ParcelId, Guid Id, RightOfEntryStatus Status, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn, string? GrantedBy, string? Purpose, string? Notes)
+    Guid ParcelId, Guid Id, RightOfEntryStatus Status, DateOnly? RequestedOn, DateOnly? GrantedOn, DateOnly? ExpiresOn, string? GrantedBy, string? Purpose, string? Notes,
+    DateOnly? LetterMailedDate = null, DateOnly? LetterDeliveredDate = null, DateOnly? SentToAtpDate = null)
     : IRequest<RightOfEntryDto>, IRightOfEntryFields;
 
 public sealed class UpdateRightOfEntryCommandValidator : RightOfEntryFieldsValidator<UpdateRightOfEntryCommand>
@@ -156,7 +166,7 @@ public sealed class UpdateRightOfEntryCommandHandler : IRequestHandler<UpdateRig
 
     public async Task<RightOfEntryDto> Handle(UpdateRightOfEntryCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Update, ct);
+        await _permissions.EnsureAsync(PageKeys.ParcelNegotiation, PermissionAction.Update, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var roe = await _db.RightsOfEntry.FirstOrDefaultAsync(r => r.Id == request.Id && r.ParcelId == parcel.Id, ct) ?? throw new NotFoundException("Right of entry", request.Id);
         var today = await _parcels.TodayForProjectAsync(parcel.ProjectId, ct);
@@ -168,6 +178,9 @@ public sealed class UpdateRightOfEntryCommandHandler : IRequestHandler<UpdateRig
         roe.GrantedBy = RightOfEntryMapper.Clean(request.GrantedBy);
         roe.Purpose = RightOfEntryMapper.Clean(request.Purpose);
         roe.Notes = RightOfEntryMapper.Clean(request.Notes);
+        roe.LetterMailedDate = request.LetterMailedDate;
+        roe.LetterDeliveredDate = request.LetterDeliveredDate;
+        roe.SentToAtpDate = request.SentToAtpDate;
         await _db.SaveChangesAsync(ct);
         return roe.ToDto(today);
     }
@@ -190,7 +203,7 @@ public sealed class RemoveRightOfEntryCommandHandler : IRequestHandler<RemoveRig
 
     public async Task Handle(RemoveRightOfEntryCommand request, CancellationToken ct)
     {
-        await _permissions.EnsureAsync(PageKeys.Parcels, PermissionAction.Delete, ct);
+        await _permissions.EnsureAsync(PageKeys.ParcelNegotiation, PermissionAction.Delete, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var roe = await _db.RightsOfEntry.FirstOrDefaultAsync(r => r.Id == request.Id && r.ParcelId == parcel.Id, ct) ?? throw new NotFoundException("Right of entry", request.Id);
         _db.RightsOfEntry.Remove(roe);

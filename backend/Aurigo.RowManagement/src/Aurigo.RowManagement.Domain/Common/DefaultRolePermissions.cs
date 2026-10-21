@@ -26,7 +26,7 @@ public static class DefaultRolePermissions
             // Title research, survey requests and the appraisal package (Diagram 2).
             [RoleNames.TitleResearcher] = new Dictionary<string, string>
             {
-                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = B, [PageKeys.Parties] = B,
+                [PageKeys.Dashboard] = B, [PageKeys.Projects] = B, [PageKeys.Parcels] = B, [PageKeys.Parties] = RU,
                 [PageKeys.Title] = P, [PageKeys.Survey] = P, [PageKeys.Appraisals] = B,
             },
             // Appraisal and review, and establishing just compensation (Diagram 3).
@@ -93,10 +93,6 @@ public static class DefaultRolePermissions
             [PageKeys.Easements] = new Dictionary<string, string>
             {
                 [RoleNames.Designer] = S, [RoleNames.Surveyor] = P, [RoleNames.Admin] = P,
-            },
-            [PageKeys.Ownership] = new Dictionary<string, string>
-            {
-                [RoleNames.Designer] = P, [RoleNames.TitleResearcher] = RU, [RoleNames.Negotiator] = S, [RoleNames.Admin] = P,
             },
             [PageKeys.TitleEncumbrances] = new Dictionary<string, string>
             {

@@ -1,6 +1,7 @@
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.Common;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.Application.Persistence;
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
@@ -315,8 +316,8 @@ public sealed class ListParcelsQueryHandler : IRequestHandler<ListParcelsQuery, 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var term = request.Search.Trim().ToLower();
-            query = query.Where(p => p.Number.ToLower().Contains(term) || (p.Address != null && p.Address.ToLower().Contains(term))
-                || _db.ParcelOwnerships.Any(o => o.ParcelId == p.Id && o.OwnerName.ToLower().Contains(term)));
+            var byOwner = await ParcelOwners.ParcelIdsByOwnerAsync(_db, term, ct);
+            query = query.Where(p => p.Number.ToLower().Contains(term) || (p.Address != null && p.Address.ToLower().Contains(term)) || byOwner.Contains(p.Id));
         }
 
         var total = await query.CountAsync(ct);

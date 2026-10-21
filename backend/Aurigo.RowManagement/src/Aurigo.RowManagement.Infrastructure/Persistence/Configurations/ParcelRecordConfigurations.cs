@@ -10,7 +10,7 @@ public class ParcelTeamMemberConfiguration : IEntityTypeConfiguration<ParcelTeam
     {
         b.ToTable("parcel_team_members");
         b.HasKey(x => x.Id);
-        b.Property(x => x.Role).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Role).IsRequired().HasMaxLength(100);
         b.Property(x => x.Name).IsRequired().HasMaxLength(200);
         b.Property(x => x.NameKey).IsRequired().HasMaxLength(200);
         b.Property(x => x.Organization).HasMaxLength(200);

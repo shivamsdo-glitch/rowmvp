@@ -1,17 +1,18 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2 } from 'lucide-react'
-import { libraryApi } from '@/api/library'
 import type { Parcel } from '@/api/parcels'
 import {
-  negotiationApi, type Negotiation, type NegotiationOffer, type NegotiationRightOfEntry, type NegotiationSettlement, type NegotiationAgent, type NegotiationNote,
+  negotiationApi, type Negotiation, type NegotiationOffer, type NegotiationSettlement, type NegotiationNote,
 } from '@/api/parcel-tabs'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { ErrorState, LoadingRows } from '@/components/ui/states'
 import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
-import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
+import { optionsWith, useLibraryValues } from '../library/library-kit'
+import { RightOfEntrySection } from './AcquisitionTabs'
+import { useTeamNames } from './team-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -31,7 +32,6 @@ const BLANK = {
   puaRequested: '', puaApproved: '', puaAmount: '', puaExecuted: '', puaClosed: '',
 }
 const BLANK_NOTE = { date: today(), text: '' }
-const BLANK_ROE = { mailed: '', delivered: '', signed: '', atp: '', expires: '', instructions: '' }
 const BLANK_OFFER = { type: '', mailed: '', delivered: '', amount: '', notes: '' }
 const BLANK_SETTLEMENT = { type: '', amount: '', received: '', submitted: '', response: '', fromAtp: '', toOwner: '', notes: '' }
 
@@ -73,18 +73,17 @@ export function Grid<T>({ title, caption, headers, rows, cells, rowLabel, onRemo
 }
 
 /**
- * Negotiation (Phase 1.5, ADR 0019): the one record of a parcel that tracks who negotiates, the right of entry, offers, administrative
+ * Negotiation (Phase 1.5, ADR 0019, 0022): the one record of a parcel that tracks who negotiates, offers, administrative
  * settlement counteroffers, the JAT approval of a counteroffer and the possession and use agreement. The first save creates it.
  */
-export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable: boolean }) {
+function NegotiationRecord({ parcel, editable }: { parcel: Parcel; editable: boolean }) {
   const parcelId = parcel.id
   const { manager } = useAuth()
   const api = negotiationApi(manager.api)
   const queryClient = useQueryClient()
   const key = ['parcel-tabs', parcelId, 'negotiation']
   const q = useQuery({ queryKey: key, queryFn: () => api.get(parcelId), enabled: manager.can('parcelnegotiation') })
-  const agentNames = useAgentNames()
-  const agentList = useQuery({ queryKey: ['library', 'agents'], queryFn: () => libraryApi(manager.api).agents(), retry: false })
+  const teamNames = useTeamNames(parcelId)
   const offerTypes = useLibraryValues('offer_type')
   const settlementTypes = useLibraryValues('settlement_type')
   const responses = useLibraryValues('counteroffer_response')
@@ -92,13 +91,9 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
   const record = q.data?.record ?? null
   const [f, setF] = useState(BLANK)
   const [notes, setNotes] = useState<NegotiationNote[]>([])
-  const [agents, setAgents] = useState<NegotiationAgent[]>([])
-  const [roes, setRoes] = useState<NegotiationRightOfEntry[]>([])
   const [offers, setOffers] = useState<NegotiationOffer[]>([])
   const [settlements, setSettlements] = useState<NegotiationSettlement[]>([])
   const [nt, setNt] = useState(BLANK_NOTE)
-  const [ag, setAg] = useState('')
-  const [re, setRe] = useState(BLANK_ROE)
   const [of, setOf] = useState(BLANK_OFFER)
   const [st, setSt] = useState(BLANK_SETTLEMENT)
   const [local, setLocal] = useState<Record<string, string>>({})
@@ -115,8 +110,6 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
     if (q.isPending) return
     setF(record ? fromRecord(record) : BLANK)
     setNotes(record?.statusNotes ?? [])
-    setAgents(record?.agents ?? [])
-    setRoes(record?.rightsOfEntry ?? [])
     setOffers(record?.offers ?? [])
     setSettlements(record?.settlements ?? [])
   }, [q.isPending, record?.id, record?.updatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -148,18 +141,6 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
   function addNote() {
     if (!nt.text.trim()) return err('note', 'Enter the status note.')
     setNotes([...notes, { noteDate: nt.date || today(), text: nt.text.trim() }]); setNt(BLANK_NOTE); err('note', ''); setSaved(false)
-  }
-  function addAgent() {
-    if (!ag) return err('agent', 'Choose the agent.')
-    const lib = agentList.data?.find((a) => a.name === ag)
-    setAgents([...agents, { agentName: ag, agentType: lib?.agentType ?? null, company: lib?.company ?? null, phone: lib?.phone ?? null, email: lib?.email ?? null }])
-    setAg(''); err('agent', ''); setSaved(false)
-  }
-  function addRoe() {
-    if (!Object.values(re).some((v) => v.trim())) return err('roe', 'Enter at least one detail of the right of entry.')
-    if (re.mailed && re.delivered && re.delivered < re.mailed) return err('roe', 'A letter cannot be delivered before it is mailed.')
-    setRoes([...roes, { letterMailedDate: orNull(re.mailed), letterDeliveredDate: orNull(re.delivered), signedReceivedDate: orNull(re.signed), sentToAtpDate: orNull(re.atp), expirationDate: orNull(re.expires), specialInstructions: orNull(re.instructions) }])
-    setRe(BLANK_ROE); err('roe', ''); setSaved(false)
   }
   function addOffer() {
     if (!Object.values(of).some((v) => v.trim())) return err('offer', 'Enter at least one detail of the offer.')
@@ -195,9 +176,6 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
       ftaApprovalRequiredForCounteroffer: f.fta, puaRequestedDate: orNull(f.puaRequested), puaApprovedDate: orNull(f.puaApproved), puaApprovedAmount: numOrNull(f.puaAmount),
       puaExecutedDate: orNull(f.puaExecuted), puaClosedDate: orNull(f.puaClosed),
       statusNotes: notes.map(({ noteDate, text }) => ({ noteDate, text })),
-      agents: agents.map(({ agentName }) => ({ agentName })),
-      rightsOfEntry: roes.map(({ letterMailedDate, letterDeliveredDate, signedReceivedDate, sentToAtpDate, expirationDate, specialInstructions }) =>
-        ({ letterMailedDate, letterDeliveredDate, signedReceivedDate, sentToAtpDate, expirationDate, specialInstructions })),
       offers: offers.map(({ offerType, mailedDate, deliveredDate, amount, notes: n }) => ({ offerType, mailedDate, deliveredDate, amount, notes: n })),
       settlements: settlements.map(({ settlementType, counterofferAmount, dateReceived, dateSubmitted, counterofferResponse, responseDateFromAtp, responseDateToOwner, settlementNotes }) =>
         ({ settlementType, counterofferAmount, dateReceived, dateSubmitted, counterofferResponse, responseDateFromAtp, responseDateToOwner, settlementNotes })),
@@ -223,7 +201,7 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
             {fact('Parcel location', parcel.parcelLocation)}
             {fact('Parcel address', parcel.address)}
             {fact('CAD number', parcel.cadNumber)}
-            <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(agentNames, f.assignedTo)} blankLabel="Select one" disabled={disabled} error={errors.assignedTo} />
+            <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(teamNames, f.assignedTo)} blankLabel="Select one" disabled={disabled} error={errors.assignedTo} />
           </div>
         </Section>
 
@@ -231,23 +209,6 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
           cells={(r) => [day(r.noteDate), <span key="t" className="whitespace-pre-wrap">{r.text}</span>]} rowLabel={(_, i) => `Remove status note ${i + 1}`} onRemove={drop(notes, setNotes)}
           addLabel="Add status note" onAdd={addNote} error={errors.note}
           adding={<><TextField label="Status note date" type="date" value={nt.date} onChange={(v) => setNt({ ...nt, date: v })} /><TextField label="Status note" value={nt.text} onChange={(v) => setNt({ ...nt, text: v })} maxLength={4000} /></>} />
-
-        <Grid title="Agents" caption="Agents" headers={['Agent name', 'Agent type', 'Company', 'Phone number', 'Email address']} rows={agents} canSave={canSave}
-          cells={(r) => [r.agentName, r.agentType ?? '—', r.company ?? '—', r.phone ?? '—', r.email ?? '—']} rowLabel={(r) => `Remove agent ${r.agentName}`} onRemove={drop(agents, setAgents)}
-          addLabel="Add agent" onAdd={addAgent} error={errors.agent}
-          adding={<SelectField label="Agent" value={ag} onChange={setAg} options={optionsWith(agentNames, ag)} blankLabel="Select one" />} />
-
-        <Grid title="Right of entry" caption="Right of entry" headers={['Letter mailed', 'Letter delivered', 'Signed received', 'Sent to ATP', 'Expiration date', 'Special instructions']} rows={roes} canSave={canSave}
-          cells={(r) => [day(r.letterMailedDate), day(r.letterDeliveredDate), day(r.signedReceivedDate), day(r.sentToAtpDate), day(r.expirationDate), r.specialInstructions ?? '—']}
-          rowLabel={(_, i) => `Remove right of entry ${i + 1}`} onRemove={drop(roes, setRoes)} addLabel="Add right of entry" onAdd={addRoe} error={errors.roe}
-          adding={<>
-            <TextField label="Right of entry letter mailed" type="date" value={re.mailed} onChange={(v) => setRe({ ...re, mailed: v })} />
-            <TextField label="Right of entry letter delivered" type="date" value={re.delivered} onChange={(v) => setRe({ ...re, delivered: v })} />
-            <TextField label="Signed right of entry received" type="date" value={re.signed} onChange={(v) => setRe({ ...re, signed: v })} />
-            <TextField label="Right of entry sent to ATP" type="date" value={re.atp} onChange={(v) => setRe({ ...re, atp: v })} />
-            <TextField label="Right of entry expiration date" type="date" value={re.expires} onChange={(v) => setRe({ ...re, expires: v })} />
-            <TextField label="Special instructions included in right of entry" value={re.instructions} onChange={(v) => setRe({ ...re, instructions: v })} maxLength={2000} />
-          </>} />
 
         <Grid title="Offers" caption="Offers" headers={['Offer type', 'Mailed date', 'Delivered date', 'Amount ($)', 'Offer notes']} rows={offers} canSave={canSave}
           cells={(r) => [r.offerType ?? '—', day(r.mailedDate), day(r.deliveredDate), money(r.amount), r.notes ?? '—']} rowLabel={(_, i) => `Remove offer ${i + 1}`} onRemove={drop(offers, setOffers)}
@@ -310,6 +271,18 @@ export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable:
       </form>
 
       {record && <div className="mt-6"><AttachmentsPanel entityType="ParcelNegotiation" entityId={record.id} page="parcelnegotiation" title={`Attachments for ${record.number}`} /></div>}
+    </>
+  )
+}
+
+/** The Negotiation tab: the right-of-entry form (its own rows) above the negotiation record. */
+export function NegotiationTab({ parcel, editable }: { parcel: Parcel; editable: boolean }) {
+  const { manager } = useAuth()
+  if (!manager.can('parcelnegotiation')) return <p className="text-sm text-muted-foreground">Your role cannot see negotiations.</p>
+  return (
+    <>
+      <div className="max-w-5xl"><RightOfEntrySection parcelId={parcel.id} editable={editable} /></div>
+      <NegotiationRecord parcel={parcel} editable={editable} />
     </>
   )
 }

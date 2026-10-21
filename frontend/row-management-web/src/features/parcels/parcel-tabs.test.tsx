@@ -175,34 +175,39 @@ describe('Easements (AT-SU-40)', () => {
   })
 })
 
-describe('Ownership details (AT-DE-42)', () => {
-  const OWN = [
-    { parcelId: 'pc1', id: 'ow1', ownershipNumber: 1, ownerName: 'Kamali', ownerType: 'Fee Owner',
+describe('Ownership interests (AT-DE-42)', () => {
+  const PEOPLE = {
+    parties: [{
+      id: 'pt1', name: 'Kamali',
       addresses: [{ id: 'a1', addressType: 'Tax Card Mailing Address', address: '1 Main St', contactPerson: 'Kamali, Devanshi', city: 'Austin', state: 'TX', zip: '78701' }],
-      contacts: [{ id: 'c1', contactType: 'Broker', name: 'Dev Kamali', phone: '(112) 345-6789', email: 'k@example.com', address: null, isActive: true, isPrimary: true }] },
-  ]
+      contacts: [{ id: 'c1', contactType: 'Broker', name: 'Dev Kamali', phone: '(112) 345-6789', email: 'k@example.com', address: null, isActive: true, isPrimary: true }],
+    }],
+    links: [{ partyId: 'pt1', parcelId: 'pc1', role: 'FeeOwner' as const, ownerType: 'Fee Owner' }],
+  }
 
-  it('lists each ownership with its number, type and how many addresses and contacts it has, and the parcel shows the owner name', async () => {
-    const { user } = open('Designer', { ownerships: OWN })
+  it('lists each owner with its role and owner type on one tab, and the parcel shows the owner name', async () => {
+    const { user } = open('Designer', PEOPLE)
     expect(await screen.findByRole('region', { name: 'Parcel synopsis' })).toHaveTextContent('Kamali')
-    await tab(user, 'Ownership details')
+    await tab(user, 'Ownership interests')
 
-    const row = await screen.findByRole('row', { name: /Fee Owner/ })
-    expect(row).toHaveTextContent('Kamali')
-    expect(within(row).getAllByRole('cell')[0]).toHaveTextContent('1')
-    expect(within(row).getAllByRole('cell')[3]).toHaveTextContent('1')
-    expect(within(row).getAllByRole('cell')[4]).toHaveTextContent('1')
+    const row = await screen.findByRole('row', { name: /Kamali/ })
+    expect(row).toHaveTextContent('Fee owner')
+    expect(row).toHaveTextContent('Fee Owner')
+    expect(screen.queryByRole('tab', { name: 'Ownership details' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Parties' })).not.toBeInTheDocument()
   })
 
-  it('adds an ownership with an address and contacts, refusing a missing owner name and a second primary contact', async () => {
-    const { fake, user } = open('Designer', { ownerships: OWN })
-    await tab(user, 'Ownership details')
-    const form = await screen.findByRole('form', { name: 'Add an ownership' })
+  it('adds an owner with an owner type, an address and contacts in one form, refusing a missing name and a second primary contact', async () => {
+    const { fake, user } = open('Designer', PEOPLE)
+    await tab(user, 'Ownership interests')
+    await user.click(await screen.findByRole('button', { name: 'Add a person or organization' }))
+    const form = await screen.findByRole('form', { name: 'Add a person or organization' })
+    await user.click(within(form).getByLabelText('A new person or organization'))
 
-    await user.click(within(form).getByRole('button', { name: 'Add ownership' }))
-    expect(await within(form).findByText('Owner name is required.')).toBeInTheDocument()
+    await user.click(within(form).getByRole('button', { name: 'Add' }))
+    expect(await within(form).findByText('Name is required.')).toBeInTheDocument()
 
-    await user.type(within(form).getByLabelText(/^Owner name/), 'Okafor Holdings')
+    await user.type(within(form).getByLabelText(/^New party Name/), 'Okafor Holdings')
     await waitFor(() => expect(within(within(form).getByLabelText(/^Owner type/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'CAD Owner', 'Fee Owner', 'Vested Owner']))
     await user.selectOptions(within(form).getByLabelText(/^Owner type/), 'Vested Owner')
 
@@ -225,40 +230,40 @@ describe('Ownership details (AT-DE-42)', () => {
     await user.click(within(form).getByRole('button', { name: 'Add contact' }))
     expect(await within(form).findByText('Only one contact can be the primary contact.')).toBeInTheDocument()
 
-    await user.click(within(form).getByRole('button', { name: 'Add ownership' }))
+    await user.click(within(form).getByRole('button', { name: 'Add' }))
     expect(await screen.findByRole('row', { name: /Okafor Holdings/ })).toBeInTheDocument()
-    expect(fake.ownerships.find((o) => o.ownerName === 'Okafor Holdings')).toMatchObject({
-      ownershipNumber: 2, ownerType: 'Vested Owner',
-      addresses: [{ addressType: 'Tax Card Mailing Address', address: '9 Elm St', city: 'Dallas' }], contacts: [{ name: 'Pat Primary', isPrimary: true, isActive: true }],
-    })
+    const party = fake.parties.find((p) => p.name === 'Okafor Holdings')!
+    expect(party).toMatchObject({ addresses: [{ addressType: 'Tax Card Mailing Address', address: '9 Elm St', city: 'Dallas' }], contacts: [{ name: 'Pat Primary', isPrimary: true, isActive: true }] })
+    expect(fake.links.find((l) => l.partyId === party.id)).toMatchObject({ role: 'FeeOwner', ownerType: 'Vested Owner', parcelId: 'pc1' })
     expect(fake.parcels.find((p) => p.id === 'pc1')!.ownerName).toBe('Kamali; Okafor Holdings')
   })
 
-  it('changes an ownership, replacing its addresses and contacts, and removes it so the owner name goes with it', async () => {
-    const { fake, user } = open('Designer', { ownerships: OWN })
-    await tab(user, 'Ownership details')
-    await user.click(await screen.findByRole('button', { name: 'Edit ownership 1' }))
-    const form = await screen.findByRole('form', { name: 'Change ownership' })
+  it('changes an owner and its person in one form, replacing addresses and contacts, and removes it so the owner name goes with it', async () => {
+    const { fake, user } = open('Designer', PEOPLE)
+    await tab(user, 'Ownership interests')
+    await user.click(await screen.findByRole('button', { name: 'Edit Kamali, Fee owner' }))
+    const form = await screen.findByRole('form', { name: 'Edit Kamali, Fee owner' })
 
-    expect(within(form).getByLabelText(/^Owner name/)).toHaveValue('Kamali')
+    await waitFor(() => expect(within(form).getByLabelText(/^Party Name/)).toHaveValue('Kamali'))
     await user.click(within(form).getByRole('button', { name: 'Remove address 1' }))
     await user.click(within(form).getByRole('button', { name: 'Remove contact Dev Kamali' }))
-    await user.clear(within(form).getByLabelText(/^Owner name/))
-    await user.type(within(form).getByLabelText(/^Owner name/), 'Kamali Family Trust')
+    await user.clear(within(form).getByLabelText(/^Party Name/))
+    await user.type(within(form).getByLabelText(/^Party Name/), 'Kamali Family Trust')
+    await user.selectOptions(within(form).getByLabelText(/^Owner type/), 'Vested Owner')
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(fake.ownerships[0].ownerName).toBe('Kamali Family Trust'))
-    expect(fake.ownerships[0].addresses).toEqual([])
-    expect(fake.ownerships[0].contacts).toEqual([])
+    await waitFor(() => expect(fake.parties[0].name).toBe('Kamali Family Trust'))
+    expect(fake.parties[0].addresses).toEqual([])
+    expect(fake.parties[0].contacts).toEqual([])
+    expect(fake.links[0].ownerType).toBe('Vested Owner')
     expect(fake.parcels.find((p) => p.id === 'pc1')!.ownerName).toBe('Kamali Family Trust')
 
-    await user.click(await screen.findByRole('button', { name: 'Remove ownership 1' }))
-    await waitFor(() => expect(fake.ownerships).toHaveLength(0))
-    expect(await screen.findByText('No ownerships recorded')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Remove Kamali Family Trust, Fee owner' }))
+    await waitFor(() => expect(fake.links).toHaveLength(0))
     expect(fake.parcels.find((p) => p.id === 'pc1')!.ownerName).toBeNull()
   })
 
   it('shows the owner name read-only on the parcel form', async () => {
-    const { user } = open('Designer', { ownerships: OWN })
+    const { user } = open('Designer', PEOPLE)
     await user.click(await screen.findByRole('button', { name: 'Edit parcel' }))
     const form = await screen.findByRole('form', { name: 'Edit parcel' })
 
@@ -364,13 +369,13 @@ describe('Title and closing (AT-TE-41)', () => {
   }]
 
   it('shows an empty form with no id yet and creates the record on the first save', async () => {
-    const { fake, user } = open('TitleResearcher')
+    const { fake, user } = open('TitleResearcher', { team: [{ parcelId: 'pc1', name: 'Casey Closer', role: 'Negotiator' }, { parcelId: 'pc1', name: 'Dana Whitfield', role: 'Project Lead' }] })
     await tab(user, 'Title and closing')
     const form = await screen.findByRole('form', { name: 'Title and closing' })
 
     expect(form).toHaveTextContent('Assigned when saved')
     await waitFor(() => expect(within(within(form).getByLabelText(/^Title company/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Lone Star Title', 'Other Title']))
-    await waitFor(() => expect(within(within(form).getByLabelText(/^Assigned to/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Casey Closer', 'Pat Agent']))
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Assigned to/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Casey Closer', 'Dana Whitfield']))
     await user.selectOptions(within(form).getByLabelText(/^Title company/), 'Lone Star Title')
     await user.selectOptions(within(form).getByLabelText(/^Assigned to/), 'Casey Closer')
     await user.type(within(form).getByLabelText(/^GF number/), 'GF-9')
@@ -558,10 +563,8 @@ describe('Negotiation (AT-NE-42)', () => {
     await user.click(within(form).getByRole('button', { name: 'Add status note' }))
     expect(within(form).getByRole('table', { name: 'Negotiation status notes' })).toHaveTextContent('Owner called back.')
 
-    await user.click(within(form).getByRole('button', { name: 'Add agent' }))
-    expect(await within(form).findByText('Choose the agent.')).toBeInTheDocument()
-    await user.selectOptions(within(form).getByLabelText('Agent'), 'Pat Agent')
-    await user.click(within(form).getByRole('button', { name: 'Add agent' }))
+    expect(within(form).queryByRole('button', { name: 'Add agent' })).not.toBeInTheDocument()
+    expect(within(form).queryByRole('button', { name: 'Add right of entry' })).not.toBeInTheDocument()
 
     await waitFor(() => expect(within(within(form).getByLabelText('Offer type')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Initial Offer', 'Final Offer']))
     await user.selectOptions(within(form).getByLabelText('Offer type'), 'Initial Offer')
@@ -584,7 +587,6 @@ describe('Negotiation (AT-NE-42)', () => {
     expect(fake.negotiations[0].statusNotes.map((n) => n.text)).toEqual(['Owner called back.'])
     expect(fake.negotiations[0].offers).toHaveLength(1)
     expect(fake.negotiations[0].settlements[0]).toMatchObject({ settlementType: 'Administrative', counterofferAmount: 260000 })
-    expect(await within(form).findByText('Acme Realty')).toBeInTheDocument()
     expect(await screen.findByText('Negotiation saved.')).toBeInTheDocument()
   })
 
@@ -602,9 +604,6 @@ describe('Negotiation (AT-NE-42)', () => {
     expect(await within(form).findByText('The JAT cannot respond before the counteroffer is submitted.')).toBeInTheDocument()
     expect(within(form).getByText('The PUA cannot be closed before it is executed.')).toBeInTheDocument()
     expect(fake.negotiations).toHaveLength(0)
-
-    await user.click(within(form).getByRole('button', { name: 'Add right of entry' }))
-    expect(await within(form).findByText('Enter at least one detail of the right of entry.')).toBeInTheDocument()
   })
 
   it('changes a saved record and removes a row from a grid', async () => {
@@ -889,18 +888,18 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     expect(!!screen.queryByRole('button', { name: 'Remove contact CL-PN-1001-001' })).toBe(can(role, 'contactlog', 'delete'))
   })
 
-  it('shows the Ownership details and Parcel location tabs exactly as their pages allow', async () => {
-    const { user } = open(role, { ownerships: [{ parcelId: 'pc1', id: 'ow1', ownershipNumber: 1, ownerName: 'Kamali' }] })
+  it('shows the Ownership interests and Parcel location tabs exactly as their pages allow', async () => {
+    const { user } = open(role, { parties: [{ id: 'pt1', name: 'Kamali' }], links: [{ partyId: 'pt1', parcelId: 'pc1', role: 'FeeOwner' as const }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
     expect(!!screen.queryByRole('tab', { name: 'Parcel location' })).toBe(can(role, 'parcellocation', 'read'))
-    expect(!!screen.queryByRole('tab', { name: 'Ownership details' })).toBe(can(role, 'ownership', 'read'))
-    if (!can(role, 'ownership', 'read')) return
-    await tab(user, 'Ownership details')
-    await screen.findByRole('table', { name: 'Ownership details' })
-    expect(!!screen.queryByRole('form', { name: 'Add an ownership' })).toBe(can(role, 'ownership', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit ownership 1' })).toBe(can(role, 'ownership', 'update'))
-    expect(!!screen.queryByRole('button', { name: 'Remove ownership 1' })).toBe(can(role, 'ownership', 'delete'))
+    expect(!!screen.queryByRole('tab', { name: 'Ownership details' })).toBe(false)
+    if (!can(role, 'parties', 'read')) return
+    await tab(user, 'Ownership interests')
+    await screen.findByRole('table', { name: 'Owners and interests' })
+    expect(!!screen.queryByRole('button', { name: 'Add a person or organization' })).toBe(can(role, 'parties', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Edit Kamali, Fee owner' })).toBe(can(role, 'parties', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Remove Kamali, Fee owner' })).toBe(can(role, 'parties', 'delete'))
   })
 
   it('shows the Title encumbrances tab and its controls exactly as the Title Encumbrances page allows', async () => {

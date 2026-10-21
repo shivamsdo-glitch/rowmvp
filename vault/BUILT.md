@@ -2,7 +2,7 @@
 
 **Read this first in every new chat, then `CLAUDE.md` (rules) and `SKILLS.md` (recipes).** This file says *what has been built and where*; it does not repeat the rules. It is the map. **It must be updated in the same commit as every feature change** (add a row, a route, a page key, an ADR link, the acceptance IDs, bump "Last updated"). This is enforced: the release gate's first check, `scripts/check-built.mjs`, fails if `backend/*/src` or `frontend/*/src` changed and this file did not (`--skip-built-check` only for pure bug fixes and refactors).
 
-Last updated: 2026-10-21, after Phase 1.5 slice 8 and the cross-parcel work screens. Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
+Last updated: 2026-10-21, after the one-form-per-process clean-up: Ownership interests (ownership + parties merged), Team picked from the Library, right of entry only in Negotiation (ADR 0023); before that the per-person dashboard, manager roll-up and Help center (ADR 0022). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
 
 ---
 
@@ -45,10 +45,10 @@ Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product co
 | **Projects** | Create/list/edit projects, auto numbering that survives concurrent creates, status, oversight type, per-project time zone | ADR 0006 · ROW-001, 003, 004, 012, 013, 076, 238 |
 | **Parcels** | Parcel core: statuses, groups, interests, milestones, site visits, notice to owner, split and combine (lineage kept), parcel board and detail | ADR 0008 · ROW-002, 005–011, 071–074, 233–237 |
 | **Step gating + deadlines** | Configurable workflow steps with override roles; statutory deadlines counted in the agency/project time zone; reminders | ADR 0008 |
-| **Parties** | One `Party` entered once, linked by role to tracts/parcels; W-9 tax ID write-only (encrypted, masked everywhere, redacted from audit) | ADR 0009 · ROW-014–018 |
+| **Parties** | One `Party` entered once, linked by role to tracts/parcels; W-9 tax ID write-only (encrypted, masked everywhere, redacted from audit); addresses and contacts on the party; a parcel's **Ownership interests** tab is this module (ADR 0023) | ADR 0009, 0023 · ROW-014–018 |
 | **Library** | Admin-defined fields, types, allowed values and defaults; library-driven dropdowns across forms; default lists seeded add-only | ADR 0010, 0015 |
-| **Parcel team, diary, notes** | Who works the parcel, a negotiation diary, free notes | ADR 0011 · ROW-019–021 |
-| **Right of entry, requests, reviews** | Rights of entry with a report page, acquisition requests with approval, plan-review gate, staff reports, acquisition plans | ADR 0012 |
+| **Parcel team, diary, notes** | Team = pick an agent type and a person from the **Library** Agents list (nothing typed); "Assigned to" on forms picks from the team; negotiation diary; free notes | ADR 0011, 0023 · ROW-019–021 |
+| **Right of entry, requests, reviews** | Rights of entry (entered only in the parcel's **Negotiation** tab; reads on `parcels`, writes on `parcelnegotiation`) with a report page, acquisition requests with approval, plan-review gate, staff reports, acquisition plans | ADR 0012 |
 | **Agency + project time zones** | Days are counted where the project is | ROW-073, 074 |
 
 ## 4. Phase 1.5 — "Next requirements" (all done)
@@ -64,6 +64,7 @@ Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product co
 | 7 | Negotiation and Questionnaire tabs | 0019 |
 | 8 | Condemnation, Property Management & Disposition, Relocation tabs | 0020 |
 | — | **Work screens** across parcels (Title & Survey, Appraisal, Negotiation & Closing) | 0021 |
+| — | **Dashboard** per person (what I did, what is waiting) + manager **Team** roll-up; in-app **Help center** behind the top-bar question mark | 0022 |
 | — | Tab strip restyle (active tab = blue label + full-width blue bottom border; wraps instead of scrolling) | `components/ui/tabs.tsx` |
 
 ---
@@ -74,12 +75,12 @@ Each tab has its own **page key** (so access is per tab), its own ADR section an
 
 | Tab | Page key | Records | ID format | Who edits (default) | Notes |
 |---|---|---|---|---|---|
-| Ownership details | `ownership` | many | owner number | Designer CRUD; Title Researcher RU; Negotiator CRU | Standalone record (not the Parties module); the parcel's **Owner name** is derived from it; address + contact grids |
+| Ownership interests (Parties) | `parties` | many links | — | Designer/PM CRUD; Title Researcher RU; Negotiator CRU | Owners and interest holders with owner type, addresses and contacts in one form; the parcel's **Owner name** is derived from the owners (ADR 0023; the old `ownership` tab and key are gone) |
 | Parcel location | `parcellocation` | 1 (read-only) | — | Designer CRUD; Surveyor CRU | CAD number + ESRI save status; CSV export; no map |
 | Title encumbrances | `titleencumbrances` | many | `ENC-<parcel>-<seq>` | Title Researcher CRUD | Linked-records editor, cure status |
 | Title and closing | `titleclosing` | 1 per parcel | `TC-<parcel>` | Title Researcher CRU, Negotiator CRU | Conveyance documents + title commitments grids; derived **vested owner name**; Admin alone removes |
 | Appraisal | `parcelappraisal` | many | `APR-<parcel>-<seq>` | Appraiser CRUD; **Appraisal Approver RU** | Amounts grid (total computed); **review fields incl. approved just compensation writable only by Approver/Admin** (`AppraisalReviewAccess`) |
-| Negotiation | `parcelnegotiation` | 1 per parcel | `NEG-<parcel>` | Negotiator CRUD | Status notes, agents, right of entry, offers, administrative settlement, JAT counteroffer, PUA |
+| Negotiation | `parcelnegotiation` | 1 per parcel | `NEG-<parcel>` | Negotiator CRUD | Status notes, assigned-to (from the team), **right of entry** (the one form for it), offers, administrative settlement, JAT counteroffer, PUA |
 | Questionnaire | `parcelquestionnaire` | many | `QST-<parcel>-<seq>` | Relocation Agent CRUD | Ownership interests + questions/answers grids |
 | Condemnation | `parcelcondemnation` | 1 per parcel | `CON-<parcel>` | Negotiator CRU (no delete) | Preliminary dates, support, attorneys, commissioners, notices of hearing |
 | Property management & disposition | `parcelproperty` | 1 per parcel | `PMD-<parcel>` | Project Manager CRUD | Transfer memo, demo, disposition, funding distribution |
@@ -89,13 +90,14 @@ Each tab has its own **page key** (so access is per tab), its own ADR section an
 
 Everyone else reads every tab (Basic). Admin does everything. The full matrix is `vault/acceptance/permission-matrix.json` (generated from `Support/Spec.cs`).
 
-Older parcel tabs from Phase 1 (Summary, Team, Parties, Diary, Notes, Right of entry, Reviews & reports, Interests, Milestones & deadlines, Workflow, Site visits & notice) live in `features/parcels/` and are governed by the `parcels` page.
+Older parcel tabs from Phase 1 (Summary, Team, Diary, Notes, Reviews & reports, Interests, Milestones & deadlines, Workflow, Site visits & notice) live in `features/parcels/` and are governed by the `parcels` page.
 
 ## 6. Screens (routes in `frontend/.../src/routes/_app/`)
 
 | Route | Screen | Page key |
 |---|---|---|
-| `/` | Home dashboard | `dashboard` |
+| `/` | **Dashboard**: *My work* for everyone (waiting, done, recent); *Team* tab for Project Manager and Admin only | `dashboard` |
+| **`/help`** | **Help center**: contents, search, topics, "What your role can do"; open to every signed-in person (`?topic=<id>`) | none (signed in) |
 | `/projects`, `/projects/$projectId` | Project list and detail (tabs) | `projects` |
 | `/parcels`, `/parcels/$parcelId` | Parcel board and detail (tabs in §5) | `parcels` |
 | `/parties`, `/parties/$partyId` | Parties (owners, W-9) | `parties` |
@@ -128,8 +130,11 @@ Special rules beyond the page grid: appraisal review fields (Approver/Admin only
 | Endpoints | `Api/Controllers/ParcelTabsController.cs`, `OverviewController.cs`, `ParcelsController`… | `api/parcel-tabs.ts`, `api/overview.ts` |
 | Tab components | — | `features/parcels/*Tab*.tsx`, `LifecycleTabs.tsx`, `lifecycle-kit.tsx`, `NegotiationTab.tsx` (exports the shared `Grid`) |
 | Work screens | — | `features/work/ParcelWorkPage.tsx`, `WorkPages.tsx` |
+| Dashboard | `Application/Dashboard/DashboardRequests.cs`, `Application/Calculations/ActivitySummary.cs` (audit log → "done"), `Api/Controllers/DashboardController.cs` (`/api/v1/dashboard/me`, `/team`) | `features/dashboard/DashboardPage.tsx`, `api/dashboard.ts`, `test/fake-dashboard.ts` |
+| Help center | — | `features/help/help-content.ts` (all text, plain data), `HelpPage.tsx`, `routes/_app/help.tsx`; button in `components/shell/TopBar.tsx` |
 | Access defaults | `Domain/Common/PageKeys.cs`, `DefaultRolePermissions.cs` | `api/auth.ts` (`PAGE_KEYS`), `components/shell/nav.ts` |
 | Migrations | `Infrastructure/Persistence/Migrations/` (one per slice) | — |
+| Ownership + team + right of entry (ADR 0023) | `Application/Parties/ParcelOwners.cs`, `PartyService.cs`, `Application/ParcelRecords/ParcelRecordRequests.cs` (team), `Application/RightsOfEntry/RightOfEntryRequests.cs`, `Domain/Entities/Party.cs` (`PartyAddress`, `PartyContact`) | `features/parties/PartyLinksPanel.tsx`, `PartyGrids.tsx`, `features/parcels/ParcelRecordTabs.tsx` (Team), `team-kit.ts`, `AcquisitionTabs.tsx` (right of entry, shown in `NegotiationTab.tsx`) |
 | Test fakes | — | `test/fake-tabs.ts` (layered over `fake-records.ts`, `fake-parcels.ts`), `test/fake-api.ts` |
 | Role spec | `tests/.../IntegrationTests/Support/Spec.cs` → `vault/acceptance/permission-matrix.json` | `test/contract.ts` |
 | E2E | — | `e2e/tests/*.spec.ts` (one file per area; case IDs `AT-xx-nn` in test names) |
@@ -162,4 +167,5 @@ Practical rules:
 - Deferred v2 modules: condemnation/relocation/utility/property-disposal **processes**, clearance/certification, platform admin/SSO, document/GIS/reporting platform services.
 - Not built from the requirements document because it gave no screenshot or detail: **Site Work** and **Form rZy9V** tabs; the **Land Planner** section of Appraisal; the **Work log** of Title Encumbrances; per-row file attachments on right-of-entry and settlement rows; Workflow / Select Actions / Save & Continue / Link Document buttons; map on Parcel Location.
 - Open document questions answered by assumption (ADR 0019, 0020): Questionnaire "Sent to owner" is a date and the hidden ownership-interest column is "Phone"; Relocation Number is typed by the user; "Relocation complete" and "Relocation complete 1" are kept as two dates; "Survey" has no tab of its own (Title & Survey covers title encumbrances and easements).
+- Relocation's own "Agents" grid still takes typed names (a different record from the parcel team); existing tenants must add agent types/people to the Library by hand (defaults seed only new tenants); tract-child parcels still record owners on the tract (ADR 0023).
 - No git remote; nothing has been pushed.

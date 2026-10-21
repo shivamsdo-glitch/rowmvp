@@ -2,8 +2,9 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
 
 /**
- * Phase 1.5 slice 5c (ADR 0017): a parcel's Ownership Details (with its derived Owner name) and the read-only Parcel Location tab.
- * Real browser, UI, API and Postgres. Case ids match vault/acceptance/Designer.md and Everyone.md. Every test makes its own parcel.
+ * A parcel's Ownership interests tab (ADR 0023: Ownership Details and Parties combined, with the derived Owner name) and the read-only
+ * Parcel Location tab (ADR 0017). Real browser, UI, API and Postgres. Case ids match vault/acceptance/Designer.md and Everyone.md.
+ * Every test makes its own parcel.
  */
 
 const canCreate = (role: string, page: string) => ['S', 'P'].includes(level(role, page) ?? '')
@@ -27,38 +28,40 @@ async function openTab(page: Page, parcelId: string, tab: string) {
   await page.getByRole('tab', { name: tab }).click()
 }
 
-test.describe('Designer · ownership details', () => {
-  test('AT-DE-42 records an ownership with an address and contacts, sees the owner name on the parcel, changes and removes it', async ({ page, request }) => {
+test.describe('Designer · ownership interests', () => {
+  test('AT-DE-42 records an owner with its type, an address and contacts in one form, sees the owner name on the parcel, changes and removes it', async ({ page, request }) => {
     const parcel = await makeParcel(request)
     await signInViaUi(page, 'Designer')
-    await openTab(page, parcel.id, 'Ownership details')
-    const form = page.getByRole('form', { name: 'Add an ownership' })
+    await openTab(page, parcel.id, 'Ownership interests')
+    await page.getByRole('button', { name: 'Add a person or organization' }).click()
+    const form = page.getByRole('form', { name: 'Add a person or organization' })
+    await form.getByLabel('A new person or organization').check()
 
-    await form.getByRole('button', { name: 'Add ownership' }).click()
-    await expect(form.getByText('Owner name is required.')).toBeVisible()
-    await form.getByLabel(/^Owner name/).fill('Kamali')
+    await form.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(form.getByText('Name is required.')).toBeVisible()
+    await form.getByLabel(/^New party Name/).fill('Kamali')
     await form.getByLabel(/^Owner type/).selectOption('Fee Owner')
 
     await form.getByLabel(/^Address type/).selectOption('Tax Card Mailing Address')
     await form.getByLabel(/^Address$/).fill('1 Main St')
     await form.getByLabel(/^Address contact person/).fill('Kamali, Devanshi')
-    await form.getByLabel(/^City/).fill('Chennai')
+    await form.getByLabel(/^City$/).fill('Chennai')
     await form.getByLabel(/^Zip/).fill('123')
     await form.getByRole('button', { name: 'Add address' }).click()
     await expect(form.getByRole('table', { name: 'Addresses' })).toContainText('Chennai')
 
     await form.getByLabel(/^Contact type/).selectOption('Broker')
     await form.getByLabel(/^Contact name/).fill('Dev Kamali')
-    await form.getByLabel(/^Phone number/).fill('(112) 345-6789')
-    await form.getByLabel(/^Email/).fill('kamali.t@aurigo.com')
+    await form.getByLabel(/^Contact phone number/).fill('(112) 345-6789')
+    await form.getByLabel(/^Contact email/).fill('kamali.t@aurigo.com')
     await form.getByLabel('Is primary').check()
     await form.getByRole('button', { name: 'Add contact' }).click()
     await expect(form.getByRole('table', { name: 'Contacts' })).toContainText('Dev Kamali')
 
-    await form.getByRole('button', { name: 'Add ownership' }).click()
-    const row = page.getByRole('row', { name: /Fee Owner/ })
-    await expect(row).toContainText('Kamali')
-    await expect(row.getByRole('cell').nth(0)).toHaveText('1')
+    await form.getByRole('button', { name: 'Add', exact: true }).click()
+    const row = page.getByRole('row').filter({ hasText: 'Kamali' }).filter({ hasText: 'Fee owner' })
+    await expect(row).toContainText('Fee owner')
+    await expect(row).toContainText('Fee Owner')
 
     // The parcel shows its owner name and cannot be given one by hand.
     await page.getByRole('tab', { name: 'Summary' }).click()
@@ -69,32 +72,27 @@ test.describe('Designer · ownership details', () => {
     await expect(parcelForm.getByLabel(/^Owner name/)).toHaveValue('Kamali')
     await parcelForm.getByRole('button', { name: 'Cancel' }).click()
 
-    // Change it, attach a file, then remove everything.
-    await page.getByRole('tab', { name: 'Ownership details' }).click()
-    await page.getByRole('button', { name: 'Edit ownership 1' }).click()
-    const edit = page.getByRole('form', { name: 'Change ownership' })
-    await expect(edit.getByLabel(/^Owner name/)).toHaveValue('Kamali')
-    await edit.getByLabel(/^Owner name/).fill('Kamali Family Trust')
+    // Change the owner and the person behind it in one form.
+    await page.getByRole('tab', { name: 'Ownership interests' }).click()
+    await page.getByRole('button', { name: 'Edit Kamali, Fee owner' }).click()
+    const edit = page.getByRole('form', { name: 'Edit Kamali, Fee owner' })
+    await expect(edit.getByLabel(/^Party Name/)).toHaveValue('Kamali')
+    await edit.getByLabel(/^Party Name/).fill('Kamali Family Trust')
     await edit.getByRole('button', { name: 'Remove contact Dev Kamali' }).click()
     await edit.getByRole('button', { name: 'Save changes' }).click()
     await expect(page.getByRole('row', { name: /Kamali Family Trust/ })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Edit ownership 1' }).click()
-    const panel = page.getByRole('region', { name: 'Attachments for ownership 1' })
-    await panel.getByLabel('Upload document').setInputFiles({ name: 'deed.txt', mimeType: 'text/plain', buffer: Buffer.from('deed of record') })
-    await expect(panel.getByText('deed.txt')).toBeVisible()
-
     const headers = { Authorization: `Bearer ${await sessionToken(page)}` }
-    const list = await (await request.get(`/api/v1/parcels/${parcel.id}/ownerships`, { headers })).json()
-    expect(list).toHaveLength(1)
-    expect(list[0]).toMatchObject({ ownershipNumber: 1, ownerName: 'Kamali Family Trust', ownerType: 'Fee Owner', contacts: [] })
-    expect(list[0].addresses).toHaveLength(1)
+    const people = await (await request.get(`/api/v1/parcels/${parcel.id}/parties`, { headers })).json()
+    expect(people.ownership).toHaveLength(1)
+    expect(people.ownership[0]).toMatchObject({ role: 'FeeOwner', ownerType: 'Fee Owner' })
+    const party = await (await request.get(`/api/v1/parties/${people.ownership[0].party.id}`, { headers })).json()
+    expect(party).toMatchObject({ name: 'Kamali Family Trust', contacts: [] })
+    expect(party.addresses).toHaveLength(1)
     expect((await (await request.get(`/api/v1/parcels/${parcel.id}`, { headers })).json()).ownerName).toBe('Kamali Family Trust')
 
-    await panel.getByRole('button', { name: 'Remove deed.txt' }).click()
-    await expect(panel.getByText('No attachments')).toBeVisible()
-    await page.getByRole('button', { name: 'Remove ownership 1' }).click()
-    await expect(page.getByText('No ownerships recorded')).toBeVisible()
+    await page.getByRole('button', { name: 'Remove Kamali Family Trust, Fee owner' }).click()
+    await expect(page.getByText('No owners or interest holders recorded.')).toBeVisible()
     await expect.poll(async () => (await (await request.get(`/api/v1/parcels/${parcel.id}`, { headers })).json()).ownerName).toBeNull()
   })
 
@@ -116,34 +114,36 @@ test.describe('Designer · ownership details', () => {
 
 test.describe('Everyone · ownership and location', () => {
   for (const role of ROLES) {
-    test(`AT-X-48 ${role}: the Ownership details and Parcel location tabs, their buttons and the API follow the access spec`, async ({ page, request }) => {
+    test(`AT-X-48 ${role}: the Ownership interests and Parcel location tabs, their buttons and the API follow the access spec`, async ({ page, request }) => {
       const parcel = await makeParcel(request)
       const admin = await adminHeaders(request)
-      const seed = await (await request.post(`/api/v1/parcels/${parcel.id}/ownerships`, { headers: admin, data: { ownerName: 'Seed Owner' } })).json()
+      const owner = (name: string) => ({ newParty: { kind: 'Person', name }, role: 'FeeOwner', leaseOnFile: false })
+      const seed = await (await request.post(`/api/v1/parcels/${parcel.id}/parties`, { headers: admin, data: owner('Seed Owner') })).json()
 
       await signInViaUi(page, role)
       await page.goto(`/parcels/${parcel.id}`)
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
 
       await expect(page.getByRole('tab', { name: 'Parcel location' }), `${role} Parcel location tab`).toHaveCount(level(role, 'parcellocation') !== null ? 1 : 0)
-      const readable = level(role, 'ownership') !== null
-      await expect(page.getByRole('tab', { name: 'Ownership details' }), `${role} Ownership tab`).toHaveCount(readable ? 1 : 0)
+      await expect(page.getByRole('tab', { name: 'Ownership details' }), `${role}: the old Ownership details tab is gone`).toHaveCount(0)
+      const readable = level(role, 'parties') !== null
+      await expect(page.getByRole('tab', { name: 'Ownership interests' }), `${role} Ownership interests tab`).toHaveCount(readable ? 1 : 0)
       if (readable) {
-        await page.getByRole('tab', { name: 'Ownership details' }).click()
-        await expect(page.getByRole('table', { name: 'Ownership details' })).toBeVisible()
-        await expect(page.getByRole('form', { name: 'Add an ownership' }), `${role} add`).toHaveCount(canCreate(role, 'ownership') ? 1 : 0)
-        await expect(page.getByRole('button', { name: 'Edit ownership 1' }), `${role} edit`).toHaveCount(canUpdate(role, 'ownership') ? 1 : 0)
-        await expect(page.getByRole('button', { name: 'Remove ownership 1' }), `${role} remove`).toHaveCount(canDelete(role, 'ownership') ? 1 : 0)
+        await page.getByRole('tab', { name: 'Ownership interests' }).click()
+        await expect(page.getByRole('region', { name: 'Owners and interests' })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Add a person or organization' }), `${role} add`).toHaveCount(canCreate(role, 'parties') ? 1 : 0)
+        await expect(page.getByRole('button', { name: 'Edit Seed Owner, Fee owner' }), `${role} edit`).toHaveCount(canUpdate(role, 'parties') ? 1 : 0)
+        await expect(page.getByRole('button', { name: 'Remove Seed Owner, Fee owner' }), `${role} remove`).toHaveCount(canDelete(role, 'parties') ? 1 : 0)
       }
 
       const headers = { Authorization: `Bearer ${await sessionToken(page)}` }
-      const url = `/api/v1/parcels/${parcel.id}/ownerships`
+      const url = `/api/v1/parcels/${parcel.id}/parties`
       const want = (action: 'read' | 'create' | 'update' | 'delete', ok: number) =>
-        ({ read: readable, create: canCreate(role, 'ownership'), update: canUpdate(role, 'ownership'), delete: canDelete(role, 'ownership') })[action] ? ok : 403
+        ({ read: readable, create: canCreate(role, 'parties'), update: canUpdate(role, 'parties'), delete: canDelete(role, 'parties') })[action] ? ok : 403
       expect((await request.get(url, { headers })).status()).toBe(want('read', 200))
-      expect((await request.post(url, { headers, data: { ownerName: `By ${role}` } })).status()).toBe(want('create', 201))
-      expect((await request.put(`${url}/${seed.id}`, { headers, data: { ownerName: 'Seed Owner', ownerType: `edited by ${role}` } })).status()).toBe(want('update', 200))
-      expect((await request.delete(`${url}/${seed.id}`, { headers })).status()).toBe(want('delete', 204))
+      expect((await request.post(url, { headers, data: owner(`By ${role}`) })).status()).toBe(want('create', 201))
+      expect((await request.put(`/api/v1/party-links/${seed.id}`, { headers, data: { ownerType: `edited by ${role}`, leaseOnFile: false } })).status()).toBe(want('update', 200))
+      expect((await request.delete(`/api/v1/party-links/${seed.id}`, { headers })).status()).toBe(want('delete', 204))
     })
   }
 })

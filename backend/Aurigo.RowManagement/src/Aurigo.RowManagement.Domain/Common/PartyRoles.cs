@@ -16,6 +16,9 @@ public static class PartyRoles
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown party role."),
     };
 
+    /// <summary>The roles whose holders are "the owners" of a parcel: they give the parcel its owner name. Lienholders and trustees are interests, not owners.</summary>
+    public static bool IsOwnerRole(PartyRole role) => role is PartyRole.FeeOwner or PartyRole.EasementHolder or PartyRole.LifeEstateHolder or PartyRole.OtherInterest;
+
     /// <summary>Undivided ownership interests are held in shares that cannot add up to more than the whole.</summary>
     public static bool CarriesShare(PartyRole role) => role is PartyRole.FeeOwner or PartyRole.EasementHolder or PartyRole.LifeEstateHolder;
 

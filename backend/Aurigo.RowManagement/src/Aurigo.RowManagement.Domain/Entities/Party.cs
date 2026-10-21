@@ -35,6 +35,35 @@ public class Party : EntityBase
     public DateOnly? W9ReceivedOn { get; set; }
     /// <summary>The party is paid by the agency and is reported on a 1099.</summary>
     public bool Reportable1099 { get; set; }
+
+    // ── addresses and contact people (ADR 0023: the Ownership interests tab) ──
+    public List<PartyAddress> Addresses { get; set; } = new();
+    public List<PartyContact> Contacts { get; set; } = new();
+}
+
+/// <summary>One mailing or physical address of a party, with its type from the Library's Address type list.</summary>
+public class PartyAddress : EntityBase
+{
+    public Guid PartyId { get; set; }
+    public string? AddressType { get; set; }
+    public string? Address { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? Zip { get; set; }
+}
+
+/// <summary>A person to deal with for a party (a spouse, an agent, a family contact), with the Library's contact type.</summary>
+public class PartyContact : EntityBase
+{
+    public Guid PartyId { get; set; }
+    public string? ContactType { get; set; }
+    public string Name { get; set; } = default!;
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool IsPrimary { get; set; }
 }
 
 /// <summary>
@@ -51,6 +80,8 @@ public class PartyLink : EntityBase
     public PartyRole Role { get; set; }
     /// <summary>The party's share of the interest as a percentage (0 to 100), for roles that hold a share.</summary>
     public decimal? SharePercent { get; set; }
+    /// <summary>For an ownership interest: a value of the Library's Owner type list ("Vested Owner", "Prior Owner"...). It describes this party on this parcel.</summary>
+    public string? OwnerType { get; set; }
     public string? Notes { get; set; }
 
     // ── tenants (ROW-016) ──

@@ -15,7 +15,8 @@ namespace Aurigo.RowManagement.Application.Parties;
 /// <summary>A party entered while linking: the same details as a party made on its own (ROW-014).</summary>
 public sealed record NewPartyFields(
     PartyKind Kind, string Name, string? LegalName, string? Email, string? Phone, string? AddressLine1, string? AddressLine2,
-    string? City, string? State, string? PostalCode, string? Notes) : IPartyFields;
+    string? City, string? State, string? PostalCode, string? Notes,
+    IReadOnlyList<PartyAddressInput>? Addresses = null, IReadOnlyList<PartyContactInput>? Contacts = null) : IPartyFields;
 
 public sealed class NewPartyFieldsValidator : PartyFieldsValidator<NewPartyFields> { }
 
@@ -25,7 +26,7 @@ public sealed class NewPartyFieldsValidator : PartyFieldsValidator<NewPartyField
 /// </summary>
 public sealed record PartyLinkInput(
     Guid? PartyId, NewPartyFields? NewParty, PartyRole Role, decimal? SharePercent, string? Notes,
-    bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails);
+    bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null);
 
 public sealed class PartyLinkInputValidator : AbstractValidator<PartyLinkInput>
 {
@@ -52,6 +53,9 @@ public sealed class PartyLinkInputValidator : AbstractValidator<PartyLinkInput>
         RuleFor(x => x.Notes).MaximumLength(500);
         RuleFor(x => x.LeaseDetails).MaximumLength(1000);
         RuleFor(x => x.InsuranceDetails).MaximumLength(1000);
+        RuleFor(x => x.OwnerType).MaximumLength(100);
+        RuleFor(x => x).Must(x => x.OwnerType is null || !Enum.IsDefined(x.Role) || PartyRoles.CategoryOf(x.Role) == PartyCategory.Ownership)
+            .OverridePropertyName("OwnerType").WithMessage("An owner type applies to ownership interests only.");
     }
 }
 
@@ -76,6 +80,7 @@ internal static class PartyLinkWriter
         {
             party = new Party();
             PartyRules.Apply(party, input.NewParty!);
+            PartyRules.ApplyChildren(db, party, input.NewParty!);
             db.Parties.Add(party);
         }
 
@@ -89,7 +94,7 @@ internal static class PartyLinkWriter
         var link = new PartyLink
         {
             PartyId = party.Id, ParcelId = parcel?.Id, ParentTractId = tract?.Id, Role = input.Role, SharePercent = input.SharePercent,
-            Notes = PartyRules.Clean(input.Notes), LeaseOnFile = input.LeaseOnFile,
+            OwnerType = PartyRules.Clean(input.OwnerType), Notes = PartyRules.Clean(input.Notes), LeaseOnFile = input.LeaseOnFile,
             LeaseDetails = PartyRules.Clean(input.LeaseDetails), InsuranceDetails = PartyRules.Clean(input.InsuranceDetails),
         };
         db.PartyLinks.Add(link);
@@ -271,7 +276,7 @@ public sealed class AddTractPartyCommandHandler : IRequestHandler<AddTractPartyC
 
 /// <summary>Changes a link's share, notes or tenant details. Its party and role stay; to change those, remove it and add another.</summary>
 public sealed record UpdatePartyLinkCommand(
-    Guid LinkId, decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails) : IRequest<PartyLinkDto>;
+    Guid LinkId, decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null) : IRequest<PartyLinkDto>;
 
 public sealed class UpdatePartyLinkCommandValidator : AbstractValidator<UpdatePartyLinkCommand>
 {
@@ -285,6 +290,7 @@ public sealed class UpdatePartyLinkCommandValidator : AbstractValidator<UpdatePa
         RuleFor(x => x.Notes).MaximumLength(500);
         RuleFor(x => x.LeaseDetails).MaximumLength(1000);
         RuleFor(x => x.InsuranceDetails).MaximumLength(1000);
+        RuleFor(x => x.OwnerType).MaximumLength(100);
     }
 }
 
@@ -320,7 +326,10 @@ public sealed class UpdatePartyLinkCommandHandler : IRequestHandler<UpdatePartyL
             await PartyLinkWriter.EnsureSharesFitAsync(targetLinks, link.Role, link.Id, request.SharePercent, ct);
         }
 
+        if (request.OwnerType is not null && PartyRoles.CategoryOf(link.Role) != PartyCategory.Ownership)
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("OwnerType", "An owner type applies to ownership interests only.") });
         link.SharePercent = request.SharePercent;
+        link.OwnerType = PartyRules.Clean(request.OwnerType);
         link.Notes = PartyRules.Clean(request.Notes);
         link.LeaseOnFile = request.LeaseOnFile;
         link.LeaseDetails = PartyRules.Clean(request.LeaseDetails);

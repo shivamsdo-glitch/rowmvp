@@ -3,14 +3,14 @@ using Aurigo.RowManagement.Domain.Common;
 namespace Aurigo.RowManagement.Domain.Entities;
 
 /// <summary>
-/// A parcel's negotiation record (Phase 1.5 Negotiation tab, ADR 0019): who negotiates, the right of entry, offers, administrative settlement
+/// A parcel's negotiation record (Phase 1.5 Negotiation tab, ADR 0019): who negotiates, offers, administrative settlement
 /// counteroffers, the JAT counteroffer approval and the possession and use agreement. One per parcel, numbered "NEG-&lt;parcel number&gt;".
 /// </summary>
 public class ParcelNegotiation : EntityBase
 {
     public Guid ParcelId { get; set; }
     public string Number { get; set; } = default!;
-    /// <summary>The name of a person in the Library's Agents list.</summary>
+    /// <summary>The name of a person on the parcel's team.</summary>
     public string? AssignedTo { get; set; }
     public decimal? TotalAgreementAmount { get; set; }
     public string? Notes { get; set; }
@@ -26,8 +26,6 @@ public class ParcelNegotiation : EntityBase
     public DateOnly? PuaClosedDate { get; set; }
 
     public List<NegotiationNote> StatusNotes { get; set; } = new();
-    public List<NegotiationAgent> Agents { get; set; } = new();
-    public List<NegotiationRightOfEntry> RightsOfEntry { get; set; } = new();
     public List<NegotiationOffer> Offers { get; set; } = new();
     public List<NegotiationSettlement> Settlements { get; set; } = new();
 }
@@ -38,24 +36,6 @@ public class NegotiationNote : EntityBase
     public Guid NegotiationId { get; set; }
     public DateOnly NoteDate { get; set; }
     public string Text { get; set; } = default!;
-}
-
-/// <summary>A person from the Library's Agents list working this negotiation (type, company, phone and email are read from the Library).</summary>
-public class NegotiationAgent : EntityBase
-{
-    public Guid NegotiationId { get; set; }
-    public string AgentName { get; set; } = default!;
-}
-
-public class NegotiationRightOfEntry : EntityBase
-{
-    public Guid NegotiationId { get; set; }
-    public DateOnly? LetterMailedDate { get; set; }
-    public DateOnly? LetterDeliveredDate { get; set; }
-    public DateOnly? SignedReceivedDate { get; set; }
-    public DateOnly? SentToAtpDate { get; set; }
-    public DateOnly? ExpirationDate { get; set; }
-    public string? SpecialInstructions { get; set; }
 }
 
 public class NegotiationOffer : EntityBase

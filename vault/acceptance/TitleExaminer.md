@@ -13,8 +13,8 @@
 | AT-TE-12 | Stay in my lane | Try to attach to an appraisal, an offer and a payment; try to look at payments | – | All refused (403), including viewing payments | ✅ | E2E `AT-TE-12`; API 60-case matrix |
 | AT-TE-13 | Keep a saved view for the title list | Save "Defects to clear" on Title; try the same on Payments | – | Title view saved; Payments refused (403) for both save and list | ✅ | E2E `AT-TE-13`; API matrix (78 cases) |
 | AT-TE-14 | Colleagues see my package | An appraiser, project manager and negotiator open my title documents | – | They can read; none can attach to or remove from the title record; Finance cannot even list it | ✅ | API `RoleAcceptanceApiTests` |
-| AT-TE-15 | See who owns a parcel and whether a tax ID is on file, without being able to change it | Open Parties, search, open a party; open a parcel's Parties tab and a tract's owners panel as the Title Examiner | The people are listed; "On file" and the masked number show; no New party, Edit, tax form, Add, Remove or Delete controls | Every create, edit, tax-info, clear, delete and link call is refused (403) and the data is unchanged; the number never appears in any response | ✅ | E2E `AT-TE-15`; API `PartyApiTests` role matrix |
-| AT-TE-25 | Read rights of entry; no access to requests | Open a parcel's Right of entry tab; try the Requests page | The tab is read-only; Requests is not in the sidebar and the page redirects to Forbidden | Requests list and submit refused (403) | ✅ | E2E `AT-TE-25`; API `AcquisitionApiTests` (role matrix) |
+| AT-TE-15 | See who owns a parcel and whether a tax ID is on file, and correct the owner type and tax details (read-and-update on Parties since ADR 0023), but not add or remove people | Open Parties, search, open a party; open a parcel's Parties tab and a tract's owners panel as the Title Examiner | The people are listed; "On file" and the masked number show; no New party, Edit, tax form, Add, Remove or Delete controls | Every create, edit, tax-info, clear, delete and link call is refused (403) and the data is unchanged; the number never appears in any response | ✅ | E2E `AT-TE-15`; API `PartyApiTests` role matrix |
+| AT-TE-25 | Read rights of entry; no access to requests | Open a parcel's Negotiation tab (Right of entry section); try the Requests page | The tab is read-only; Requests is not in the sidebar and the page redirects to Forbidden | Requests list and submit refused (403) | ✅ | E2E `AT-TE-25`; API `AcquisitionApiTests` (role matrix) |
 
 ## Jobs that arrive with later phases
 
@@ -34,5 +34,5 @@
 - Phase 1.5 slice 6b: AT-TE-41 automated (the Title and Closing tab). ADR 0018.
 - Phase 1.5 slice 6a: AT-TE-40 automated (the Title Encumbrances tab). ADR 0018.
 - Phase 1 slice 3c: AT-TE-25 automated (rights of entry read-only; no Approvals access).
-- Phase 1 slice 3a: AT-TE-15 automated (read-only access to parties).
+- Phase 1 slice 3a: AT-TE-15 automated (read-only access to parties; since ADR 0023 the Title Examiner can also update, covered by AT-X-35).
 - Initial: AT-TE-10..14 automated; 20..24 specified.

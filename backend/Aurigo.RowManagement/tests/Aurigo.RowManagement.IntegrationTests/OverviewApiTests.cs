@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Aurigo.RowManagement.Application.Common;
 using Aurigo.RowManagement.Application.Parcels;
 using Aurigo.RowManagement.Application.ParcelTabs;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.IntegrationTests.Support;
 using FluentAssertions;
 
@@ -28,7 +29,7 @@ public class OverviewApiTests : IClassFixture<PgApi>
         var owner = $"Zebulon{Guid.NewGuid().ToString("N")[..8]}";
         var admin = await _api.As("Admin");
         var url = $"/api/v1/parcels/{parcel.Id}";
-        await LifecycleSupport.Ok<OwnershipDto>(await admin.Http.PostAsJsonAsync($"{url}/ownerships", new { ownerName = owner, ownerType = "Fee Owner" }, LifecycleSupport.Json), HttpStatusCode.Created);
+        await LifecycleSupport.Ok<PartyLinkDto>(await admin.Http.PostAsJsonAsync($"{url}/parties", new { newParty = new { kind = "Person", name = owner }, role = "FeeOwner", ownerType = "Fee Owner", leaseOnFile = false }, LifecycleSupport.Json), HttpStatusCode.Created);
         await LifecycleSupport.Ok<AppraisalDto>(await admin.Http.PostAsJsonAsync($"{url}/appraisals", new { appraisalType = "Full", appraiser = "Ann", amounts = new[] { new { amountType = "Land", amount = 100m } } }, LifecycleSupport.Json), HttpStatusCode.Created);
         await LifecycleSupport.Ok<NegotiationDto>(await admin.Http.PutAsJsonAsync($"{url}/negotiation", new { assignedTo = "Casey" }, LifecycleSupport.Json));
         await LifecycleSupport.Ok<TitleClosingDto>(await admin.Http.PutAsJsonAsync($"{url}/title-closing", new { titleCompany = "Lone Star" }, LifecycleSupport.Json));

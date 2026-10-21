@@ -129,7 +129,8 @@ public sealed class GetPartyUsageQueryHandler : IRequestHandler<GetPartyUsageQue
 
 public sealed record CreatePartyCommand(
     PartyKind Kind, string Name, string? LegalName, string? Email, string? Phone, string? AddressLine1, string? AddressLine2,
-    string? City, string? State, string? PostalCode, string? Notes) : IRequest<PartyDto>, IPartyFields;
+    string? City, string? State, string? PostalCode, string? Notes, IReadOnlyList<PartyAddressInput>? Addresses = null, IReadOnlyList<PartyContactInput>? Contacts = null)
+    : IRequest<PartyDto>, IPartyFields;
 
 public sealed class CreatePartyCommandValidator : PartyFieldsValidator<CreatePartyCommand> { }
 
@@ -149,6 +150,7 @@ public sealed class CreatePartyCommandHandler : IRequestHandler<CreatePartyComma
         await _permissions.EnsureAsync(PageKeys.Parties, PermissionAction.Create, ct);
         var party = new Party();
         PartyRules.Apply(party, request);
+        PartyRules.ApplyChildren(_db, party, request);
         _db.Parties.Add(party);
         await _db.SaveChangesAsync(ct);
         return PartyService.ToDto(party, 0);
@@ -157,7 +159,8 @@ public sealed class CreatePartyCommandHandler : IRequestHandler<CreatePartyComma
 
 public sealed record UpdatePartyCommand(
     Guid Id, PartyKind Kind, string Name, string? LegalName, string? Email, string? Phone, string? AddressLine1, string? AddressLine2,
-    string? City, string? State, string? PostalCode, string? Notes) : IRequest<PartyDto>, IPartyFields;
+    string? City, string? State, string? PostalCode, string? Notes, IReadOnlyList<PartyAddressInput>? Addresses = null, IReadOnlyList<PartyContactInput>? Contacts = null)
+    : IRequest<PartyDto>, IPartyFields;
 
 public sealed class UpdatePartyCommandValidator : PartyFieldsValidator<UpdatePartyCommand>
 {
@@ -182,6 +185,7 @@ public sealed class UpdatePartyCommandHandler : IRequestHandler<UpdatePartyComma
         await _permissions.EnsureAsync(PageKeys.Parties, PermissionAction.Update, ct);
         var party = await _parties.LoadPartyAsync(request.Id, ct);
         PartyRules.Apply(party, request);
+        PartyRules.ApplyChildren(_db, party, request);
         await _db.SaveChangesAsync(ct);
         return await _parties.ToDtoAsync(party, ct);
     }

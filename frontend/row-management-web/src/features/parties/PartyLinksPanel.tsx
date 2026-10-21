@@ -3,14 +3,15 @@ import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Trash2 } from 'lucide-react'
 import {
-  CARRIES_SHARE, CATEGORY_LABEL, HAS_LEASE, ROLE_LABEL, partiesApi,
+  CARRIES_SHARE, CATEGORY_LABEL, CATEGORY_OF, HAS_LEASE, ROLE_LABEL, partiesApi,
   type ParcelParties, type PartyCategory, type PartyLink, type PartyRole,
 } from '@/api/parties'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { ErrorState, LoadingRows } from '@/components/ui/states'
 import { CheckboxField, DataTable, FormError, SelectField, TextField, fieldErrorsOf, messageOf, numOrNull, orNull } from '../projects/form-kit'
-import { PartyFields, inputOf, partyFieldErrors, percentText, roleOptions, usePartyDraft } from './party-kit'
+import { optionsWith, useLibraryValues } from '../library/library-kit'
+import { PartyFields, draftOf, inputOf, partyFieldErrors, percentText, roleOptions, usePartyDraft } from './party-kit'
 
 /** Where the panel reads and writes: one parcel, or one parent tract of a project. */
 export type PartyTarget = { kind: 'parcel'; parcelId: string } | { kind: 'tract'; projectId: string; tractId: string }
@@ -55,6 +56,9 @@ export function PartyLinksPanel({ target, editable = true, headingLevel = 'h2' }
     queryClient.invalidateQueries({ queryKey: ['parties-of'] }),
     queryClient.invalidateQueries({ queryKey: ['parties'] }),
     queryClient.invalidateQueries({ queryKey: ['party'] }),
+    // The parcel's Owner name and the Title & Closing vested owner name are derived from these links (ADR 0023).
+    queryClient.invalidateQueries({ queryKey: ['parcel'] }),
+    queryClient.invalidateQueries({ queryKey: ['parcels'] }),
   ])
 
   async function remove(link: PartyLink) {
@@ -81,7 +85,7 @@ export function PartyLinksPanel({ target, editable = true, headingLevel = 'h2' }
         const rows = data[key]
         const own = (l: PartyLink) => l.source === (target.kind === 'parcel' ? 'Parcel' : 'Tract')
         const withActions = (canEdit || canRemove) && rows.some(own)
-        const headers = ['Party', 'Role', ...(category === 'Ownership' ? ['Share'] : []), 'Contact', 'Details', ...(inherits ? ['Recorded on'] : []), ...(withActions ? ['Actions'] : [])]
+        const headers = ['Party', 'Role', ...(category === 'Ownership' ? ['Owner type', 'Share'] : []), 'Contact', 'Details', ...(inherits ? ['Recorded on'] : []), ...(withActions ? ['Actions'] : [])]
         return (
           <section key={key} aria-label={CATEGORY_LABEL[category]}>
             <Heading className="mb-2 text-sm font-semibold">{CATEGORY_LABEL[category]}</Heading>
@@ -159,6 +163,7 @@ function LinkRows({
           <Link to="/parties/$partyId" params={{ partyId: l.party.id }} className="text-primary hover:underline">{l.party.name}</Link>
         </td>
         <td className="px-3 py-2">{ROLE_LABEL[l.role]}</td>
+        {category === 'Ownership' && <td className="px-3 py-2">{l.ownerType ?? '—'}</td>}
         {category === 'Ownership' && <td className="px-3 py-2">{percentText(l.sharePercent)}</td>}
         <td className="px-3 py-2">{[l.party.phone, l.party.email].filter(Boolean).join(' · ') || '—'}</td>
         <td className="px-3 py-2">{details.length ? details.join(' · ') : '—'}</td>
@@ -193,27 +198,47 @@ function LinkRows({
   )
 }
 
+/**
+ * Edits one link and the person or organization behind it in a single form (ADR 0023): the role details (owner type, share, notes,
+ * lease) and the party's own details with its addresses and contacts. Saving changes both.
+ */
 function EditLinkForm({ link, onSaved, onCancel }: { link: PartyLink; onSaved: () => Promise<void>; onCancel: () => void }) {
   const { manager } = useAuth()
   const api = partiesApi(manager.api)
+  const canEditParty = manager.can('parties', 'update')
+  const ownerTypes = useLibraryValues('owner_type')
+  const party = useQuery({ queryKey: ['party', link.party.id], queryFn: () => api.get(link.party.id) })
   const [share, setShare] = useState(link.sharePercent === null ? '' : String(link.sharePercent))
+  const [ownerType, setOwnerType] = useState(link.ownerType ?? '')
   const [notes, setNotes] = useState(link.notes ?? '')
   const [lease, setLease] = useState(link.leaseOnFile)
   const [leaseDetails, setLeaseDetails] = useState(link.leaseDetails ?? '')
   const [insurance, setInsurance] = useState(link.insuranceDetails ?? '')
+  const { draft, set } = usePartyDraft()
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const label = `${link.party.name}, ${ROLE_LABEL[link.role]}`
+  const isOwnership = CATEGORY_OF[link.role] === 'Ownership'
+
+  // The party's details arrive after the form opens; they fill the draft once.
+  if (party.data && !loaded) {
+    const d = draftOf(party.data)
+    ;(Object.keys(d) as (keyof typeof d)[]).forEach((k) => set(k)(d[k] as never))
+    setLoaded(true)
+  }
 
   async function save(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setFields({})
+    if (loaded && canEditParty && !draft.name.trim()) { setFields({ name: 'Name is required.' }); return }
     setBusy(true)
     try {
+      if (loaded && canEditParty) await api.update(link.party.id, inputOf(draft))
       await api.updateLink(link.id, {
-        sharePercent: CARRIES_SHARE.includes(link.role) ? numOrNull(share) : null, notes: orNull(notes),
+        sharePercent: CARRIES_SHARE.includes(link.role) ? numOrNull(share) : null, ownerType: isOwnership ? orNull(ownerType) : null, notes: orNull(notes),
         leaseOnFile: HAS_LEASE.includes(link.role) && lease, leaseDetails: HAS_LEASE.includes(link.role) ? orNull(leaseDetails) : null,
         insuranceDetails: HAS_LEASE.includes(link.role) ? orNull(insurance) : null,
       })
@@ -230,10 +255,11 @@ function EditLinkForm({ link, onSaved, onCancel }: { link: PartyLink; onSaved: (
   return (
     <form onSubmit={save} noValidate aria-label={`Edit ${label}`} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
+        {isOwnership && <SelectField label="Owner type" value={ownerType} onChange={setOwnerType} options={optionsWith(ownerTypes, ownerType)} blankLabel="Select one" error={fields.ownerType} />}
         {CARRIES_SHARE.includes(link.role) && (
           <TextField label="Share (%)" type="number" inputMode="decimal" value={share} onChange={setShare} error={fields.sharePercent} hint="Up to four decimals; shares of one kind cannot pass 100%." />
         )}
-        <TextField label="Notes" value={notes} onChange={setNotes} maxLength={500} error={fields.notes} />
+        <TextField label="Role notes" value={notes} onChange={setNotes} maxLength={500} error={fields.notes} />
         {HAS_LEASE.includes(link.role) && (
           <>
             <CheckboxField label="Lease on file" checked={lease} onChange={setLease} />
@@ -242,6 +268,17 @@ function EditLinkForm({ link, onSaved, onCancel }: { link: PartyLink; onSaved: (
           </>
         )}
       </div>
+      {canEditParty && (
+        <fieldset className="rounded-md border p-3">
+          <legend className="px-1 text-xs font-medium text-muted-foreground">Person or organization</legend>
+          {party.isError ? <p className="text-sm text-danger">The details could not be loaded.</p> : !loaded ? <p className="text-sm text-muted-foreground">Loading details…</p> : (
+            <PartyFields draft={draft} set={set} errors={fields} idPrefix="Party" />
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Tax information (W-9) is kept on the party&rsquo;s own page: <Link to="/parties/$partyId" params={{ partyId: link.party.id }} className="text-primary hover:underline">open {link.party.name}</Link>.
+          </p>
+        </fieldset>
+      )}
       <FormError error={error} />
       <div className="flex gap-2">
         <button type="submit" disabled={busy} className={buttonClassName('default', 'sm')}>Save changes</button>
@@ -265,6 +302,8 @@ function AddLinkForm({
   const [lease, setLease] = useState(false)
   const [leaseDetails, setLeaseDetails] = useState('')
   const [insurance, setInsurance] = useState('')
+  const [ownerType, setOwnerType] = useState('')
+  const ownerTypes = useLibraryValues('owner_type')
   const { draft, set } = usePartyDraft()
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -282,7 +321,7 @@ function AddLinkForm({
     if (mode === 'new' && !draft.name.trim()) { setFields({ 'newParty.Name': 'Name is required.' }); return }
     const body = {
       partyId: mode === 'existing' ? partyId : null, newParty: mode === 'new' ? inputOf(draft) : null, role,
-      sharePercent: shareable ? numOrNull(share) : null, notes: orNull(notes),
+      sharePercent: shareable ? numOrNull(share) : null, ownerType: CATEGORY_OF[role] === 'Ownership' ? orNull(ownerType) : null, notes: orNull(notes),
       leaseOnFile: tenant && lease, leaseDetails: tenant ? orNull(leaseDetails) : null, insuranceDetails: tenant ? orNull(insurance) : null,
     }
     setBusy(true)
@@ -327,6 +366,7 @@ function AddLinkForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Role" required value={role} onChange={setRole} options={roleOptions(allowOwnership)} error={fields.role} />
+        {role !== '' && CATEGORY_OF[role] === 'Ownership' && <SelectField label="Owner type" value={ownerType} onChange={setOwnerType} options={optionsWith(ownerTypes, ownerType)} blankLabel="Select one" error={fields.ownerType} />}
         {shareable && <TextField label="Share (%)" type="number" inputMode="decimal" value={share} onChange={setShare} error={fields.sharePercent} hint="Leave empty if not known." />}
         <TextField label="Role notes" value={notes} onChange={setNotes} maxLength={500} error={fields.notes} />
         {tenant && (

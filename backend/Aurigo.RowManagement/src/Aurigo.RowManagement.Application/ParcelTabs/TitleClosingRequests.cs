@@ -1,6 +1,7 @@
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.ParcelRecords;
 using Aurigo.RowManagement.Application.Parcels;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.Application.Persistence;
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
@@ -39,8 +40,7 @@ internal static class TitleClosingRules
 
     public static async Task<string?> VestedOwnerNameAsync(IRowDbContext db, Guid parcelId, CancellationToken ct)
     {
-        var names = await db.ParcelOwnerships.Where(o => o.ParcelId == parcelId && o.OwnerType == VestedOwnerType).OrderBy(o => o.Sequence).Select(o => o.OwnerName).ToListAsync(ct);
-        return names.Count == 0 ? null : string.Join("; ", names);
+        return await ParcelOwners.JoinedAsync(db, parcelId, VestedOwnerType, ct);
     }
 
     public static TitleClosingDto ToDto(ParcelTitleClosing t, string parcelNumber, string? vested) =>

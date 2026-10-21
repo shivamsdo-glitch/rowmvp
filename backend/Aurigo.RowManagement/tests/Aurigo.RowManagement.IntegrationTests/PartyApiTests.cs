@@ -322,6 +322,7 @@ public class PartyApiTests : IClassFixture<PgApi>
         var user = await _api.As(role);
         var read = Spec.Can(role, "parties", "read");
         var write = Spec.Can(role, "parties", "create");
+        var update = Spec.Can(role, "parties", "update");
         var delete = Spec.Can(role, "parties", "delete");
 
         (await Status(user.Http.GetAsync("/api/v1/parties"))).Should().Be(read ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
@@ -332,13 +333,13 @@ public class PartyApiTests : IClassFixture<PgApi>
 
         var created = await user.Http.PostAsJsonAsync("/api/v1/parties", PartyBody($"By {role}"), Json);
         created.StatusCode.Should().Be(write ? HttpStatusCode.Created : HttpStatusCode.Forbidden);
-        (await Status(user.Http.PutAsJsonAsync($"/api/v1/parties/{seeded.Party.Id}", PartyBody("Seed Owner"), Json))).Should().Be(write ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
+        (await Status(user.Http.PutAsJsonAsync($"/api/v1/parties/{seeded.Party.Id}", PartyBody("Seed Owner"), Json))).Should().Be(update ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
         (await Status(user.Http.PutAsJsonAsync($"/api/v1/parties/{seeded.Party.Id}/tax-info", new { type = "Ssn", taxId = "123-45-6789", reportable1099 = false }, Json)))
-            .Should().Be(write ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
+            .Should().Be(update ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
         (await Status(AddToParcel(user, parcel.Id, NewPersonLink($"Contact {role}", "Attorney")))).Should().Be(write ? HttpStatusCode.Created : HttpStatusCode.Forbidden);
         (await Status(AddToTract(user, project.Id, tract.Id, NewPersonLink($"Holder {role}", "Lienholder")))).Should().Be(write ? HttpStatusCode.Created : HttpStatusCode.Forbidden);
-        (await Status(user.Http.PutAsJsonAsync($"/api/v1/party-links/{seeded.Id}", new { sharePercent = 20m, leaseOnFile = false }, Json))).Should().Be(write ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
-        (await Status(user.Http.DeleteAsync($"/api/v1/parties/{seeded.Party.Id}/tax-info/number"))).Should().Be(write ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
+        (await Status(user.Http.PutAsJsonAsync($"/api/v1/party-links/{seeded.Id}", new { sharePercent = 20m, leaseOnFile = false }, Json))).Should().Be(update ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
+        (await Status(user.Http.DeleteAsync($"/api/v1/parties/{seeded.Party.Id}/tax-info/number"))).Should().Be(update ? HttpStatusCode.OK : HttpStatusCode.Forbidden);
 
         var throwaway = await NewParty(pm);
         (await Status(user.Http.DeleteAsync($"/api/v1/parties/{throwaway.Id}"))).Should().Be(delete ? HttpStatusCode.NoContent : HttpStatusCode.Forbidden);

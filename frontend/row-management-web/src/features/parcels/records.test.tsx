@@ -22,7 +22,7 @@ function open(role = 'ProjectManager', extra: Partial<FakeRecordsOptions> = {}, 
   const fake = fakeRecordsApi({
     role, rows: permissionRowsFor(role), projects: PROJECTS,
     parcels: [{ id: 'pc1', projectId: 'p1', number: '001', address: '1 Oak St' }, { id: 'pc-gone', projectId: 'p1', number: '009', state: 'Split' }],
-    team: [{ parcelId: 'pc1', id: 'tm-lead', role: 'ProjectLead', name: 'Dana Whitfield' }, { parcelId: 'pc1', id: 'tm-neg', role: 'Negotiator', name: 'Riley Okafor', isConsultant: true, organization: 'Okafor Land' }],
+    team: [{ parcelId: 'pc1', id: 'tm-lead', role: 'Project Lead', agentId: 'ag4', name: 'Dana Whitfield' }, { parcelId: 'pc1', id: 'tm-neg', role: 'Negotiator', agentId: 'ag1', name: 'Casey Closer', organization: 'Stateside ROW' }],
     diary: [{ parcelId: 'pc1', id: 'de1', occurredOn: '2026-10-01', contactName: 'Alex Marlowe', summary: 'Introduced the project.', outcome: 'Will call back' }],
     notes: [{ parcelId: 'pc1', id: 'nt1', text: 'Prefers email.' }],
     ...extra,
@@ -35,47 +35,62 @@ function open(role = 'ProjectManager', extra: Partial<FakeRecordsOptions> = {}, 
 const tab = async (user: ReturnType<typeof userEventModule.setup>, name: string) => user.click(await screen.findByRole('tab', { name }))
 
 describe('Parcel team (ROW-019)', () => {
-  it('lists the team by role with consultants marked', async () => {
+  it('lists the team by type with the Library company and contact details', async () => {
     const { user } = open()
     await tab(user, 'Team')
 
     const table = await screen.findByRole('table', { name: 'Parcel team' })
     const rows = within(table).getAllByRole('row').slice(1)
-    expect(rows[0]).toHaveTextContent('Project lead')
-    expect(rows[1]).toHaveTextContent('Riley Okafor')
-    expect(rows[1]).toHaveTextContent('Consultant')
-    expect(rows[1]).toHaveTextContent('Okafor Land')
+    expect(rows[0]).toHaveTextContent('Negotiator')
+    expect(rows[0]).toHaveTextContent('Casey Closer')
+    expect(rows[0]).toHaveTextContent('Stateside ROW')
+    expect(rows[1]).toHaveTextContent('Project Lead')
   })
 
-  it('assigns a person, refuses a name left blank and the same person in the same role twice', async () => {
+  it('only offers the Library: a type, then the people of that type, with no name to type', async () => {
+    const { user } = open()
+    await tab(user, 'Team')
+    const form = await screen.findByRole('form', { name: 'Assign a team member' })
+
+    expect(within(form).queryByLabelText(/^Name/)).not.toBeInTheDocument()
+    expect(within(form).getByLabelText(/^Person/)).toBeDisabled()
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Type/)).getAllByRole('option').map((o) => o.textContent)).toContain('Negotiator'))
+    await user.selectOptions(within(form).getByLabelText(/^Type/), 'Negotiator')
+    expect(within(within(form).getByLabelText(/^Person/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Select one', 'Casey Closer (Stateside ROW)'])
+  })
+
+  it('assigns a person from the Library and refuses leaving it blank and the same person twice', async () => {
     const { user, fake } = open()
     await tab(user, 'Team')
     const form = await screen.findByRole('form', { name: 'Assign a team member' })
 
     await user.click(within(form).getByRole('button', { name: 'Assign' }))
-    expect(await within(form).findByText('Name is required.')).toBeInTheDocument()
-    await user.selectOptions(within(form).getByLabelText(/^Role/), 'Counsel')
-    await user.type(within(form).getByLabelText(/^Name/), 'Casey Counsel')
+    expect(await within(form).findByText('Choose the type of person.')).toBeInTheDocument()
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Type/)).getAllByRole('option').map((o) => o.textContent)).toContain('Appraiser'))
+    await user.selectOptions(within(form).getByLabelText(/^Type/), 'Appraiser')
     await user.click(within(form).getByRole('button', { name: 'Assign' }))
-    expect(await screen.findByRole('row', { name: /Casey Counsel/ })).toBeInTheDocument()
-    expect(fake.team.some((t) => t.name === 'Casey Counsel' && t.role === 'Counsel')).toBe(true)
+    expect(await within(form).findByText('Choose a person from the Library.')).toBeInTheDocument()
+    await user.selectOptions(within(form).getByLabelText(/^Person/), 'ag5')
+    await user.click(within(form).getByRole('button', { name: 'Assign' }))
+    expect(await screen.findByRole('row', { name: /Allison Jackson/ })).toBeInTheDocument()
+    expect(fake.team.some((t) => t.name === 'Allison Jackson' && t.role === 'Appraiser' && t.organization === 'CBRE, Inc.')).toBe(true)
 
-    await user.selectOptions(within(form).getByLabelText(/^Role/), 'Negotiator')
-    await user.type(within(form).getByLabelText(/^Name/), 'riley  OKAFOR')
+    await user.selectOptions(within(form).getByLabelText(/^Type/), 'Negotiator')
+    await user.selectOptions(within(form).getByLabelText(/^Person/), 'ag1')
     await user.click(within(form).getByRole('button', { name: 'Assign' }))
-    expect(await within(form).findByText(/is already the negotiator on this parcel/)).toBeInTheDocument()
+    expect(await within(form).findByText(/is already on this parcel as negotiator/)).toBeInTheDocument()
   })
 
   it('changes and removes a team member', async () => {
     const { user, fake } = open()
     await tab(user, 'Team')
-    await user.click(await screen.findByRole('button', { name: 'Edit Riley Okafor, Negotiator' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit Casey Closer, Negotiator' }))
     const form = screen.getByRole('form', { name: 'Change team member' })
 
-    await user.selectOptions(within(form).getByLabelText(/^Role/), 'Appraiser')
+    await user.type(within(form).getByLabelText(/^Notes/), 'Lead negotiator')
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(fake.team.find((t) => t.id === 'tm-neg')!.role).toBe('Appraiser'))
-    await user.click(await screen.findByRole('button', { name: 'Remove Riley Okafor, Appraiser' }))
+    await waitFor(() => expect(fake.team.find((t) => t.id === 'tm-neg')!.notes).toBe('Lead negotiator'))
+    await user.click(await screen.findByRole('button', { name: 'Remove Casey Closer, Negotiator' }))
     await waitFor(() => expect(fake.team.some((t) => t.id === 'tm-neg')).toBe(false))
   })
 
@@ -181,7 +196,7 @@ describe('Team, diary and notes follow the access spec (both directions)', () =>
     await tab(user, 'Team')
     await screen.findByRole('table', { name: 'Parcel team' })
     expect(screen.queryByRole('form', { name: 'Assign a team member' }) !== null).toBe(can(role, 'parcels', 'create'))
-    expect(screen.queryByRole('button', { name: 'Remove Riley Okafor, Negotiator' }) !== null).toBe(can(role, 'parcels', 'delete'))
+    expect(screen.queryByRole('button', { name: 'Remove Casey Closer, Negotiator' }) !== null).toBe(can(role, 'parcels', 'delete'))
 
     await tab(user, 'Notes')
     await screen.findByText('Prefers email.')

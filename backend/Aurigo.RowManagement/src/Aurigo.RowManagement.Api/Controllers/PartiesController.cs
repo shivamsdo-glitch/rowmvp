@@ -10,7 +10,8 @@ namespace Aurigo.RowManagement.Api.Controllers;
 
 public sealed record PartyBody(
     PartyKind Kind, string Name, string? LegalName, string? Email, string? Phone, string? AddressLine1, string? AddressLine2,
-    string? City, string? State, string? PostalCode, string? Notes);
+    string? City, string? State, string? PostalCode, string? Notes,
+    List<PartyAddressInput>? Addresses = null, List<PartyContactInput>? Contacts = null);
 
 /// <summary>The tax number is accepted here and never returned: responses carry the last four digits only.</summary>
 public sealed record PartyTaxBody(TaxIdType? Type, string? TaxId, DateOnly? W9ReceivedOn, bool Reportable1099)
@@ -18,7 +19,7 @@ public sealed record PartyTaxBody(TaxIdType? Type, string? TaxId, DateOnly? W9Re
     public override string ToString() => $"PartyTaxBody {{ Type = {Type}, TaxId = [redacted] }}";
 }
 
-public sealed record PartyLinkUpdateBody(decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails);
+public sealed record PartyLinkUpdateBody(decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null);
 
 /// <summary>Owners, interests, contacts, tenants and abutters (ROW-014..018).</summary>
 [ApiController]
@@ -46,14 +47,14 @@ public sealed class PartiesController : ControllerBase
     [ProducesResponseType(typeof(PartyDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] PartyBody b, CancellationToken ct)
     {
-        var party = await _mediator.Send(new CreatePartyCommand(b.Kind, b.Name, b.LegalName, b.Email, b.Phone, b.AddressLine1, b.AddressLine2, b.City, b.State, b.PostalCode, b.Notes), ct);
+        var party = await _mediator.Send(new CreatePartyCommand(b.Kind, b.Name, b.LegalName, b.Email, b.Phone, b.AddressLine1, b.AddressLine2, b.City, b.State, b.PostalCode, b.Notes, b.Addresses, b.Contacts), ct);
         return Created($"/api/v1/parties/{party.Id}", party);
     }
 
     [HttpPut("parties/{id:guid}")]
     [ProducesResponseType(typeof(PartyDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(Guid id, [FromBody] PartyBody b, CancellationToken ct) =>
-        Ok(await _mediator.Send(new UpdatePartyCommand(id, b.Kind, b.Name, b.LegalName, b.Email, b.Phone, b.AddressLine1, b.AddressLine2, b.City, b.State, b.PostalCode, b.Notes), ct));
+        Ok(await _mediator.Send(new UpdatePartyCommand(id, b.Kind, b.Name, b.LegalName, b.Email, b.Phone, b.AddressLine1, b.AddressLine2, b.City, b.State, b.PostalCode, b.Notes, b.Addresses, b.Contacts), ct));
 
     [HttpDelete("parties/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -95,7 +96,7 @@ public sealed class PartiesController : ControllerBase
     [HttpPut("party-links/{linkId:guid}")]
     [ProducesResponseType(typeof(PartyLinkDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateLink(Guid linkId, [FromBody] PartyLinkUpdateBody b, CancellationToken ct) =>
-        Ok(await _mediator.Send(new UpdatePartyLinkCommand(linkId, b.SharePercent, b.Notes, b.LeaseOnFile, b.LeaseDetails, b.InsuranceDetails), ct));
+        Ok(await _mediator.Send(new UpdatePartyLinkCommand(linkId, b.SharePercent, b.Notes, b.LeaseOnFile, b.LeaseDetails, b.InsuranceDetails, b.OwnerType), ct));
 
     [HttpDelete("party-links/{linkId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -13,7 +13,7 @@ public class RightOfEntryConfiguration : IEntityTypeConfiguration<RightOfEntry>
         b.Property(x => x.Status).HasConversion<string>().HasMaxLength(12);
         b.Property(x => x.GrantedBy).HasMaxLength(200);
         b.Property(x => x.Purpose).HasMaxLength(500);
-        b.Property(x => x.Notes).HasMaxLength(1000);
+        b.Property(x => x.Notes).HasMaxLength(2000);
         b.HasOne<Parcel>().WithMany().HasForeignKey(x => x.ParcelId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => x.ParcelId);
         b.HasIndex(x => new { x.TenantId, x.Status, x.ExpiresOn });

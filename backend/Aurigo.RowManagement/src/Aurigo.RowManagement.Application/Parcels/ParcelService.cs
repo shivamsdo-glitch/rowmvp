@@ -4,6 +4,7 @@ using Aurigo.RowManagement.Application.Agency;
 using Aurigo.RowManagement.Application.Auth;
 using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.Mappers;
+using Aurigo.RowManagement.Application.Parties;
 using Aurigo.RowManagement.Application.Persistence;
 using Aurigo.RowManagement.Domain.Common;
 using Aurigo.RowManagement.Domain.Entities;
@@ -211,8 +212,7 @@ public sealed class ParcelService
                 m.CompletedOn is null && m.DueOn is { } due && due < today))
             .ToList();
 
-        var owners = await _db.ParcelOwnerships.Where(o => o.ParcelId == p.Id).OrderBy(o => o.Sequence).Select(o => o.OwnerName).ToListAsync(ct);
-        var ownerName = owners.Count == 0 ? null : string.Join("; ", owners);
+        var ownerName = await ParcelOwners.JoinedAsync(_db, p.Id, null, ct);
 
         return new ParcelDto(
             p.Id, p.ProjectId, project.Number, project.Name, p.Number, p.LegalDescription, p.Address, p.AreaSqFt, p.PropertyType,

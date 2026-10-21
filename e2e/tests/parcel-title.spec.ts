@@ -116,28 +116,32 @@ test.describe('Title Researcher · title encumbrances', () => {
   })
 })
 
-/** Agents are people of the Library; the form's "Assigned to" picks from them. Adding the same person twice is refused, which is fine here. */
-async function ensureAgent(request: APIRequestContext, name: string) {
+/** Agents are people of the Library; a parcel's team picks them and the form's "Assigned to" picks from the team. Returns the agent's id (adding the same person twice is fine). */
+async function ensureAgent(request: APIRequestContext, name: string): Promise<string> {
   const headers = await adminHeaders(request)
   const res = await request.post('/api/v1/library/agents', { headers, data: { name, agentType: 'Negotiator', company: null, phone: null, email: null, isActive: true } })
   expect([200, 201, 409]).toContain(res.status())
+  const agents = await (await request.get('/api/v1/library/agents', { headers })).json()
+  return agents.find((a: { name: string; agentType: string }) => a.name === name && a.agentType === 'Negotiator').id
 }
 
 test.describe('Title Researcher · title and closing', () => {
   test('AT-TE-41 saves the title and closing record, adds conveyance documents and title commitments, changes it and attaches a file', async ({ page, request }) => {
     await ensureLibraryValue(request, 'title_company', 'Lone Star Title')
     await ensureLibraryValue(request, 'conveyance_type', 'Warranty Deed')
-    await ensureAgent(request, 'Casey Closer')
+    const casey = await ensureAgent(request, 'Casey Closer')
     const parcel = await makeParcel(request)
     const admin = await adminHeaders(request)
+    expect((await request.post(`/api/v1/parcels/${parcel.id}/team`, { headers: admin, data: { agentId: casey } })).status()).toBe(201)
     for (const [name, type] of [['Fee Person', 'Fee Owner'], ['Vested Person', 'Vested Owner']])
-      expect((await request.post(`/api/v1/parcels/${parcel.id}/ownerships`, { headers: admin, data: { ownerName: name, ownerType: type } })).status()).toBe(201)
+      expect((await request.post(`/api/v1/parcels/${parcel.id}/parties`, { headers: admin, data: { newParty: { kind: 'Person', name }, role: 'FeeOwner', ownerType: type, leaseOnFile: false } })).status()).toBe(201)
 
     await signInViaUi(page, 'TitleResearcher')
     await openTab(page, parcel.id, 'Title and closing')
     const form = page.getByRole('form', { name: 'Title and closing' })
     await expect(form).toContainText('Assigned when saved')
 
+    await expect(form.getByLabel(/^Assigned to/).locator('option')).toHaveText(['Select one', 'Casey Closer'])
     await form.getByLabel(/^Assigned to/).selectOption('Casey Closer')
     await form.getByLabel(/^Title company/).selectOption('Lone Star Title')
     await form.getByLabel(/^GF number/).fill('GF-100')

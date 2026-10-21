@@ -49,9 +49,8 @@ public interface IRowDbContext
     DbSet<ParcelContactLogEntry> ParcelContactLogEntries { get; }
     DbSet<ParcelContactLogLink> ParcelContactLogLinks { get; }
     DbSet<ParcelEasement> ParcelEasements { get; }
-    DbSet<ParcelOwnership> ParcelOwnerships { get; }
-    DbSet<ParcelOwnershipAddress> ParcelOwnershipAddresses { get; }
-    DbSet<ParcelOwnershipContact> ParcelOwnershipContacts { get; }
+    DbSet<PartyAddress> PartyAddresses { get; }
+    DbSet<PartyContact> PartyContacts { get; }
     DbSet<ParcelEncumbrance> ParcelEncumbrances { get; }
     DbSet<ParcelEncumbranceLink> ParcelEncumbranceLinks { get; }
     DbSet<ParcelTitleClosing> ParcelTitleClosings { get; }
@@ -61,8 +60,6 @@ public interface IRowDbContext
     DbSet<ParcelAppraisalAmount> ParcelAppraisalAmounts { get; }
     DbSet<ParcelNegotiation> ParcelNegotiations { get; }
     DbSet<NegotiationNote> NegotiationNotes { get; }
-    DbSet<NegotiationAgent> NegotiationAgents { get; }
-    DbSet<NegotiationRightOfEntry> NegotiationRightsOfEntry { get; }
     DbSet<NegotiationOffer> NegotiationOffers { get; }
     DbSet<NegotiationSettlement> NegotiationSettlements { get; }
     DbSet<ParcelQuestionnaire> ParcelQuestionnaires { get; }

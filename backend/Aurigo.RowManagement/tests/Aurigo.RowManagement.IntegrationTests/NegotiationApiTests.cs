@@ -42,8 +42,6 @@ public class NegotiationApiTests : IClassFixture<PgApi>
             ["counterofferSubmittedToJatDate"] = "2026-06-01", ["counterofferResponseFromJatDate"] = "2026-06-10", ["jatResponse"] = "Approved", ["ftaApprovalRequiredForCounteroffer"] = true,
             ["puaRequestedDate"] = "2026-07-01", ["puaApprovedDate"] = "2026-07-05", ["puaApprovedAmount"] = 5000m, ["puaExecutedDate"] = "2026-07-10", ["puaClosedDate"] = "2026-07-20",
             ["statusNotes"] = new[] { new { noteDate = "2026-05-01", text = "Letter sent." }, new { noteDate = "2026-05-10", text = "Owner called back." } },
-            ["agents"] = new[] { new { agentName = "Pat Agent" } },
-            ["rightsOfEntry"] = new[] { new { letterMailedDate = "2026-05-02", letterDeliveredDate = "2026-05-04", signedReceivedDate = "2026-05-09", sentToAtpDate = "2026-05-10", expirationDate = "2027-05-09", specialInstructions = "Call first." } },
             ["offers"] = new[] { new { offerType = "Initial Offer", mailedDate = "2026-05-15", deliveredDate = "2026-05-17", amount = 200000m, notes = "First offer." } },
             ["settlements"] = new[] { new { settlementType = "Administrative", counterofferAmount = 260000m, dateReceived = "2026-05-25", dateSubmitted = "2026-05-26", counterofferResponse = "Accepted", responseDateFromAtp = "2026-05-30", responseDateToOwner = "2026-06-01", settlementNotes = "Agreed." } },
         };
@@ -65,8 +63,6 @@ public class NegotiationApiTests : IClassFixture<PgApi>
         saved.TotalAgreementAmount.Should().Be(250000.75m);
         saved.FtaApprovalRequiredForCounteroffer.Should().BeTrue();
         saved.StatusNotes.Select(n => n.Text).Should().Equal("Letter sent.", "Owner called back.");
-        saved.Agents.Should().ContainSingle().Which.AgentName.Should().Be("Pat Agent");
-        saved.RightsOfEntry.Should().ContainSingle().Which.SpecialInstructions.Should().Be("Call first.");
         saved.Offers.Should().ContainSingle().Which.Amount.Should().Be(200000m);
         saved.Settlements.Should().ContainSingle().Which.CounterofferResponse.Should().Be("Accepted");
 
@@ -83,19 +79,6 @@ public class NegotiationApiTests : IClassFixture<PgApi>
         (await Status(admin.Http.DeleteAsync(url))).Should().Be(HttpStatusCode.NoContent);
         (await Ok<Envelope>(await admin.Http.GetAsync(url))).Record.Should().BeNull();
         (await Status(admin.Http.DeleteAsync(url))).Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [PgFact]
-    public async Task AT_NE_42_An_agents_type_company_phone_and_email_are_read_from_the_Library()
-    {
-        var parcel = await NewParcel();
-        var admin = await _api.As("Admin");
-        var name = $"Agent {Guid.NewGuid().ToString("N")[..6]}";
-        (await Status(admin.Http.PostAsJsonAsync("/api/v1/library/agents", new { name, agentType = "Broker", company = "Acme Realty", phone = "555-0100", email = "a@example.com" }, Json))).Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
-
-        var saved = await Ok<NegotiationDto>(await admin.Http.PutAsJsonAsync($"/api/v1/parcels/{parcel.Id}/negotiation", Body(new() { ["agents"] = new[] { new { agentName = name } } }), Json));
-
-        saved.Agents.Should().ContainSingle().Which.Should().BeEquivalentTo(new { AgentName = name, AgentType = "Broker", Company = "Acme Realty", Phone = "555-0100", Email = "a@example.com" });
     }
 
     [PgFact]
@@ -126,8 +109,6 @@ public class NegotiationApiTests : IClassFixture<PgApi>
         (await Put("puaApprovedDate", "2026-06-01")).Should().Be(HttpStatusCode.BadRequest);
         (await Put("puaClosedDate", "2026-07-01")).Should().Be(HttpStatusCode.BadRequest);
         (await Put("statusNotes", new[] { new { noteDate = "2026-05-01", text = "" } })).Should().Be(HttpStatusCode.BadRequest);
-        (await Put("agents", new[] { new { agentName = "" } })).Should().Be(HttpStatusCode.BadRequest);
-        (await Put("rightsOfEntry", new[] { new { letterMailedDate = "2026-05-05", letterDeliveredDate = "2026-05-01" } })).Should().Be(HttpStatusCode.BadRequest);
         (await Put("offers", new[] { new { amount = -5m } })).Should().Be(HttpStatusCode.BadRequest);
         (await Put("offers", new[] { new { mailedDate = "2026-05-05", deliveredDate = "2026-05-01" } })).Should().Be(HttpStatusCode.BadRequest);
         (await Put("settlements", new[] { new { counterofferAmount = -5m } })).Should().Be(HttpStatusCode.BadRequest);

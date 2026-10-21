@@ -18,8 +18,6 @@ public class ParcelNegotiationConfiguration : IEntityTypeConfiguration<ParcelNeg
         b.Property(x => x.PuaApprovedAmount).HasPrecision(18, 2);
         b.HasOne<Parcel>().WithMany().HasForeignKey(x => x.ParcelId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(x => x.StatusNotes).WithOne().HasForeignKey(c => c.NegotiationId).OnDelete(DeleteBehavior.Restrict);
-        b.HasMany(x => x.Agents).WithOne().HasForeignKey(c => c.NegotiationId).OnDelete(DeleteBehavior.Restrict);
-        b.HasMany(x => x.RightsOfEntry).WithOne().HasForeignKey(c => c.NegotiationId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(x => x.Offers).WithOne().HasForeignKey(c => c.NegotiationId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(x => x.Settlements).WithOne().HasForeignKey(c => c.NegotiationId).OnDelete(DeleteBehavior.Restrict);
         // One negotiation record per parcel, whatever races to create it.
@@ -34,26 +32,6 @@ public class NegotiationNoteConfiguration : IEntityTypeConfiguration<Negotiation
         b.ToTable("negotiation_notes");
         b.HasKey(x => x.Id);
         b.Property(x => x.Text).IsRequired().HasMaxLength(4000);
-    }
-}
-
-public class NegotiationAgentConfiguration : IEntityTypeConfiguration<NegotiationAgent>
-{
-    public void Configure(EntityTypeBuilder<NegotiationAgent> b)
-    {
-        b.ToTable("negotiation_agents");
-        b.HasKey(x => x.Id);
-        b.Property(x => x.AgentName).IsRequired().HasMaxLength(200);
-    }
-}
-
-public class NegotiationRightOfEntryConfiguration : IEntityTypeConfiguration<NegotiationRightOfEntry>
-{
-    public void Configure(EntityTypeBuilder<NegotiationRightOfEntry> b)
-    {
-        b.ToTable("negotiation_rights_of_entry");
-        b.HasKey(x => x.Id);
-        b.Property(x => x.SpecialInstructions).HasMaxLength(2000);
     }
 }
 

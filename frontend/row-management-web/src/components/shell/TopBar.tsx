@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Signpost } from 'lucide-react'
+import { CircleHelp, Signpost } from 'lucide-react'
 import { BRAND } from '@/brand/brand'
 import { AccountMenu } from './AccountMenu'
 import { NotificationBell } from './NotificationBell'
@@ -26,6 +26,14 @@ export function TopBar() {
         <Logo />
       </Link>
       <div className="flex items-center gap-0.5">
+        <Link
+          to="/help"
+          aria-label="Help"
+          title="Help"
+          className="w-9 h-9 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <CircleHelp size={20} />
+        </Link>
         <NotificationBell />
         <div className="w-px h-6 bg-border mx-1.5" />
         <AccountMenu />

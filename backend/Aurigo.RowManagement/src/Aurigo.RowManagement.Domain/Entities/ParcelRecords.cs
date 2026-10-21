@@ -4,19 +4,20 @@ using Aurigo.RowManagement.Domain.Enums;
 namespace Aurigo.RowManagement.Domain.Entities;
 
 /// <summary>
-/// A person on a parcel's team and the role they hold (ROW-019). The person is free text because consultants and agency staff
-/// are both assigned here and the product has no staff directory yet.
+/// A person on a parcel's team and the role they hold (ROW-019). The person is picked from the Library's Agents list; the role is the
+/// agent's type, and the name and contact details are copied from the Library when the member is saved.
 /// </summary>
 public class ParcelTeamMember : EntityBase
 {
     public Guid ParcelId { get; set; }
-    public TeamRole Role { get; set; }
+    /// <summary>The agent type (a value of the Library's agent type list) the person is on the team as.</summary>
+    public string Role { get; set; } = default!;
+    /// <summary>The Library agent this member was picked from.</summary>
+    public Guid? AgentId { get; set; }
     public string Name { get; set; } = default!;
     /// <summary>Upper-cased name: with the parcel and role, the key of the "no one twice in one role" rule.</summary>
     public string NameKey { get; set; } = default!;
     public string? Organization { get; set; }
-    /// <summary>A consultant rather than agency staff.</summary>
-    public bool IsConsultant { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Notes { get; set; }

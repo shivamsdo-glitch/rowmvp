@@ -59,7 +59,11 @@ function useAction(parcelId: string) {
 
 // ── Right of entry (ROW-077) ────────────────────────────────────────────
 
-export function RightOfEntryTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
+/**
+ * The one right-of-entry form, shown inside the Negotiation tab (ADR 0023): the request and permission, and the letter to the owner.
+ * It saves its own rows, so it works before the negotiation record has been saved. Changes follow the Negotiation tab's permissions.
+ */
+export function RightOfEntrySection({ parcelId, editable }: { parcelId: string; editable: boolean }) {
   const { manager } = useAuth()
   const api = acquisitionApi(manager.api)
   const list = useQuery({ queryKey: ['parcel-acquisition', parcelId, 'roe'], queryFn: () => api.roes(parcelId) })
@@ -72,18 +76,23 @@ export function RightOfEntryTab({ parcelId, editable }: { parcelId: string; edit
   const [grantedBy, setGrantedBy] = useState('')
   const [purpose, setPurpose] = useState('')
   const [notes, setNotes] = useState('')
+  const [mailed, setMailed] = useState('')
+  const [delivered, setDelivered] = useState('')
+  const [sentToAtp, setSentToAtp] = useState('')
   const [local, setLocal] = useState<Record<string, string>>({})
-  const canAdd = editable && manager.can('parcels', 'create')
-  const canEdit = editable && manager.can('parcels', 'update')
-  const canRemove = editable && manager.can('parcels', 'delete')
+  const canAdd = editable && manager.can('parcelnegotiation', 'create')
+  const canEdit = editable && manager.can('parcelnegotiation', 'update')
+  const canRemove = editable && manager.can('parcelnegotiation', 'delete')
 
   function reset() {
-    setEditing(null); setStatus('Requested'); setRequestedOn(''); setGrantedOn(''); setExpiresOn(''); setGrantedBy(''); setPurpose(''); setNotes(''); setLocal({})
+    setEditing(null); setStatus('Requested'); setRequestedOn(''); setGrantedOn(''); setExpiresOn(''); setGrantedBy(''); setPurpose(''); setNotes('')
+    setMailed(''); setDelivered(''); setSentToAtp(''); setLocal({})
   }
   function begin(r: RightOfEntry) {
     a.clear(); setLocal({})
     setEditing(r); setStatus(r.status); setRequestedOn(r.requestedOn ?? ''); setGrantedOn(r.grantedOn ?? ''); setExpiresOn(r.expiresOn ?? '')
     setGrantedBy(r.grantedBy ?? ''); setPurpose(r.purpose ?? ''); setNotes(r.notes ?? '')
+    setMailed(r.letterMailedDate ?? ''); setDelivered(r.letterDeliveredDate ?? ''); setSentToAtp(r.sentToAtpDate ?? '')
   }
 
   if (list.isPending) return <LoadingRows rows={3} />
@@ -95,11 +104,13 @@ export function RightOfEntryTab({ parcelId, editable }: { parcelId: string; edit
     if (!status) errs.status = 'Choose a status.'
     if (status === 'Granted' && !grantedOn) errs.grantedOn = 'Enter the date permission was given.'
     if (grantedOn && expiresOn && expiresOn < grantedOn) errs.expiresOn = 'Permission cannot end before it was given.'
+    if (mailed && delivered && delivered < mailed) errs.letterDeliveredDate = 'A letter cannot be delivered before it is mailed.'
     setLocal(errs)
     if (Object.keys(errs).length) return
     const body = {
       status: status as RoeStatus, requestedOn: orNull(requestedOn), grantedOn: orNull(grantedOn), expiresOn: orNull(expiresOn),
       grantedBy: orNull(grantedBy), purpose: orNull(purpose), notes: orNull(notes),
+      letterMailedDate: orNull(mailed), letterDeliveredDate: orNull(delivered), sentToAtpDate: orNull(sentToAtp),
     }
     if (await a.run(() => (editing ? api.updateRoe(parcelId, editing.id, body) : api.addRoe(parcelId, body)))) reset()
   }
@@ -108,19 +119,22 @@ export function RightOfEntryTab({ parcelId, editable }: { parcelId: string; edit
 
   return (
     <>
-      <Section title="Rights of entry">
+      <Section title="Right of entry">
         <p className="mb-3 text-xs text-muted-foreground">
           Permission to enter this parcel before it is acquired, for surveys, inspections and testing. A granted right reads &ldquo;Expired&rdquo; the day after its end date.
         </p>
         {list.data.length === 0 ? (
           <EmptyState title="No rights of entry" description="Record a request for permission to enter, and whether the owner granted it." />
         ) : (
-          <DataTable caption="Rights of entry" headers={['Status', 'Requested', 'Granted', 'Ends', 'Given by', 'Purpose', ...(showActions ? ['Actions'] : [])]}>
+          <DataTable caption="Rights of entry" headers={['Status', 'Requested', 'Letter mailed', 'Letter delivered', 'Granted', 'Sent to ATP', 'Ends', 'Given by', 'Purpose', ...(showActions ? ['Actions'] : [])]}>
             {list.data.map((r) => (
               <tr key={r.id}>
                 <td className="px-3 py-2"><Pill tone={roeTone(r.effectiveStatus)}>{r.effectiveStatus}</Pill></td>
                 <td className="px-3 py-2">{dateText(r.requestedOn)}</td>
+                <td className="px-3 py-2">{dateText(r.letterMailedDate)}</td>
+                <td className="px-3 py-2">{dateText(r.letterDeliveredDate)}</td>
                 <td className="px-3 py-2">{dateText(r.grantedOn)}</td>
+                <td className="px-3 py-2">{dateText(r.sentToAtpDate)}</td>
                 <td className="px-3 py-2">{dateText(r.expiresOn)}</td>
                 <td className="px-3 py-2">{r.grantedBy ?? '—'}</td>
                 <td className="px-3 py-2">{r.purpose ?? '—'}</td>
@@ -147,12 +161,15 @@ export function RightOfEntryTab({ parcelId, editable }: { parcelId: string; edit
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField label="Status" required value={status} onChange={setStatus} options={ROE_OPTIONS} error={errors.status} />
             <TextField label="Requested on" type="date" value={requestedOn} onChange={setRequestedOn} error={errors.requestedOn} />
-            <TextField label="Permission given on" type="date" value={grantedOn} onChange={setGrantedOn} error={errors.grantedOn} hint="Needed when the status is Granted." />
+            <TextField label="Letter mailed on" type="date" value={mailed} onChange={setMailed} error={errors.letterMailedDate} />
+            <TextField label="Letter delivered on" type="date" value={delivered} onChange={setDelivered} error={errors.letterDeliveredDate} />
+            <TextField label="Permission given on (signed received)" type="date" value={grantedOn} onChange={setGrantedOn} error={errors.grantedOn} hint="Needed when the status is Granted." />
+            <TextField label="Sent to ATP on" type="date" value={sentToAtp} onChange={setSentToAtp} error={errors.sentToAtpDate} />
             <TextField label="Permission ends on" type="date" value={expiresOn} onChange={setExpiresOn} error={errors.expiresOn} />
             <TextField label="Given by" value={grantedBy} onChange={setGrantedBy} maxLength={200} error={errors.grantedBy} hint="The owner or their representative." />
             <TextField label="Purpose" value={purpose} onChange={setPurpose} maxLength={500} error={errors.purpose} />
           </div>
-          <TextField label="Notes" value={notes} onChange={setNotes} maxLength={1000} error={errors.notes} />
+          <TextField label="Special instructions" value={notes} onChange={setNotes} maxLength={2000} error={errors.notes} />
           <FormError error={a.error} />
           <div className="flex gap-2">
             <button type="submit" disabled={a.busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Record'}</button>

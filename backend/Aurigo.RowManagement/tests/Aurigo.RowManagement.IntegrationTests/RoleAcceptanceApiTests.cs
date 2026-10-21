@@ -199,7 +199,7 @@ public class RoleAcceptanceApiTests : IClassFixture<PgApi>
         var upload = await negotiator.Upload("Party", party, "w9.pdf", new byte[] { 1 }, "TaxForm");
         upload.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var examiner = await _api.As("TitleResearcher");
+        var examiner = await _api.As("Appraiser");
         (await examiner.Http.GetAsync($"/api/v1/documents?entityType=Party&entityId={party}")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await examiner.Upload("Party", party, "x.pdf", new byte[] { 1 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

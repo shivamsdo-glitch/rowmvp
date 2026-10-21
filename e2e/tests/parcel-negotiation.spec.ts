@@ -21,10 +21,14 @@ async function ensureLibraryValue(request: APIRequestContext, key: string, value
   expect([200, 201, 409]).toContain(res.status())
 }
 
-async function makeAgent(request: APIRequestContext) {
+/** A Library person put on the parcel's team: the Negotiation tab's "Assigned to" picks from the team (ADR 0023). */
+async function putOnTeam(request: APIRequestContext, parcelId: string) {
+  const headers = await adminHeaders(request)
   const name = unique('Neg Agent')
-  const res = await request.post('/api/v1/library/agents', { headers: await adminHeaders(request), data: { name, agentType: 'Broker', company: 'Acme Realty', phone: '555-0100', email: 'a@example.com' } })
-  expect([200, 201]).toContain(res.status())
+  const made = await request.post('/api/v1/library/agents', { headers, data: { name, agentType: 'Negotiator', company: 'Acme Realty', phone: '555-0100', email: 'a@example.com' } })
+  expect([200, 201]).toContain(made.status())
+  const agent = await made.json()
+  expect((await request.post(`/api/v1/parcels/${parcelId}/team`, { headers, data: { agentId: agent.id } })).status()).toBe(201)
   return name
 }
 
@@ -45,8 +49,8 @@ test.describe('Negotiator · negotiation', () => {
     await ensureLibraryValue(request, 'offer_type', 'Initial Offer')
     await ensureLibraryValue(request, 'settlement_type', 'Administrative')
     await ensureLibraryValue(request, 'jat_response', 'Approved')
-    const agent = await makeAgent(request)
     const parcel = await makeParcel(request)
+    const assignee = await putOnTeam(request, parcel.id)
     await signInViaUi(page, 'Negotiator')
     await openTab(page, parcel.id)
     const form = page.getByRole('form', { name: 'Negotiation' })
@@ -61,15 +65,20 @@ test.describe('Negotiator · negotiation', () => {
     await form.getByRole('button', { name: 'Add status note' }).click()
     await expect(form.getByRole('table', { name: 'Negotiation status notes' })).toContainText('Owner called back.')
 
-    await form.getByLabel('Agent', { exact: true }).selectOption(agent)
-    await form.getByRole('button', { name: 'Add agent' }).click()
+    // There is one place to assign people (the Team tab) and one right-of-entry form (here), so neither has a second copy in this record.
+    await expect(form.getByRole('button', { name: 'Add agent' })).toHaveCount(0)
+    await expect(form.getByRole('button', { name: 'Add right of entry' })).toHaveCount(0)
+    await form.getByLabel(/^Assigned to/).selectOption(assignee)
 
-    await form.getByLabel('Right of entry letter mailed').fill('2026-05-02')
-    await form.getByLabel('Right of entry letter delivered').fill('2026-05-01')
-    await form.getByRole('button', { name: 'Add right of entry' }).click()
-    await expect(form.getByText('A letter cannot be delivered before it is mailed.')).toBeVisible()
-    await form.getByLabel('Right of entry letter delivered').fill('2026-05-04')
-    await form.getByRole('button', { name: 'Add right of entry' }).click()
+    const roe = page.getByRole('form', { name: 'Record a right of entry' })
+    await roe.getByLabel(/^Letter mailed on/).fill('2026-05-02')
+    await roe.getByLabel(/^Letter delivered on/).fill('2026-05-01')
+    await roe.getByRole('button', { name: 'Record' }).click()
+    await expect(roe.getByText('A letter cannot be delivered before it is mailed.')).toBeVisible()
+    await roe.getByLabel(/^Letter delivered on/).fill('2026-05-04')
+    await roe.getByLabel(/^Special instructions/).fill('Call first.')
+    await roe.getByRole('button', { name: 'Record' }).click()
+    await expect(page.getByRole('table', { name: 'Rights of entry' })).toContainText('May 4, 2026')
 
     await form.getByLabel('Offer type', { exact: true }).selectOption('Initial Offer')
     await form.getByLabel('Offer amount', { exact: true }).fill('200000')
@@ -90,7 +99,7 @@ test.describe('Negotiator · negotiation', () => {
     await form.getByRole('button', { name: 'Save negotiation' }).click()
     await expect(page.getByText('Negotiation saved.')).toBeVisible()
     await expect(form).toContainText(`NEG-${parcel.number}`)
-    await expect(form.getByRole('table', { name: 'Agents' })).toContainText('Acme Realty')
+    await expect(form.getByLabel(/^Assigned to/)).toHaveValue(assignee)
 
     const panel = page.getByRole('region', { name: `Attachments for NEG-${parcel.number}` })
     await panel.getByLabel('Upload document').setInputFiles({ name: 'offer.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') })
@@ -111,6 +120,9 @@ test.describe('Negotiator · negotiation', () => {
     expect(got.record.offers).toHaveLength(0)
     expect(got.record.settlements).toHaveLength(1)
     expect(got.record.statusNotes).toHaveLength(1)
+    const roes = (await (await request.get(`/api/v1/parcels/${parcel.id}/rights-of-entry`, { headers })).json()) as { letterMailedDate: string; letterDeliveredDate: string; notes: string }[]
+    expect(roes).toHaveLength(1)
+    expect(roes[0]).toMatchObject({ letterMailedDate: '2026-05-02', letterDeliveredDate: '2026-05-04', notes: 'Call first.' })
 
     await again.getByRole('button', { name: 'Remove negotiation record' }).click()
     await expect(page.getByText('Assigned when saved')).toBeVisible()
