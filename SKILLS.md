@@ -31,6 +31,9 @@ Create `src/routes/_app/<name>.tsx` with `createFileRoute('/_app/<name>')` and a
 3. UI side: add the journey to `e2e/tests/jobs.spec.ts` (sign in through the real screen, do the job, check what the server stored), replace the matching `test.fixme` in `future.spec.ts`, and flip the status in the role file.
 4. Run `node scripts/verify.mjs`. Fix bugs at the lowest layer that can catch them and add a regression test there.
 
+## Fill the dev database with a demo portfolio
+`node scripts/seed-demo-data.mjs` (API on :5100 in Development, Docker Postgres up) adds 8 projects and ~80 parcels at every workflow step, with appraisals, negotiations, closings, contact logs, requests and rights of entry, done by different demo users through the real API, then moves the timestamps back so parcels have ages, some are stuck and the dashboards have a history. `--force` adds it again, `--resume` finishes an interrupted run. Start the API with `RateLimiting__WritePermitLimit=100000 RateLimiting__AuthPermitLimit=100000` for a quick run. Development data only; the product does not read the script.
+
 ## Before calling work done
 - **`node scripts/verify.mjs`** (the release gate: build, unit, real-Postgres integration, frontend, Playwright).
 - Quick loops while developing: `dotnet test`, `npx vitest run`, `cd e2e && npx playwright test -g "AT-TE"`.
