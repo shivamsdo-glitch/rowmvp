@@ -34,6 +34,8 @@ Create `src/routes/_app/<name>.tsx` with `createFileRoute('/_app/<name>')` and a
 ## Fill the dev database with a demo portfolio
 `node scripts/seed-demo-data.mjs` (API on :5100 in Development, Docker Postgres up) adds 8 projects and ~80 parcels at every workflow step, with appraisals, negotiations, closings, contact logs, requests and rights of entry, done by different demo users through the real API, then moves the timestamps back so parcels have ages, some are stuck and the dashboards have a history. `--force` adds it again, `--resume` finishes an interrupted run. Start the API with `RateLimiting__WritePermitLimit=100000 RateLimiting__AuthPermitLimit=100000` for a quick run. Development data only; the product does not read the script.
 
+`node scripts/seed-relocation-demo.mjs` (run after the one above) adds ~23 relocation cases on ~22 of those parcels: displaced owners, every stage of Diagram 5, payments in every status, four parcels that become Acquired, an ineligible displacee and a denied claim under appeal. It adds the "Acquired" status if the agency lacks it. `--force` adds it again. Development data only.
+
 ## Before calling work done
 - **`node scripts/verify.mjs`** (the release gate: build, unit, real-Postgres integration, frontend, Playwright).
 - Quick loops while developing: `dotnet test`, `npx vitest run`, `cd e2e && npx playwright test -g "AT-TE"`.
