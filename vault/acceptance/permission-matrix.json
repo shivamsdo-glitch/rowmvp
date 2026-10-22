@@ -38,7 +38,8 @@
     "parcelquestionnaire",
     "parcelcondemnation",
     "parcelproperty",
-    "parcelrelocation"
+    "parcelrelocation",
+    "relocations"
   ],
   "matrix": {
     "ProjectManager": {
@@ -66,7 +67,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "P",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "Designer": {
       "dashboard": "B",
@@ -93,7 +95,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "DesignApprover": {
       "dashboard": "B",
@@ -120,7 +123,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "Surveyor": {
       "dashboard": "B",
@@ -147,7 +151,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "TitleResearcher": {
       "dashboard": "B",
@@ -174,7 +179,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "Appraiser": {
       "dashboard": "B",
@@ -201,7 +207,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "AppraisalApprover": {
       "dashboard": "B",
@@ -228,7 +235,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "Negotiator": {
       "dashboard": "B",
@@ -255,7 +263,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "S",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "RelocationAgent": {
       "dashboard": "B",
@@ -282,7 +291,8 @@
       "parcelquestionnaire": "P",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "P"
+      "parcelrelocation": "P",
+      "relocations": "P"
     },
     "Finance": {
       "dashboard": "B",
@@ -309,7 +319,8 @@
       "parcelquestionnaire": "B",
       "parcelcondemnation": "B",
       "parcelproperty": "B",
-      "parcelrelocation": "B"
+      "parcelrelocation": "B",
+      "relocations": "B"
     },
     "Admin": {
       "dashboard": "P",
@@ -336,7 +347,8 @@
       "parcelquestionnaire": "P",
       "parcelcondemnation": "P",
       "parcelproperty": "P",
-      "parcelrelocation": "P"
+      "parcelrelocation": "P",
+      "relocations": "P"
     }
   },
   "attachmentPages": {

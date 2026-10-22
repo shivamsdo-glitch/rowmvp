@@ -2,18 +2,20 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Trash2 } from 'lucide-react'
 import { libraryApi } from '@/api/library'
+import { partiesApi, ROLE_LABEL } from '@/api/parties'
 import type { Parcel } from '@/api/parcels'
 import {
-  condemnationApi, propertyApi, relocationsApi, type Condemnation, type CondemnationAttorney, type CondemnationCommissioner, type CondemnationNotice, type PropertyFunding,
+  condemnationApi, propertyApi, relocationsApi, RELOCATION_EXCEPTIONS, type Condemnation, type CondemnationAttorney, type CondemnationCommissioner, type CondemnationNotice, type PropertyFunding,
   type PropertyRecord, type Relocation, type RelocationAgent, type RelocationContact, type RelocationContactLog, type RelocationEligibility, type StatusNote,
 } from '@/api/parcel-tabs'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
-import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
+import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, Pill, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
 import { Grid } from './NegotiationTab'
+import { RelocationPaymentsPanel, RelocationProgressBanner } from './RelocationPayments'
 import { useTeamNames } from './team-kit'
 import { agent, bodyFrom, blankState, checkState, date, Fact, flag, list, money, SpecFields, stateFrom, StatusNotesGrid, text, type FieldSpec, type FormState } from './lifecycle-kit'
 
@@ -96,6 +98,10 @@ export function CondemnationTab({ parcel, editable }: { parcel: Parcel; editable
     try {
       await action()
       await queryClient.invalidateQueries({ queryKey: key })
+      // A completed relocation can move the parcel to Acquired (ADR 0026), so what shows the parcel's status is refreshed too.
+      await queryClient.invalidateQueries({ queryKey: ['parcel-tabs', parcelId, 'relocation-progress'] })
+      await queryClient.invalidateQueries({ queryKey: ['parcel', parcelId] })
+      await queryClient.invalidateQueries({ queryKey: ['parcels'] })
       return true
     } catch (e) {
       const fe = fieldErrorsOf(e)
@@ -330,13 +336,25 @@ export function PropertyTab({ parcel, editable }: { parcel: Parcel; editable: bo
 
 // ── Relocation ───────────────────────────────────────────────────────────
 
-const RELOCATION_DATES: FieldSpec[] = [
-  date('ginMailedDate', 'GIN mailed date'), date('ginDeliveredDate', 'GIN delivered date'), date('initialInterview', 'Initial interview'), date('certificateOfEligibility', 'Certificate of eligibility'),
+const PLANNING: FieldSpec[] = [date('planningStudyDate', 'Relocation planning study'), date('initialInterview', 'Initial interview'), text('advisoryNeeds', 'Needs and preferences from the advisory interview', 4000)]
+const NOTICES: FieldSpec[] = [
+  date('ginMailedDate', 'GIN mailed date'), date('ginDeliveredDate', 'GIN delivered date'), date('certificateOfEligibility', 'Certificate of eligibility'),
   date('noticeOfEligibility', 'Notice of eligibility'), date('deliveryOfNoticeOfEligibility', 'Delivery of notice of eligibility date'), date('notice90Day', '90 day notice'),
   date('deliveryOf90DayNotice', 'Delivery of 90 day notice'), date('vacateEligibleDate', 'Vacate eligible date'), date('notice30DayVacate', '30 day vacate notice'),
-  date('notice30DayVacateDelivered', '30 day vacate notice delivered'), flag('demolitionRequired', 'Demolition required'), date('targetVacateDate', 'Target vacate date'),
-  date('actualVacateDate', 'Actual vacate date'), flag('ineligibleForRelocation', 'Ineligible for relocation?'), date('movePlan', 'Move plan'),
-  date('certificationOfInventory', 'Certification of inventory'), date('benefitsExpirationLetterDate', 'Benefits expiration letter date'), date('benefitExpiration', 'Benefit expiration'),
+  date('notice30DayVacateDelivered', '30 day vacate notice delivered'),
+]
+const HOUSING: FieldSpec[] = [
+  date('replacementHousingStudyDate', 'Replacement housing study'), date('comparableNoticeDate', 'Comparable dwelling notice given'), date('inspectionDate', 'Decent, safe and sanitary inspection'),
+  flag('housingOfLastResort', 'Housing of last resort'), flag('ineligibleForRelocation', 'Ineligible for relocation?'), flag('demolitionRequired', 'Demolition required'),
+]
+const MOVE: FieldSpec[] = [
+  date('targetVacateDate', 'Target vacate date'), date('actualVacateDate', 'Actual vacate date'), date('movePlan', 'Move plan'), date('certificationOfInventory', 'Certification of inventory'),
+]
+const CLAIM: FieldSpec[] = [
+  date('claimDeniedDate', 'Claim denied (written notice)'), date('appealFiledDate', 'Appeal filed'), date('appealDecisionDate', 'Appeal decided'), text('appealOutcome', 'Appeal outcome', 1000),
+  date('benefitsExpirationLetterDate', 'Benefits expiration letter date'), date('benefitExpiration', 'Benefit expiration'),
+]
+const COMPLETION: FieldSpec[] = [
   date('releaseOfProperty', 'Release of property'), date('certificateOfCompletion', 'Certificate of completion'), date('fileCloseOutSubmitted', 'File close out submitted'),
   date('relocationComplete', 'Relocation complete'), date('relocationComplete1', 'Relocation complete 1'),
 ]
@@ -344,6 +362,9 @@ const RELOCATION_ORDER: [string, string, string][] = [
   ['ginMailedDate', 'ginDeliveredDate', 'The GIN cannot be delivered before it is mailed.'],
   ['initialInterview', 'actualVacateDate', 'The displacee cannot vacate before the initial interview.'],
   ['notice30DayVacate', 'notice30DayVacateDelivered', 'The notice cannot be delivered before it is issued.'],
+  ['claimDeniedDate', 'appealFiledDate', 'The appeal cannot be filed before the claim is denied.'],
+  ['appealFiledDate', 'appealDecisionDate', 'The appeal cannot be decided before it is filed.'],
+  ['actualVacateDate', 'relocationComplete', 'The relocation cannot be complete before the displacee vacated.'],
 ]
 const BLANK_CONTACT = { name: '', type: '', contact: '', email: '', address: '', primary: false }
 const BLANK_ELIG = { type: '', limit: '', submitted: '', approved: '' }
@@ -370,7 +391,14 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
     list('displaceeStatus', 'Displacee status', statuses), list('displaceeInterest', 'Displacee interest', interests), text('displaceeMailingAddress', 'Displacee mailing address', 1000),
     list('relocationType', 'Relocation type', types, true), text('propertySiteAddress', 'Property site address', 1000),
   ]
-  const specs = [...HEAD, ...RELOCATION_DATES]
+  const EXCEPTION: FieldSpec = list('eligibilityException', 'Eligibility exception', [...RELOCATION_EXCEPTIONS])
+  const specs = [...HEAD, ...PLANNING, ...NOTICES, ...HOUSING, EXCEPTION, ...MOVE, ...CLAIM, ...COMPLETION]
+  const canSeeParties = manager.can('parties')
+  const partiesQ = useQuery({ queryKey: ['parcel-tabs', parcelId, 'parties-for-relocation'], queryFn: () => partiesApi(manager.api).forParcel(parcelId), enabled: canSeeParties && manager.can('parcelrelocation'), retry: false })
+  const interestChoices = (partiesQ.data?.ownership ?? []).map((l) => ({ value: l.id, label: `${l.party.name} (${ROLE_LABEL[l.role]}${l.displacementRequired ? ', displacement required' : ''})`, name: l.party.name }))
+  const [linkId, setLinkId] = useState('')
+  const [dss, setDss] = useState('')
+  const [paymentsFor, setPaymentsFor] = useState<string | null>(null)
   const [editing, setEditing] = useState<Relocation | null>(null)
   const [f, setF] = useState<FormState>(() => blankState(specs))
   const [notes, setNotes] = useState<StatusNote[]>([])
@@ -396,12 +424,13 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   if (listQ.isError) return <ErrorState title="The relocations could not be loaded" description={listQ.error.message} retry={() => void listQ.refetch()} />
 
   function reset() {
-    setEditing(null); setF(blankState(specs)); setNotes([]); setAgentRows([]); setContacts([]); setEligibilities([]); setLog([])
+    setLinkId(''); setDss(''); setEditing(null); setF(blankState(specs)); setNotes([]); setAgentRows([]); setContacts([]); setEligibilities([]); setLog([])
     setAg(''); setCt(BLANK_CONTACT); setEl(BLANK_ELIG); setLg(BLANK_LOG); setLocal({}); setError(null); setFields({})
   }
   function begin(r: Relocation) {
     reset()
-    setEditing(r); setF(stateFrom(specs, r.details)); setNotes(r.statusNotes); setAgentRows(r.agents); setContacts(r.contacts); setEligibilities(r.eligibilities); setLog(r.contactLog)
+    setEditing(r); setLinkId(typeof r.details.partyLinkId === 'string' ? r.details.partyLinkId : ''); setDss(r.details.decentSafeSanitary === true ? 'yes' : r.details.decentSafeSanitary === false ? 'no' : '')
+    setF(stateFrom(specs, r.details)); setNotes(r.statusNotes); setAgentRows(r.agents); setContacts(r.contacts); setEligibilities(r.eligibilities); setLog(r.contactLog)
   }
 
   async function run(action: () => Promise<unknown>): Promise<boolean> {
@@ -409,6 +438,8 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
     try {
       await action()
       await queryClient.invalidateQueries({ queryKey: key })
+      await queryClient.invalidateQueries({ queryKey: ['parcel-tabs', parcelId, 'relocation-progress'] })
+      await queryClient.invalidateQueries({ queryKey: ['parcel', parcelId] })
       return true
     } catch (e) {
       const fe = fieldErrorsOf(e)
@@ -448,10 +479,11 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   async function submit(ev: FormEvent) {
     ev.preventDefault()
     const errs = checkState(specs, f, RELOCATION_ORDER)
+    if (!editing && !linkId) errs.partyLinkId = 'Choose the ownership interest this relocation is for.'
     setLocal(errs)
     if (Object.keys(errs).length) return
     const body = {
-      details: bodyFrom(specs, f), statusNotes: notes.map(({ noteDate, text: t }) => ({ noteDate, text: t })), agents: agentRows.map(({ agentName }) => ({ agentName })),
+      details: { ...bodyFrom(specs, f), partyLinkId: linkId || null, decentSafeSanitary: dss === 'yes' ? true : dss === 'no' ? false : null }, statusNotes: notes.map(({ noteDate, text: t }) => ({ noteDate, text: t })), agents: agentRows.map(({ agentName }) => ({ agentName })),
       contacts, eligibilities, contactLog: log,
     }
     if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) reset()
@@ -459,25 +491,37 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   const errors = { ...fields, ...local }
   const setField = (k: string, v: string | boolean) => setF((x) => ({ ...x, [k]: v }))
   const label = (r: Relocation) => String(r.details.relocationNumber)
+  const paymentsRelocation = listQ.data.find((r) => r.id === paymentsFor) ?? null
+  function pickInterest(id: string) {
+    setLinkId(id)
+    const chosen = interestChoices.find((c) => c.value === id)
+    if (chosen && !String(f.displaceeName).trim()) setField('displaceeName', chosen.name)
+  }
 
   return (
     <>
+      <RelocationProgressBanner parcelId={parcelId} />
       <fieldset aria-label="Relocations" className="mb-6 rounded-lg border bg-card p-4">
         <legend className="px-1 text-sm font-semibold">Relocations</legend>
         {listQ.data.length === 0 ? (
           <EmptyState title="No relocations yet" description="Record each displacee's relocation on this parcel." />
         ) : (
-          <DataTable caption="Relocations" headers={['Relocation number', 'Displacee', 'Relocation type', 'Displacee status', 'Target vacate date', ...(canEdit || canRemove ? ['Actions'] : [])]}>
+          <DataTable caption="Relocations" headers={['Relocation number', 'Displacee', 'Ownership interest', 'Stage', 'Relocation type', 'Target vacate date', 'Claim deadline', 'Actions']}>
             {listQ.data.map((r) => (
               <tr key={r.id}>
                 <td className="px-3 py-2 font-medium">{label(r)}</td>
                 <td className="px-3 py-2">{String(r.details.displaceeName)}</td>
+                <td className="px-3 py-2">{r.interestOwnerName ?? '—'}</td>
+                <td className="px-3 py-2">{r.stage ? <Pill tone={r.stage === 'Complete' ? 'ok' : 'neutral'}>{r.stage}</Pill> : '—'}</td>
                 <td className="px-3 py-2">{String(r.details.relocationType)}</td>
-                <td className="px-3 py-2">{r.details.displaceeStatus ? String(r.details.displaceeStatus) : '—'}</td>
                 <td className="px-3 py-2">{day(r.details.targetVacateDate as string | null)}</td>
-                {(canEdit || canRemove) && (
+                <td className="px-3 py-2">{day(r.claimDeadline ?? null)}</td>
+                {(
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
+                      <button type="button" aria-label={`Payments for relocation ${label(r)}`} aria-expanded={paymentsFor === r.id} className={buttonClassName('outline', 'sm')} onClick={() => setPaymentsFor(paymentsFor === r.id ? null : r.id)}>
+                        Payments{(r.payments?.length ?? 0) > 0 ? ` (${r.payments!.length})` : ''}
+                      </button>
                       {canEdit && <button type="button" aria-label={`Edit relocation ${label(r)}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(r)}><Pencil size={14} aria-hidden /></button>}
                       {canRemove && (
                         <button type="button" aria-label={`Remove relocation ${label(r)}`} disabled={busy} className={buttonClassName('ghost', 'sm')}
@@ -496,10 +540,29 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change relocation' : 'Add a relocation'} className="max-w-5xl">
           <h3 className="mb-3 text-sm font-semibold">{editing ? `Change relocation ${label(editing)}` : 'Add a relocation'}</h3>
           <Section title="Relocation">
-            <div className="mb-3 grid gap-3 sm:grid-cols-3"><Fact label="Parcel number" value={parcel.number} /><Fact label="Vested owner name" value={editing?.vestedOwnerName} /></div>
+            <div className="mb-3 grid gap-3 sm:grid-cols-3">
+              <Fact label="Parcel number" value={parcel.number} /><Fact label="Vested owner name" value={editing?.vestedOwnerName} />
+              <Fact label="Stage" value={editing?.stage} /><Fact label="Claim deadline (18 months after vacating)" value={editing?.claimDeadline ? day(editing.claimDeadline) : null} />
+            </div>
+            <div className="mb-3 max-w-md">
+              <SelectField label="Ownership interest" required={!editing} value={linkId} onChange={pickInterest} options={interestChoices} blankLabel="Select one" error={errors.partyLinkId}
+                disabled={!!editing && !canEdit} />
+              {interestChoices.length === 0 && <p className="text-xs text-muted-foreground">No ownership interests are recorded on this parcel yet. Add the owners on the Ownership interests tab first.</p>}
+            </div>
             <SpecFields specs={HEAD} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" />
           </Section>
-          <Section title="Relocation milestones"><SpecFields specs={RELOCATION_DATES} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
+          <Section title="Planning and advisory"><SpecFields specs={PLANNING} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
+          <Section title="Notices"><SpecFields specs={NOTICES} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
+          <Section title="Housing and inspection">
+            <SpecFields specs={HOUSING} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" />
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <SelectField label="Replacement dwelling decent, safe and sanitary?" value={dss} onChange={setDss} blankLabel="Not inspected" options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} />
+              <SpecFields specs={[EXCEPTION]} state={f} onChange={setField} errors={errors} agents={agents} columns="" />
+            </div>
+          </Section>
+          <Section title="Move"><SpecFields specs={MOVE} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
+          <Section title="Claim and appeal"><SpecFields specs={CLAIM} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
+          <Section title="Completion"><SpecFields specs={COMPLETION} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
           <StatusNotesGrid title="Relocation status notes" notes={notes} onChange={setNotes} canSave />
 
           <Grid title="Agents" caption="Agents" headers={['Agent name', 'Agent type', 'Company', 'Phone number', 'Email address']} rows={agentRows} canSave
@@ -547,6 +610,7 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
           </div>
         </form>
       )}
+      {paymentsRelocation && <RelocationPaymentsPanel parcelId={parcelId} relocation={paymentsRelocation} editable={editable} />}
       {editing && <div className="mt-6"><AttachmentsPanel entityType="ParcelRelocation" entityId={editing.id} page="parcelrelocation" title={`Attachments for relocation ${label(editing)}`} /></div>}
     </>
   )

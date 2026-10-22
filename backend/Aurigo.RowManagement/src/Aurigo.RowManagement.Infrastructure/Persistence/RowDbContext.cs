@@ -109,6 +109,9 @@ public class RowDbContext : DbContext, IRowDbContext
     public DbSet<RelocationContact> RelocationContacts => Set<RelocationContact>();
     public DbSet<RelocationEligibility> RelocationEligibilities => Set<RelocationEligibility>();
     public DbSet<RelocationContactLogRow> RelocationContactLogRows => Set<RelocationContactLogRow>();
+    public DbSet<RelocationPayment> RelocationPayments => Set<RelocationPayment>();
+    public DbSet<RelocationPaymentApproval> RelocationPaymentApprovals => Set<RelocationPaymentApproval>();
+    public DbSet<RelocationPaymentBand> RelocationPaymentBands => Set<RelocationPaymentBand>();
     public DbSet<RightOfEntry> RightsOfEntry => Set<RightOfEntry>();
     public DbSet<AcquisitionRequest> AcquisitionRequests => Set<AcquisitionRequest>();
     public DbSet<ParcelPlanReview> ParcelPlanReviews => Set<ParcelPlanReview>();

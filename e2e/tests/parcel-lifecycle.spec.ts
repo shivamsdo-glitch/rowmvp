@@ -158,6 +158,8 @@ test.describe('Relocation Agent · relocation', () => {
   test('AT-RA-41 records a relocation with its contacts, eligibility and contact log, attaches a file, changes it and removes it', async ({ page, request }) => {
     for (const [k, v] of [['relocation_type', 'Residential'], ['eligibility_type', 'Moving Expenses']]) await ensureLibraryValue(request, k, v)
     const parcel = await makeParcel(request)
+    const ownerName = unique('Reloc Owner')
+    expect((await request.post(`/api/v1/parcels/${parcel.id}/parties`, { headers: await adminHeaders(request), data: { newParty: { kind: 'Person', name: ownerName }, role: 'FeeOwner', ownerType: 'Fee Owner', leaseOnFile: false } })).status()).toBe(201)
     await signInViaUi(page, 'RelocationAgent')
     await openTab(page, parcel.id, 'Relocation')
     const form = page.getByRole('form', { name: 'Add a relocation' })
@@ -165,7 +167,8 @@ test.describe('Relocation Agent · relocation', () => {
     await form.getByRole('button', { name: 'Add relocation', ...exact }).click()
     for (const m of ['Relocation number is required.', 'Displacee name is required.', 'Relocation type is required.']) await expect(form.getByText(m)).toBeVisible()
     await form.getByLabel(/^Relocation number/).fill('R-7')
-    await form.getByLabel(/^Displacee name/).fill('Kamali')
+    await form.getByLabel(/^Ownership interest/).selectOption({ label: `${ownerName} (Fee owner)` })
+    await expect(form.getByLabel(/^Displacee name/)).toHaveValue(ownerName)
     await form.getByLabel(/^Relocation type/).selectOption('Residential')
     await form.getByLabel('GIN mailed date', exact).fill('2026-03-05')
     await form.getByLabel('GIN delivered date', exact).fill('2026-03-01')
@@ -193,7 +196,7 @@ test.describe('Relocation Agent · relocation', () => {
 
     const table = page.getByRole('table', { name: 'Relocations' })
     await expect(table).toContainText('R-7')
-    await expect(table).toContainText('Kamali')
+    await expect(table).toContainText(ownerName)
 
     await page.getByRole('button', { name: 'Edit relocation R-7' }).click()
     await attach(page, 'Attachments for relocation R-7', 'plan.pdf')

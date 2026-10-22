@@ -2806,6 +2806,24 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("actual_vacate_date");
 
+                    b.Property<string>("AdvisoryNeeds")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("advisory_needs");
+
+                    b.Property<DateOnly?>("AppealDecisionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("appeal_decision_date");
+
+                    b.Property<DateOnly?>("AppealFiledDate")
+                        .HasColumnType("date")
+                        .HasColumnName("appeal_filed_date");
+
+                    b.Property<string>("AppealOutcome")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("appeal_outcome");
+
                     b.Property<string>("AssignedTo")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -2831,6 +2849,14 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("certification_of_inventory");
 
+                    b.Property<DateOnly?>("ClaimDeniedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("claim_denied_date");
+
+                    b.Property<DateOnly?>("ComparableNoticeDate")
+                        .HasColumnType("date")
+                        .HasColumnName("comparable_notice_date");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -2838,6 +2864,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
+
+                    b.Property<bool?>("DecentSafeSanitary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("decent_safe_sanitary");
 
                     b.Property<DateOnly?>("DeliveryOf90DayNotice")
                         .HasColumnType("date")
@@ -2872,6 +2902,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("displacee_status");
 
+                    b.Property<string>("EligibilityException")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("eligibility_exception");
+
                     b.Property<DateOnly?>("FileCloseOutSubmitted")
                         .HasColumnType("date")
                         .HasColumnName("file_close_out_submitted");
@@ -2884,6 +2919,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("gin_mailed_date");
 
+                    b.Property<bool>("HousingOfLastResort")
+                        .HasColumnType("boolean")
+                        .HasColumnName("housing_of_last_resort");
+
                     b.Property<bool>("IneligibleForRelocation")
                         .HasColumnType("boolean")
                         .HasColumnName("ineligible_for_relocation");
@@ -2891,6 +2930,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly?>("InitialInterview")
                         .HasColumnType("date")
                         .HasColumnName("initial_interview");
+
+                    b.Property<DateOnly?>("InspectionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("inspection_date");
 
                     b.Property<bool>("LimitedEnglishProficiency")
                         .HasColumnType("boolean")
@@ -2919,6 +2962,14 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ParcelId")
                         .HasColumnType("uuid")
                         .HasColumnName("parcel_id");
+
+                    b.Property<Guid?>("PartyLinkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("party_link_id");
+
+                    b.Property<DateOnly?>("PlanningStudyDate")
+                        .HasColumnType("date")
+                        .HasColumnName("planning_study_date");
 
                     b.Property<string>("PropertySiteAddress")
                         .HasMaxLength(1000)
@@ -2949,6 +3000,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("relocation_type");
 
+                    b.Property<DateOnly?>("ReplacementHousingStudyDate")
+                        .HasColumnType("date")
+                        .HasColumnName("replacement_housing_study_date");
+
                     b.Property<DateOnly?>("TargetVacateDate")
                         .HasColumnType("date")
                         .HasColumnName("target_vacate_date");
@@ -2971,6 +3026,9 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_parcel_relocations");
+
+                    b.HasIndex("PartyLinkId")
+                        .HasDatabaseName("ix_parcel_relocations_party_link_id");
 
                     b.HasIndex("ParcelId", "RelocationNumber")
                         .IsUnique()
@@ -3853,6 +3911,10 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
+
+                    b.Property<bool>("DisplacementRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("displacement_required");
 
                     b.Property<string>("InsuranceDetails")
                         .HasMaxLength(1000)
@@ -4932,6 +4994,199 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_relocation_eligibilities_relocation_id");
 
                     b.ToTable("relocation_eligibilities", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RelocationPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<bool>("IsAdvance")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_advance");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<string>("PaymentReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("payment_reference");
+
+                    b.Property<string>("PaymentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("payment_type");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<string>("RequiredRoles")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("required_roles");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<bool>("Taxable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("taxable");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_relocation_payments");
+
+                    b.HasIndex("RelocationId")
+                        .HasDatabaseName("ix_relocation_payments_relocation_id");
+
+                    b.ToTable("relocation_payments", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RelocationPaymentApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<Guid>("ApprovedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("PaymentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("role");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_relocation_payment_approvals");
+
+                    b.HasIndex("PaymentId")
+                        .HasDatabaseName("ix_relocation_payment_approvals_payment_id");
+
+                    b.ToTable("relocation_payment_approvals", (string)null);
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RelocationPaymentBand", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal?>("MaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("max_amount");
+
+                    b.Property<decimal>("MinAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("min_amount");
+
+                    b.Property<string>("Roles")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("roles");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_relocation_payment_bands");
+
+                    b.ToTable("relocation_payment_bands", (string)null);
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RightOfEntry", b =>
@@ -6082,6 +6337,26 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_relocation_eligibilities_parcel_relocations_relocation_id");
                 });
 
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RelocationPayment", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.ParcelRelocation", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_relocation_payments_parcel_relocations_relocation_id");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RelocationPaymentApproval", b =>
+                {
+                    b.HasOne("Aurigo.RowManagement.Domain.Entities.RelocationPayment", null)
+                        .WithMany("Approvals")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_relocation_payment_approvals_relocation_payments_payment_id");
+                });
+
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RightOfEntry", b =>
                 {
                     b.HasOne("Aurigo.RowManagement.Domain.Entities.Parcel", null)
@@ -6220,6 +6495,8 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("Contacts");
 
                     b.Navigation("Eligibilities");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.ParcelTitleClosing", b =>
@@ -6243,6 +6520,11 @@ namespace Aurigo.RowManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("Budgets");
 
                     b.Navigation("Estimates");
+                });
+
+            modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.RelocationPayment", b =>
+                {
+                    b.Navigation("Approvals");
                 });
 
             modelBuilder.Entity("Aurigo.RowManagement.Domain.Entities.Role", b =>

@@ -31,9 +31,12 @@ public static class DefaultParcelRules
     /// </summary>
     public const string NeutralColor = "#64748b";
 
+    /// <summary>The status a parcel moves to when every displaced ownership interest has finished relocating (ADR 0026). Looked up by name.</summary>
+    public const string AcquiredStatus = "Acquired";
+
     public static readonly IReadOnlyList<DefaultStatus> Statuses = new[]
     {
-        "Inactive", "In Design", "Pre-Acquisition", "Appraisal", "Initial Offer", "Final Offer", "In Possession - PUA", "In Possession - CLOSED",
+        "Inactive", "In Design", "Pre-Acquisition", "Appraisal", "Initial Offer", "Final Offer", "In Possession - PUA", "In Possession - CLOSED", "Acquired",
         "In Possession - NOD", "Pending Condemnation", "Petition Filed", "Hearing Scheduled", "Objections Filed", "Deleted",
         "Disposition In Progress", "Disposition Complete",
     }.Select(n => new DefaultStatus(n, NeutralColor, n == "Inactive")).ToArray();

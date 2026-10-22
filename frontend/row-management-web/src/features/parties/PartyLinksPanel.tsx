@@ -163,7 +163,7 @@ function LinkRows({
           <Link to="/parties/$partyId" params={{ partyId: l.party.id }} className="text-primary hover:underline">{l.party.name}</Link>
         </td>
         <td className="px-3 py-2">{ROLE_LABEL[l.role]}</td>
-        {category === 'Ownership' && <td className="px-3 py-2">{l.ownerType ?? '—'}</td>}
+        {category === 'Ownership' && <td className="px-3 py-2">{l.ownerType ?? '—'}{l.displacementRequired ? <span className="ml-2 rounded bg-warn/15 px-1.5 py-0.5 text-xs font-medium">Displacement required</span> : null}</td>}
         {category === 'Ownership' && <td className="px-3 py-2">{percentText(l.sharePercent)}</td>}
         <td className="px-3 py-2">{[l.party.phone, l.party.email].filter(Boolean).join(' · ') || '—'}</td>
         <td className="px-3 py-2">{details.length ? details.join(' · ') : '—'}</td>
@@ -210,6 +210,7 @@ function EditLinkForm({ link, onSaved, onCancel }: { link: PartyLink; onSaved: (
   const party = useQuery({ queryKey: ['party', link.party.id], queryFn: () => api.get(link.party.id) })
   const [share, setShare] = useState(link.sharePercent === null ? '' : String(link.sharePercent))
   const [ownerType, setOwnerType] = useState(link.ownerType ?? '')
+  const [displaced, setDisplaced] = useState(link.displacementRequired === true)
   const [notes, setNotes] = useState(link.notes ?? '')
   const [lease, setLease] = useState(link.leaseOnFile)
   const [leaseDetails, setLeaseDetails] = useState(link.leaseDetails ?? '')
@@ -239,6 +240,7 @@ function EditLinkForm({ link, onSaved, onCancel }: { link: PartyLink; onSaved: (
       if (loaded && canEditParty) await api.update(link.party.id, inputOf(draft))
       await api.updateLink(link.id, {
         sharePercent: CARRIES_SHARE.includes(link.role) ? numOrNull(share) : null, ownerType: isOwnership ? orNull(ownerType) : null, notes: orNull(notes),
+        ...(isOwnership ? { displacementRequired: displaced } : {}),
         leaseOnFile: HAS_LEASE.includes(link.role) && lease, leaseDetails: HAS_LEASE.includes(link.role) ? orNull(leaseDetails) : null,
         insuranceDetails: HAS_LEASE.includes(link.role) ? orNull(insurance) : null,
       })
@@ -256,6 +258,7 @@ function EditLinkForm({ link, onSaved, onCancel }: { link: PartyLink; onSaved: (
     <form onSubmit={save} noValidate aria-label={`Edit ${label}`} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         {isOwnership && <SelectField label="Owner type" value={ownerType} onChange={setOwnerType} options={optionsWith(ownerTypes, ownerType)} blankLabel="Select one" error={fields.ownerType} />}
+        {isOwnership && <CheckboxField label="Displacement required" checked={displaced} onChange={setDisplaced} />}
         {CARRIES_SHARE.includes(link.role) && (
           <TextField label="Share (%)" type="number" inputMode="decimal" value={share} onChange={setShare} error={fields.sharePercent} hint="Up to four decimals; shares of one kind cannot pass 100%." />
         )}
@@ -303,6 +306,7 @@ function AddLinkForm({
   const [leaseDetails, setLeaseDetails] = useState('')
   const [insurance, setInsurance] = useState('')
   const [ownerType, setOwnerType] = useState('')
+  const [displaced, setDisplaced] = useState(false)
   const ownerTypes = useLibraryValues('owner_type')
   const { draft, set } = usePartyDraft()
   const [error, setError] = useState<string | null>(null)
@@ -322,6 +326,7 @@ function AddLinkForm({
     const body = {
       partyId: mode === 'existing' ? partyId : null, newParty: mode === 'new' ? inputOf(draft) : null, role,
       sharePercent: shareable ? numOrNull(share) : null, ownerType: CATEGORY_OF[role] === 'Ownership' ? orNull(ownerType) : null, notes: orNull(notes),
+      ...(CATEGORY_OF[role] === 'Ownership' && displaced ? { displacementRequired: true } : {}),
       leaseOnFile: tenant && lease, leaseDetails: tenant ? orNull(leaseDetails) : null, insuranceDetails: tenant ? orNull(insurance) : null,
     }
     setBusy(true)
@@ -367,6 +372,7 @@ function AddLinkForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Role" required value={role} onChange={setRole} options={roleOptions(allowOwnership)} error={fields.role} />
         {role !== '' && CATEGORY_OF[role] === 'Ownership' && <SelectField label="Owner type" value={ownerType} onChange={setOwnerType} options={optionsWith(ownerTypes, ownerType)} blankLabel="Select one" error={fields.ownerType} />}
+        {role !== '' && CATEGORY_OF[role] === 'Ownership' && <CheckboxField label="Displacement required" checked={displaced} onChange={setDisplaced} />}
         {shareable && <TextField label="Share (%)" type="number" inputMode="decimal" value={share} onChange={setShare} error={fields.sharePercent} hint="Leave empty if not known." />}
         <TextField label="Role notes" value={notes} onChange={setNotes} maxLength={500} error={fields.notes} />
         {tenant && (

@@ -15,6 +15,7 @@ interface StoredLink {
   role: PartyRole
   sharePercent: number | null
   ownerType: string | null
+  displacementRequired?: boolean
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null
@@ -75,7 +76,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
   const tractNumber = (tractId: string | null) => base.tracts.find((t) => t.id === tractId)?.number ?? null
 
   const dto = (l: StoredLink): PartyLink => ({
-    id: l.id, category: CATEGORY_OF[l.role], role: l.role, sharePercent: l.sharePercent, ownerType: l.ownerType, notes: l.notes, leaseOnFile: l.leaseOnFile, leaseDetails: l.leaseDetails,
+    id: l.id, category: CATEGORY_OF[l.role], role: l.role, sharePercent: l.sharePercent, ownerType: l.ownerType, displacementRequired: l.displacementRequired === true, notes: l.notes, leaseOnFile: l.leaseOnFile, leaseDetails: l.leaseDetails,
     insuranceDetails: l.insuranceDetails, source: l.tractId ? 'Tract' : 'Parcel', parentTractId: l.tractId, tractNumber: tractNumber(l.tractId), parcelId: l.parcelId,
     party: summary(parties.find((p) => p.id === l.partyId)!),
   })
@@ -143,7 +144,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
     }
     const link: StoredLink = {
       id: id('link'), partyId: party.id, tractId: where.tractId ?? null, parcelId: where.parcelId ?? null, role: input.role, sharePercent: input.sharePercent,
-      ownerType: input.ownerType ?? null, notes: input.notes, leaseOnFile: input.leaseOnFile, leaseDetails: input.leaseDetails, insuranceDetails: input.insuranceDetails,
+      ownerType: input.ownerType ?? null, displacementRequired: input.displacementRequired === true, notes: input.notes, leaseOnFile: input.leaseOnFile, leaseDetails: input.leaseDetails, insuranceDetails: input.insuranceDetails,
     }
     links.push(link)
     recount()
@@ -203,7 +204,7 @@ export function fakePeopleApi(opts: FakePeopleOptions): FakePeople {
           const others = links.filter((l) => l.id !== link.id && l.tractId === link.tractId && l.parcelId === link.parcelId && l.role === link.role && l.sharePercent !== null).reduce((s, l) => s + l.sharePercent!, 0)
           if (others + body.sharePercent > 100.0000001) return problem(409, 'share_exceeds_whole', `The shares would add up to more than 100 percent. ${Math.max(0, 100 - others)} percent is unclaimed.`)
         }
-        Object.assign(link, { sharePercent: body.sharePercent ?? null, ownerType: body.ownerType ?? null, notes: body.notes ?? null, leaseOnFile: !!body.leaseOnFile, leaseDetails: body.leaseDetails ?? null, insuranceDetails: body.insuranceDetails ?? null })
+        Object.assign(link, { ...(body.displacementRequired === undefined ? {} : { displacementRequired: body.displacementRequired === true }), sharePercent: body.sharePercent ?? null, ownerType: body.ownerType ?? null, notes: body.notes ?? null, leaseOnFile: !!body.leaseOnFile, leaseDetails: body.leaseDetails ?? null, insuranceDetails: body.insuranceDetails ?? null })
         return json(dto(link))
       }
       if (method === 'DELETE') {

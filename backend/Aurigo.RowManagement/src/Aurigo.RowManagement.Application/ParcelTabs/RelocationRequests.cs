@@ -1,4 +1,5 @@
 using Aurigo.RowManagement.Application.Auth;
+using Aurigo.RowManagement.Application.Calculations;
 using Aurigo.RowManagement.Application.ParcelRecords;
 using Aurigo.RowManagement.Application.Parcels;
 using Aurigo.RowManagement.Application.Persistence;
@@ -31,29 +32,54 @@ public sealed record RelocationDetails(
     DateOnly? DeliveryOfNoticeOfEligibility, DateOnly? Notice90Day, DateOnly? DeliveryOf90DayNotice, DateOnly? VacateEligibleDate, DateOnly? Notice30DayVacate,
     DateOnly? Notice30DayVacateDelivered, bool DemolitionRequired, DateOnly? TargetVacateDate, DateOnly? ActualVacateDate, bool IneligibleForRelocation,
     DateOnly? MovePlan, DateOnly? CertificationOfInventory, DateOnly? BenefitsExpirationLetterDate, DateOnly? BenefitExpiration, DateOnly? ReleaseOfProperty,
-    DateOnly? CertificateOfCompletion, DateOnly? FileCloseOutSubmitted, DateOnly? RelocationComplete, DateOnly? RelocationComplete1);
+    DateOnly? CertificateOfCompletion, DateOnly? FileCloseOutSubmitted, DateOnly? RelocationComplete, DateOnly? RelocationComplete1,
+    Guid? PartyLinkId = null, DateOnly? PlanningStudyDate = null, string? AdvisoryNeeds = null, DateOnly? ReplacementHousingStudyDate = null,
+    DateOnly? ComparableNoticeDate = null, DateOnly? InspectionDate = null, bool? DecentSafeSanitary = null, bool HousingOfLastResort = false,
+    string? EligibilityException = null, DateOnly? ClaimDeniedDate = null, DateOnly? AppealFiledDate = null, DateOnly? AppealDecisionDate = null,
+    string? AppealOutcome = null);
+
+public sealed record RelocationPaymentApprovalDto(string Role, DateTime ApprovedAt);
+public sealed record RelocationPaymentDto(
+    Guid Id, string PaymentType, decimal Amount, bool IsAdvance, bool Taxable, string? Notes, string Status, IReadOnlyList<string> RequiredRoles,
+    IReadOnlyList<RelocationPaymentApprovalDto> Approvals, string? NextApprover, string? DecisionNote, DateTime? PaidAt, string? PaymentReference,
+    DateTime RequestedAt, bool RequestedByMe);
 
 /// <summary><see cref="VestedOwnerName"/> and each agent's type, company, phone and email are read-only.</summary>
 public sealed record RelocationDto(
     Guid Id, Guid ParcelId, string ParcelNumber, string? VestedOwnerName, RelocationDetails Details, IReadOnlyList<StatusNoteDto> StatusNotes,
     IReadOnlyList<RelocationAgentDto> Agents, IReadOnlyList<RelocationContactDto> Contacts, IReadOnlyList<RelocationEligibilityDto> Eligibilities,
-    IReadOnlyList<RelocationContactLogDto> ContactLog, DateTime UpdatedAt);
+    IReadOnlyList<RelocationContactLogDto> ContactLog, DateTime UpdatedAt,
+    IReadOnlyList<RelocationPaymentDto> Payments, string? InterestOwnerName, DateOnly? ClaimDeadline, string Stage);
 
 internal static class RelocationRules
 {
     public const decimal MaxAmount = 1_000_000_000_000m;
 
-    public static IQueryable<ParcelRelocation> WithChildren(IQueryable<ParcelRelocation> q) => q.Include(x => x.Agents).Include(x => x.Contacts).Include(x => x.Eligibilities).Include(x => x.ContactLog);
+    public static IQueryable<ParcelRelocation> WithChildren(IQueryable<ParcelRelocation> q) => q.Include(x => x.Agents).Include(x => x.Contacts).Include(x => x.Eligibilities).Include(x => x.ContactLog).Include(x => x.Payments).ThenInclude(p => p.Approvals);
 
     public static RelocationDetails DetailsOf(ParcelRelocation r) => new(
         r.RelocationNumber, r.AssignedTo, r.DisplaceeName, r.LimitedEnglishProficiency, r.DisplaceeStatus, r.DisplaceeInterest, r.DisplaceeMailingAddress, r.RelocationType,
         r.PropertySiteAddress, r.GinMailedDate, r.GinDeliveredDate, r.InitialInterview, r.CertificateOfEligibility, r.NoticeOfEligibility, r.DeliveryOfNoticeOfEligibility,
         r.Notice90Day, r.DeliveryOf90DayNotice, r.VacateEligibleDate, r.Notice30DayVacate, r.Notice30DayVacateDelivered, r.DemolitionRequired, r.TargetVacateDate,
         r.ActualVacateDate, r.IneligibleForRelocation, r.MovePlan, r.CertificationOfInventory, r.BenefitsExpirationLetterDate, r.BenefitExpiration, r.ReleaseOfProperty,
-        r.CertificateOfCompletion, r.FileCloseOutSubmitted, r.RelocationComplete, r.RelocationComplete1);
+        r.CertificateOfCompletion, r.FileCloseOutSubmitted, r.RelocationComplete, r.RelocationComplete1,
+        r.PartyLinkId, r.PlanningStudyDate, r.AdvisoryNeeds, r.ReplacementHousingStudyDate, r.ComparableNoticeDate, r.InspectionDate, r.DecentSafeSanitary,
+        r.HousingOfLastResort, r.EligibilityException, r.ClaimDeniedDate, r.AppealFiledDate, r.AppealDecisionDate, r.AppealOutcome);
 
-    public static async Task<RelocationDto> ToDtoAsync(IRowDbContext db, ParcelRelocation r, string parcelNumber, CancellationToken ct)
+    public static RelocationPaymentDto PaymentDto(RelocationPayment p, Guid me)
     {
+        var required = RelocationCalc.ParseRoles(p.RequiredRoles);
+        var signed = p.Approvals.OrderBy(a => a.ApprovedAt).ToList();
+        var next = p.Status == RelocationPaymentStatus.Requested ? ApprovalChain.NextApprover(new ApprovalRequirement(new ApprovalBand(0, null, required), required), signed.Select(a => a.Role).ToList()) : null;
+        return new(p.Id, p.PaymentType, p.Amount, p.IsAdvance, p.Taxable, p.Notes, p.Status.ToString(), required,
+            signed.Select(a => new RelocationPaymentApprovalDto(a.Role, a.ApprovedAt)).ToList(), next, p.DecisionNote, p.PaidAt, p.PaymentReference, p.CreatedAt, p.CreatedBy == me);
+    }
+
+    public static async Task<RelocationDto> ToDtoAsync(IRowDbContext db, ParcelRelocation r, string parcelNumber, Guid me, CancellationToken ct)
+    {
+        string? interestOwner = null;
+        if (r.PartyLinkId is { } linkId)
+            interestOwner = await (from l in db.PartyLinks.AsNoTracking() join pa in db.Parties.AsNoTracking() on l.PartyId equals pa.Id where l.Id == linkId select pa.Name).FirstOrDefaultAsync(ct);
         var library = await db.LibraryAgents.AsNoTracking().ToListAsync(ct);
         LibraryAgent? Find(string name) => library.FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
         return new(r.Id, r.ParcelId, parcelNumber, await TitleClosingRules.VestedOwnerNameAsync(db, r.ParcelId, ct), DetailsOf(r),
@@ -61,7 +87,10 @@ internal static class RelocationRules
             r.Agents.OrderBy(a => a.CreatedAt).Select(a => { var l = Find(a.AgentName); return new RelocationAgentDto(a.Id, a.AgentName, l?.AgentType, l?.Company, l?.Phone, l?.Email); }).ToList(),
             r.Contacts.OrderBy(c => c.CreatedAt).Select(c => new RelocationContactDto(c.Id, c.Name, c.ContactType, c.Contact, c.Email, c.Address, c.IsPrimary)).ToList(),
             r.Eligibilities.OrderBy(e => e.CreatedAt).Select(e => new RelocationEligibilityDto(e.Id, e.EligibilityType, e.ClaimLimit, e.SubmittedForApproval, e.Approved)).ToList(),
-            r.ContactLog.OrderByDescending(c => c.ContactedAt).Select(c => new RelocationContactLogDto(c.Id, c.ContactedAt, c.Mode, c.ContactedBy, c.ContactPersons, c.Notes)).ToList(), r.UpdatedAt);
+            r.ContactLog.OrderByDescending(c => c.ContactedAt).Select(c => new RelocationContactLogDto(c.Id, c.ContactedAt, c.Mode, c.ContactedBy, c.ContactPersons, c.Notes)).ToList(), r.UpdatedAt,
+            r.Payments.OrderBy(p => p.CreatedAt).Select(p => PaymentDto(p, me)).ToList(), interestOwner, RelocationCalc.ClaimDeadline(r.ActualVacateDate),
+            RelocationCalc.Stage(r.GinMailedDate, r.InitialInterview, r.NoticeOfEligibility, r.ReplacementHousingStudyDate, r.Notice90Day, r.Notice30DayVacate,
+                r.ActualVacateDate, r.RelocationComplete, r.IneligibleForRelocation));
     }
 
     public static void Apply(ParcelRelocation r, RelocationDetails d)
@@ -78,6 +107,20 @@ internal static class RelocationRules
         r.CertificationOfInventory = d.CertificationOfInventory; r.BenefitsExpirationLetterDate = d.BenefitsExpirationLetterDate; r.BenefitExpiration = d.BenefitExpiration;
         r.ReleaseOfProperty = d.ReleaseOfProperty; r.CertificateOfCompletion = d.CertificateOfCompletion; r.FileCloseOutSubmitted = d.FileCloseOutSubmitted;
         r.RelocationComplete = d.RelocationComplete; r.RelocationComplete1 = d.RelocationComplete1;
+        r.PartyLinkId = d.PartyLinkId; r.PlanningStudyDate = d.PlanningStudyDate; r.AdvisoryNeeds = ParcelRecordHelpers.Clean(d.AdvisoryNeeds);
+        r.ReplacementHousingStudyDate = d.ReplacementHousingStudyDate; r.ComparableNoticeDate = d.ComparableNoticeDate; r.InspectionDate = d.InspectionDate;
+        r.DecentSafeSanitary = d.DecentSafeSanitary; r.HousingOfLastResort = d.HousingOfLastResort; r.EligibilityException = ParcelRecordHelpers.Clean(d.EligibilityException);
+        r.ClaimDeniedDate = d.ClaimDeniedDate; r.AppealFiledDate = d.AppealFiledDate; r.AppealDecisionDate = d.AppealDecisionDate;
+        r.AppealOutcome = ParcelRecordHelpers.Clean(d.AppealOutcome);
+    }
+
+    /// <summary>The interest a relocation is for must be an ownership interest on this parcel (its own or its tract's).</summary>
+    public static async Task EnsureInterestAsync(IRowDbContext db, Parcel parcel, Guid? linkId, CancellationToken ct)
+    {
+        if (linkId is not { } id) return;
+        var link = await db.PartyLinks.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id && (l.ParcelId == parcel.Id || (parcel.ParentTractId != null && l.ParentTractId == parcel.ParentTractId)), ct);
+        if (link is null || PartyRoles.CategoryOf(link.Role) != PartyCategory.Ownership)
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("PartyLinkId", "Choose an ownership interest of this parcel.") });
     }
 
     public static DateTime Utc(DateTime t) => t.Kind == DateTimeKind.Utc ? t : t.Kind == DateTimeKind.Local ? t.ToUniversalTime() : DateTime.SpecifyKind(t, DateTimeKind.Utc);
@@ -153,6 +196,15 @@ public abstract class RelocationFieldsValidator<T> : AbstractValidator<T> where 
                 .When(x => x.Details.InitialInterview is not null && x.Details.ActualVacateDate is not null).WithMessage("The displacee cannot vacate before the initial interview.");
             RuleFor(x => x.Details.Notice30DayVacateDelivered).GreaterThanOrEqualTo(x => x.Details.Notice30DayVacate!.Value)
                 .When(x => x.Details.Notice30DayVacate is not null && x.Details.Notice30DayVacateDelivered is not null).WithMessage("The notice cannot be delivered before it is issued.");
+            RuleFor(x => x.Details.EligibilityException).Must(e => e is null || RelocationExceptions.All.Contains(e)).WithMessage("Choose an exception from the list.");
+            RuleFor(x => x.Details.AdvisoryNeeds).MaximumLength(4000);
+            RuleFor(x => x.Details.AppealOutcome).MaximumLength(1000);
+            RuleFor(x => x.Details.AppealDecisionDate).GreaterThanOrEqualTo(x => x.Details.AppealFiledDate!.Value)
+                .When(x => x.Details.AppealFiledDate is not null && x.Details.AppealDecisionDate is not null).WithMessage("The appeal cannot be decided before it is filed.");
+            RuleFor(x => x.Details.AppealFiledDate).GreaterThanOrEqualTo(x => x.Details.ClaimDeniedDate!.Value)
+                .When(x => x.Details.ClaimDeniedDate is not null && x.Details.AppealFiledDate is not null).WithMessage("The appeal cannot be filed before the claim is denied.");
+            RuleFor(x => x.Details.RelocationComplete).GreaterThanOrEqualTo(x => x.Details.ActualVacateDate!.Value)
+                .When(x => x.Details.ActualVacateDate is not null && x.Details.RelocationComplete is not null).WithMessage("The relocation cannot be complete before the displacee vacated.");
         });
         StatusNoteRules.AddRules(this, x => x.StatusNotes);
         RuleFor(x => x.Agents).Must(r => r is null || r.Count <= 50).WithMessage("At most 50 agents.");
@@ -194,9 +246,11 @@ public sealed class ListRelocationsQueryHandler : IRequestHandler<ListRelocation
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
     private readonly ParcelService _parcels;
+    private readonly ICurrentUser _user;
 
-    public ListRelocationsQueryHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels)
+    public ListRelocationsQueryHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels, ICurrentUser user)
     {
+        _user = user;
         _db = db;
         _permissions = permissions;
         _parcels = parcels;
@@ -208,7 +262,7 @@ public sealed class ListRelocationsQueryHandler : IRequestHandler<ListRelocation
         var parcel = await _parcels.LoadAsync(request.ParcelId, ct);
         var rows = await RelocationRules.WithChildren(_db.ParcelRelocations.AsNoTracking()).Where(r => r.ParcelId == parcel.Id).ToListAsync(ct);
         var result = new List<RelocationDto>();
-        foreach (var r in rows.OrderBy(r => r.RelocationNumber, StringComparer.OrdinalIgnoreCase)) result.Add(await RelocationRules.ToDtoAsync(_db, r, parcel.Number, ct));
+        foreach (var r in rows.OrderBy(r => r.RelocationNumber, StringComparer.OrdinalIgnoreCase)) result.Add(await RelocationRules.ToDtoAsync(_db, r, parcel.Number, _user.Id, ct));
         return result;
     }
 }
@@ -227,9 +281,11 @@ public sealed class AddRelocationCommandHandler : IRequestHandler<AddRelocationC
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
     private readonly ParcelService _parcels;
+    private readonly ICurrentUser _user;
 
-    public AddRelocationCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels)
+    public AddRelocationCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels, ICurrentUser user)
     {
+        _user = user;
         _db = db;
         _permissions = permissions;
         _parcels = parcels;
@@ -239,6 +295,7 @@ public sealed class AddRelocationCommandHandler : IRequestHandler<AddRelocationC
     {
         await _permissions.EnsureAsync(PageKeys.ParcelRelocation, PermissionAction.Create, ct);
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
+        await RelocationRules.EnsureInterestAsync(_db, parcel, request.Details.PartyLinkId, ct);
         var number = request.Details.RelocationNumber.Trim();
         if (await _db.ParcelRelocations.AnyAsync(r => r.ParcelId == parcel.Id && r.RelocationNumber == number, ct))
             throw new ConflictException("relocation_number_exists", $"This parcel already has a relocation numbered '{number}'.");
@@ -258,8 +315,9 @@ public sealed class AddRelocationCommandHandler : IRequestHandler<AddRelocationC
             _db.ChangeTracker.Clear();
             throw new ConflictException("relocation_number_exists", $"This parcel already has a relocation numbered '{number}'.");
         }
+        await RelocationSync.RunAsync(_db, parcel.Id, ct);
         var fresh = await RelocationRules.WithChildren(_db.ParcelRelocations.AsNoTracking()).FirstAsync(x => x.Id == r.Id, ct);
-        return await RelocationRules.ToDtoAsync(_db, fresh, parcel.Number, ct);
+        return await RelocationRules.ToDtoAsync(_db, fresh, parcel.Number, _user.Id, ct);
     }
 }
 
@@ -282,9 +340,11 @@ public sealed class UpdateRelocationCommandHandler : IRequestHandler<UpdateReloc
     private readonly IRowDbContext _db;
     private readonly IPagePermissionService _permissions;
     private readonly ParcelService _parcels;
+    private readonly ICurrentUser _user;
 
-    public UpdateRelocationCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels)
+    public UpdateRelocationCommandHandler(IRowDbContext db, IPagePermissionService permissions, ParcelService parcels, ICurrentUser user)
     {
+        _user = user;
         _db = db;
         _permissions = permissions;
         _parcels = parcels;
@@ -296,6 +356,7 @@ public sealed class UpdateRelocationCommandHandler : IRequestHandler<UpdateReloc
         var parcel = await _parcels.LoadActiveAsync(request.ParcelId, ct);
         var r = await RelocationRules.WithChildren(_db.ParcelRelocations).FirstOrDefaultAsync(x => x.Id == request.RelocationId && x.ParcelId == parcel.Id, ct)
                 ?? throw new NotFoundException("Relocation", request.RelocationId);
+        await RelocationRules.EnsureInterestAsync(_db, parcel, request.Details.PartyLinkId, ct);
         var number = request.Details.RelocationNumber.Trim();
         if (await _db.ParcelRelocations.AnyAsync(x => x.ParcelId == parcel.Id && x.RelocationNumber == number && x.Id != r.Id, ct))
             throw new ConflictException("relocation_number_exists", $"This parcel already has a relocation numbered '{number}'.");
@@ -305,9 +366,10 @@ public sealed class UpdateRelocationCommandHandler : IRequestHandler<UpdateReloc
         RelocationRules.Attach(_db, r.Id, RelocationRules.Build(request));
         await StatusNoteRules.ReplaceAsync(_db, StatusNoteKinds.Relocation, r.Id, request.StatusNotes, ct);
         await _db.SaveChangesAsync(ct);
+        await RelocationSync.RunAsync(_db, parcel.Id, ct);
 
         var fresh = await RelocationRules.WithChildren(_db.ParcelRelocations.AsNoTracking()).FirstAsync(x => x.Id == r.Id, ct);
-        return await RelocationRules.ToDtoAsync(_db, fresh, parcel.Number, ct);
+        return await RelocationRules.ToDtoAsync(_db, fresh, parcel.Number, _user.Id, ct);
     }
 }
 
@@ -333,6 +395,10 @@ public sealed class RemoveRelocationCommandHandler : IRequestHandler<RemoveReloc
         var r = await RelocationRules.WithChildren(_db.ParcelRelocations).FirstOrDefaultAsync(x => x.Id == request.RelocationId && x.ParcelId == parcel.Id, ct)
                 ?? throw new NotFoundException("Relocation", request.RelocationId);
         RelocationRules.RemoveChildren(_db, r);
+        if (r.Payments.Any(p => p.Status is RelocationPaymentStatus.Approved or RelocationPaymentStatus.Paid))
+            throw new ConflictException("relocation_has_payments", "This relocation has approved or paid payments, so it cannot be removed.");
+        foreach (var p in r.Payments) _db.RelocationPaymentApprovals.RemoveRange(p.Approvals);
+        _db.RelocationPayments.RemoveRange(r.Payments);
         await StatusNoteRules.DeleteAsync(_db, StatusNoteKinds.Relocation, r.Id, ct);
         _db.ParcelRelocations.Remove(r);
         await _db.SaveChangesAsync(ct);

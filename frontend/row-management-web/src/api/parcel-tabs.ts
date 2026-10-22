@@ -378,10 +378,53 @@ export interface RelocationContact { id?: string; name: string; contactType: str
 export interface RelocationEligibility { id?: string; eligibilityType: string; claimLimit: number | null; submittedForApproval: string | null; approved: string | null }
 export interface RelocationContactLog { id?: string; contactedAt: string; mode: string | null; contactedBy: string | null; contactPersons: string | null; notes: string | null }
 
+export type PaymentStatus = 'Requested' | 'Approved' | 'Rejected' | 'Paid'
+export interface RelocationPayment {
+  id: string
+  paymentType: string
+  amount: number
+  isAdvance: boolean
+  taxable: boolean
+  notes: string | null
+  status: PaymentStatus
+  requiredRoles: string[]
+  approvals: { role: string; approvedAt: string }[]
+  /** The role that signs next while the payment is Requested. */
+  nextApprover: string | null
+  decisionNote: string | null
+  paidAt: string | null
+  paymentReference: string | null
+  requestedAt: string
+  requestedByMe: boolean
+}
+export interface RelocationPaymentInput { paymentType: string; amount: number; isAdvance: boolean; taxable: boolean; notes: string | null }
+
+/** The "Relocation exceptions" the agent may record (ROW-277). */
+export const RELOCATION_EXCEPTIONS = ['Eviction for cause', 'Alien not lawfully present', 'Duplication of payment'] as const
+
+export interface RelocationProgress {
+  displacedInterests: number
+  completedInterests: number
+  readyToAcquire: boolean
+  acquiredStatusAvailable: boolean
+  statusName: string
+  isAcquired: boolean
+}
+
+export interface RelocationBand { minAmount: number; maxAmount: number | null; roles: string[] }
+export interface RelocationBands { bands: RelocationBand[]; isDefault: boolean }
+
 export interface Relocation {
   id: string
   parcelId: string
   parcelNumber: string
+  /** The owner behind the linked ownership interest, when linked. */
+  interestOwnerName?: string | null
+  /** Eighteen months after the displacee vacated. */
+  claimDeadline?: string | null
+  /** Where the case stands, from the dates recorded ("GIN sent", "Awaiting move"...). */
+  stage?: string
+  payments?: RelocationPayment[]
   /** Read-only: the parcel's owners of owner type "Vested Owner". */
   vestedOwnerName: string | null
   details: DetailValues
@@ -406,4 +449,15 @@ export const relocationsApi = (api: ApiClient) => ({
   add: (parcelId: string, body: RelocationInput) => api.post<Relocation>(`/api/v1/parcels/${parcelId}/relocations`, body),
   update: (parcelId: string, id: string, body: RelocationInput) => api.put<Relocation>(`/api/v1/parcels/${parcelId}/relocations/${id}`, body),
   remove: (parcelId: string, id: string) => api.delete(`/api/v1/parcels/${parcelId}/relocations/${id}`),
+  requestPayment: (parcelId: string, id: string, body: RelocationPaymentInput) => api.post<Relocation>(`/api/v1/parcels/${parcelId}/relocations/${id}/payments`, body),
+  decidePayment: (parcelId: string, id: string, paymentId: string, body: { approve: boolean; note: string | null }) =>
+    api.post<Relocation>(`/api/v1/parcels/${parcelId}/relocations/${id}/payments/${paymentId}/decision`, body),
+  markPaid: (parcelId: string, id: string, paymentId: string, body: { reference: string | null }) =>
+    api.post<Relocation>(`/api/v1/parcels/${parcelId}/relocations/${id}/payments/${paymentId}/paid`, body),
+  progress: (parcelId: string) => api.get<RelocationProgress>(`/api/v1/parcels/${parcelId}/relocation-progress`),
+})
+
+export const relocationBandsApi = (api: ApiClient) => ({
+  get: () => api.get<RelocationBands>('/api/v1/relocation-payment-bands'),
+  save: (bands: RelocationBand[]) => api.put<RelocationBands>('/api/v1/relocation-payment-bands', { bands }),
 })

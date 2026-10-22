@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react'
 import userEventModule from '@testing-library/user-event'
 import { permissionRowsFor } from '@/test/contract'
 import { fakeAuthFetch } from '@/test/fake-api'
-import { sampleDashboard, sampleProgram, sampleProject, sampleProjectDashboard } from '@/test/fake-dashboard'
+import { sampleDashboard, sampleParcels, sampleProgram, sampleProject, sampleProjectDashboard } from '@/test/fake-dashboard'
 import { renderApp } from '@/test/render-app'
 import { compactMoney } from './ProgramView'
 
@@ -151,5 +151,35 @@ describe('AT-X-61 the program view for a ROW Director', () => {
     expect(await screen.findByRole('table', { name: 'Team members' })).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Program' }))
     expect(await screen.findByRole('table', { name: 'Projects' })).toBeInTheDocument()
+  })
+})
+
+describe('AT-RA-42 relocation on the program view and the dashboard', () => {
+  it('shows how many displaced interests are relocated per project and per parcel', async () => {
+    const user = userEventModule.setup()
+    const project = sampleProject({ displaced: 3, relocated: 2, relocationsOpen: 1 })
+    const parcels = sampleParcels().map((p, i) => (i === 0 ? { ...p, relocation: '2 of 3 relocated', displaced: 3, relocated: 2, flags: [...p.flags, 'Relocation claim period ending'] } : p))
+    open('Admin', { program: sampleProgram({ projects: [project] }), project: sampleProjectDashboard({ project, parcels }) })
+
+    const table = await screen.findByRole('table', { name: 'Projects' })
+    expect(within(table).getByRole('row', { name: /P-2026-001/ })).toHaveTextContent('2/3')
+    await user.click(screen.getByRole('button', { name: 'Open project P-2026-001' }))
+    const list = await screen.findByRole('table', { name: 'Parcels in this project' })
+    expect(within(list).getByRole('row', { name: /1001/ })).toHaveTextContent('2 of 3 relocated')
+    expect(within(list).getByRole('row', { name: /1001/ })).toHaveTextContent('Relocation claim period ending')
+    expect(screen.getByTestId('tile-Relocated')).toHaveTextContent('2/3')
+  })
+
+  it('shows the relocation items waiting for the signed-in person', async () => {
+    open('Admin', {
+      dashboard: sampleDashboard({
+        isManager: false, roles: ['RelocationAgent'], pending: [
+          { key: 'relocations-open', label: 'Relocation cases still open', count: 4, link: '/relocations', tone: 'info' },
+          { key: 'relocation-payments-to-sign', label: 'Relocation payments waiting for your sign-off', count: 2, link: '/parcels', tone: 'warn' },
+        ],
+      }),
+    })
+    expect(await screen.findByTestId('pending-relocations-open')).toHaveTextContent('4')
+    expect(screen.getByTestId('pending-relocation-payments-to-sign')).toHaveTextContent('2')
   })
 })

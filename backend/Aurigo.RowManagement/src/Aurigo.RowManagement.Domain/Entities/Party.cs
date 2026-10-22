@@ -83,6 +83,8 @@ public class PartyLink : EntityBase
     /// <summary>For an ownership interest: a value of the Library's Owner type list ("Vested Owner", "Prior Owner"...). It describes this party on this parcel.</summary>
     public string? OwnerType { get; set; }
     public string? Notes { get; set; }
+    /// <summary>For an ownership interest: the person or business must be relocated (ADR 0026). The parcel is Acquired once every such interest's relocation is complete.</summary>
+    public bool DisplacementRequired { get; set; }
 
     // ── tenants (ROW-016) ──
     public bool LeaseOnFile { get; set; }

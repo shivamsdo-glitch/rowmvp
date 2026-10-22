@@ -2,7 +2,7 @@
 
 **Read this first in every new chat, then `CLAUDE.md` (rules) and `SKILLS.md` (recipes).** This file says *what has been built and where*; it does not repeat the rules. It is the map. **It must be updated in the same commit as every feature change** (add a row, a route, a page key, an ADR link, the acceptance IDs, bump "Last updated"). This is enforced: the release gate's first check, `scripts/check-built.mjs`, fails if `backend/*/src` or `frontend/*/src` changed and this file did not (`--skip-built-check` only for pure bug fixes and refactors).
 
-Last updated: 2026-10-21, after the Program view settings (ADR 0025), the ROW Director's Program view (ADR 0024), the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
+Last updated: 2026-10-22, after the relocation case workflow (ADR 0026), the Program view settings (ADR 0025), the ROW Director's Program view (ADR 0024), the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
 
 ---
 
@@ -17,8 +17,9 @@ Last updated: 2026-10-21, after the Program view settings (ADR 0025), the ROW Di
 | 3 | Appraisal & just compensation *process* (approval chains, step gating) | **Not started** (only the Appraisal *records* exist) |
 | 4 | Negotiation → agreement *process* | **Not started** (only the Negotiation *record* exists) |
 | 5 | Closing *process* | **Not started** (only the Title and Closing *record* exists) |
+| 1.6 | **Relocation case workflow** (Diagram 5, no benefit calculation): interest-linked cases, notices and housing steps, payments through the approval chain, parcel auto-**Acquired**, Relocations work screen, dashboards | **Done** (ADR 0026) |
 
-Important: the parcel tabs for Condemnation, Property Management & Disposition and Relocation are **records the agency fills in**, not the v2 processes. Workflow, statutory deadlines, hand-offs and benefit rules are still deferred (CLAUDE.md, ADR 0020).
+Important: the parcel tabs for Condemnation and Property Management & Disposition are **records the agency fills in**, not the v2 processes (CLAUDE.md, ADR 0020). **Relocation is the exception since ADR 0026**: the Relocation tab is a case workflow (below). Statutory deadline engines, benefit *calculations* (moving, purchase supplement, rental assistance limits) and the Diagram 7 payment hand-off are still not built.
 
 Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product code changed without this file changing). Every commit above was made only on a green gate.
 
@@ -67,6 +68,7 @@ Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product co
 | — | **Dashboard** per person (what I did, what is waiting) + manager **Team** roll-up; in-app **Help center** behind the top-bar question mark | 0022 |
 | — | **Program view settings** (Configuration page): stuck days, health thresholds and the step-to-team mapping, with the ADR 0024 values as defaults | 0025 |
 | — | **ROW Director's Program view**: every project's health, % closed, pipeline and cost; drill-down to each parcel; time per step and per team; stuck parcels | 0024 |
+| — | **Relocation case workflow**: an ownership interest can be flagged *Displacement required*; each relocation is linked to one interest; when every flagged interest has a relocation with *Relocation complete* set, the parcel moves to the **Acquired** status automatically (new default status; never moves back). Payments (typed amount) go through an approval chain stored as bands (placeholder defaults until an administrator saves their own) and Finance marks them paid. New `/relocations` work screen; dashboard, Team, Program view, parcel Summary and Help updated | 0026 |
 | — | Tab strip restyle (active tab = blue label + full-width blue bottom border; wraps instead of scrolling) | `components/ui/tabs.tsx` |
 
 ---
@@ -86,7 +88,7 @@ Each tab has its own **page key** (so access is per tab), its own ADR section an
 | Questionnaire | `parcelquestionnaire` | many | `QST-<parcel>-<seq>` | Relocation Agent CRUD | Ownership interests + questions/answers grids |
 | Condemnation | `parcelcondemnation` | 1 per parcel | `CON-<parcel>` | Negotiator CRU (no delete) | Preliminary dates, support, attorneys, commissioners, notices of hearing |
 | Property management & disposition | `parcelproperty` | 1 per parcel | `PMD-<parcel>` | Project Manager CRUD | Transfer memo, demo, disposition, funding distribution |
-| Relocation | `parcelrelocation` | many | user-typed **Relocation Number**, unique per parcel | Relocation Agent CRUD | Contacts, eligibility, relocation contact log, milestones |
+| Relocation | `parcelrelocation` | many | user-typed **Relocation Number**, unique per parcel | Relocation Agent CRUD | Linked to an **ownership interest** (ADR 0026); stage, planning/advisory, notices, housing study + inspection, last resort, eligibility exception, claim deadline (18 months after vacate), denial/appeal, **Payments** panel (request → chain sign-offs → Finance marks paid; reads on `parcelrelocation`, paid needs `payments` update), contacts, eligibility, contact log. Removing a relocation with an approved or paid payment is refused |
 | Contact log | `contactlog` | many | `CL-<parcel>-<seq>` | Negotiator CRUD | Linked records, attachments |
 | Easements | `easements` | many | user-typed number, unique per parcel | Surveyor CRUD | Station range, term |
 
@@ -108,6 +110,7 @@ Older parcel tabs from Phase 1 (Summary, Team, Diary, Notes, Reviews & reports, 
 | **`/title`** (Title & Survey) | **Search across parcels** for title encumbrances / easements, open the parcel and add or update right there | `title` |
 | **`/appraisals`** (Appraisal) | Same for appraisals | `appraisals` |
 | **`/negotiations`** (Negotiation & Closing) | Same for negotiations and title-and-closing records | `negotiations` |
+| **`/relocations`** (Relocations) | Same for relocation cases: search by parcel, address, owner, relocation number or displacee; stage, claim deadline and open payments; `GET /api/v1/overview/relocations?search=` (ADR 0026) | `relocations` |
 | `/administration` | Configuration (parcel statuses, groups, rules) | `administration` |
 | `/settings` | Users, roles, permission grid | `administration` |
 | `/library` | Library fields, values, agents | `library` |
@@ -138,6 +141,7 @@ Special rules beyond the page grid: appraisal review fields (Approver/Admin only
 | Access defaults | `Domain/Common/PageKeys.cs`, `DefaultRolePermissions.cs` | `api/auth.ts` (`PAGE_KEYS`), `components/shell/nav.ts` |
 | Migrations | `Infrastructure/Persistence/Migrations/` (one per slice) | — |
 | Ownership + team + right of entry (ADR 0023) | `Application/Parties/ParcelOwners.cs`, `PartyService.cs`, `Application/ParcelRecords/ParcelRecordRequests.cs` (team), `Application/RightsOfEntry/RightOfEntryRequests.cs`, `Domain/Entities/Party.cs` (`PartyAddress`, `PartyContact`) | `features/parties/PartyLinksPanel.tsx`, `PartyGrids.tsx`, `features/parcels/ParcelRecordTabs.tsx` (Team), `team-kit.ts`, `AcquisitionTabs.tsx` (right of entry, shown in `NegotiationTab.tsx`) |
+| Relocation workflow (ADR 0026) | `Application/ParcelTabs/RelocationRequests.cs` (case), `RelocationPaymentRequests.cs` (payments, bands, progress, work-screen query), `RelocationSync.cs` (parcel → Acquired), `Application/Calculations/RelocationCalc.cs` (pure rules + placeholder chain), `Domain/Entities/ParcelLifecycle.cs` (`RelocationPayment`, `RelocationPaymentBand`), `PartyLink.DisplacementRequired`; endpoints on `ParcelTabsController` (`/relocations/{id}/payments…`, `/relocation-progress`), `RelocationBandsController` (`/api/v1/relocation-payment-bands`), `OverviewController` | see ADR 0026 section of the frontend (Relocation tab, `/relocations`, Configuration bands card, dashboards) |
 | Test fakes | — | `test/fake-tabs.ts` (layered over `fake-records.ts`, `fake-parcels.ts`), `test/fake-api.ts` |
 | Role spec | `tests/.../IntegrationTests/Support/Spec.cs` → `vault/acceptance/permission-matrix.json` | `test/contract.ts` |
 | E2E | — | `e2e/tests/*.spec.ts` (one file per area; case IDs `AT-xx-nn` in test names) |
@@ -167,7 +171,8 @@ Practical rules:
 ## 10. Not built / flagged (do not assume these exist)
 
 - Phases 2–5 as *processes* (title & survey package workflow, appraisal approval chains and just-compensation establishment, negotiation→agreement flow, closing checklist/payments). Cross-parcel *records* exist; the workflow around them does not.
-- Deferred v2 modules: condemnation/relocation/utility/property-disposal **processes**, clearance/certification, platform admin/SSO, document/GIS/reporting platform services.
+- Relocation (ADR 0026) is built as a case workflow **without** benefit calculation (ROW-087–091: amounts are typed; no limits or rates seeded), without Diagram 7 payment hand-off (payments end at "Paid" with a reference), without a relocation planning study screen beyond its date, and without an appeals official/role (appeal dates and outcome are fields). The payment approval bands are **placeholders** until an administrator saves their own. The "Acquired" status is seeded only for new tenants; existing tenants add it in the Library (the Relocation tab and parcel Summary warn when it is missing). Relocations made before ADR 0026 have no interest link and do not count towards the Acquired rule until edited. "Relocation complete 1" is still an unexplained second date (flagged, not the trigger).
+- Deferred v2 modules: condemnation/utility/property-disposal **processes**, clearance/certification, platform admin/SSO, document/GIS/reporting platform services.
 - Not built from the requirements document because it gave no screenshot or detail: **Site Work** and **Form rZy9V** tabs; the **Land Planner** section of Appraisal; the **Work log** of Title Encumbrances; per-row file attachments on right-of-entry and settlement rows; Workflow / Select Actions / Save & Continue / Link Document buttons; map on Parcel Location.
 - Open document questions answered by assumption (ADR 0019, 0020): Questionnaire "Sent to owner" is a date and the hidden ownership-interest column is "Phone"; Relocation Number is typed by the user; "Relocation complete" and "Relocation complete 1" are kept as two dates; "Survey" has no tab of its own (Title & Survey covers title encumbrances and easements).
 - Relocation's own "Agents" grid still takes typed names (a different record from the parcel team); existing tenants must add agent types/people to the Library by hand (defaults seed only new tenants); tract-child parcels still record owners on the tract (ADR 0023).

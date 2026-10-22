@@ -18,6 +18,7 @@ import { Route as AppForbiddenRouteImport } from './routes/_app/forbidden'
 import { Route as AppHelpRouteImport } from './routes/_app/help'
 import { Route as AppLibraryRouteImport } from './routes/_app/library'
 import { Route as AppNegotiationsRouteImport } from './routes/_app/negotiations'
+import { Route as AppRelocationsRouteImport } from './routes/_app/relocations'
 import { Route as AppRequestsRouteImport } from './routes/_app/requests'
 import { Route as AppRightsOfEntryRouteImport } from './routes/_app/rights-of-entry'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
@@ -71,6 +72,11 @@ const AppLibraryRoute = AppLibraryRouteImport.update({
 const AppNegotiationsRoute = AppNegotiationsRouteImport.update({
   id: '/negotiations',
   path: '/negotiations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRelocationsRoute = AppRelocationsRouteImport.update({
+  id: '/relocations',
+  path: '/relocations',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRequestsRoute = AppRequestsRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof AppHelpRoute
   '/library': typeof AppLibraryRoute
   '/negotiations': typeof AppNegotiationsRoute
+  '/relocations': typeof AppRelocationsRoute
   '/requests': typeof AppRequestsRoute
   '/rights-of-entry': typeof AppRightsOfEntryRoute
   '/settings': typeof AppSettingsRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/help': typeof AppHelpRoute
   '/library': typeof AppLibraryRoute
   '/negotiations': typeof AppNegotiationsRoute
+  '/relocations': typeof AppRelocationsRoute
   '/requests': typeof AppRequestsRoute
   '/rights-of-entry': typeof AppRightsOfEntryRoute
   '/settings': typeof AppSettingsRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/_app/help': typeof AppHelpRoute
   '/_app/library': typeof AppLibraryRoute
   '/_app/negotiations': typeof AppNegotiationsRoute
+  '/_app/relocations': typeof AppRelocationsRoute
   '/_app/requests': typeof AppRequestsRoute
   '/_app/rights-of-entry': typeof AppRightsOfEntryRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/library'
     | '/negotiations'
+    | '/relocations'
     | '/requests'
     | '/rights-of-entry'
     | '/settings'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/library'
     | '/negotiations'
+    | '/relocations'
     | '/requests'
     | '/rights-of-entry'
     | '/settings'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/_app/help'
     | '/_app/library'
     | '/_app/negotiations'
+    | '/_app/relocations'
     | '/_app/requests'
     | '/_app/rights-of-entry'
     | '/_app/settings'
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNegotiationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/relocations': {
+      id: '/_app/relocations'
+      path: '/relocations'
+      fullPath: '/relocations'
+      preLoaderRoute: typeof AppRelocationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/requests': {
       id: '/_app/requests'
       path: '/requests'
@@ -400,6 +419,7 @@ interface AppRouteChildren {
   AppHelpRoute: typeof AppHelpRoute
   AppLibraryRoute: typeof AppLibraryRoute
   AppNegotiationsRoute: typeof AppNegotiationsRoute
+  AppRelocationsRoute: typeof AppRelocationsRoute
   AppRequestsRoute: typeof AppRequestsRoute
   AppRightsOfEntryRoute: typeof AppRightsOfEntryRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -420,6 +440,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppHelpRoute: AppHelpRoute,
   AppLibraryRoute: AppLibraryRoute,
   AppNegotiationsRoute: AppNegotiationsRoute,
+  AppRelocationsRoute: AppRelocationsRoute,
   AppRequestsRoute: AppRequestsRoute,
   AppRightsOfEntryRoute: AppRightsOfEntryRoute,
   AppSettingsRoute: AppSettingsRoute,

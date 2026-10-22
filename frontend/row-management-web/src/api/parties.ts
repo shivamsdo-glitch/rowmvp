@@ -144,6 +144,8 @@ export interface PartyLink {
   sharePercent: number | null
   /** A value of the Library's Owner type list, for ownership interests ("Vested Owner", "Prior Owner"...). */
   ownerType: string | null
+  /** An ownership interest whose holder must be relocated (ADR 0026). */
+  displacementRequired?: boolean
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null
@@ -183,6 +185,7 @@ export interface PartyLinkInput {
   role: PartyRole
   sharePercent: number | null
   ownerType?: string | null
+  displacementRequired?: boolean
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null
@@ -192,6 +195,7 @@ export interface PartyLinkInput {
 export interface PartyLinkChange {
   sharePercent: number | null
   ownerType?: string | null
+  displacementRequired?: boolean
   notes: string | null
   leaseOnFile: boolean
   leaseDetails: string | null

@@ -22,6 +22,10 @@ public sealed class OverviewController : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<AppraisalOverviewRow>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Appraisals([FromQuery] string? search, CancellationToken ct) => Ok(await _mediator.Send(new AppraisalOverviewQuery(search), ct));
 
+    [HttpGet("relocations")]
+    [ProducesResponseType(typeof(IReadOnlyList<RelocationOverviewRow>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Relocations([FromQuery] string? search, CancellationToken ct) => Ok(await _mediator.Send(new RelocationOverviewQuery(search), ct));
+
     [HttpGet("negotiations")]
     [ProducesResponseType(typeof(IReadOnlyList<NegotiationOverviewRow>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Negotiations([FromQuery] string? search, CancellationToken ct) => Ok(await _mediator.Send(new NegotiationOverviewQuery(search), ct));

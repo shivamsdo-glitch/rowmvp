@@ -1,4 +1,4 @@
-import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, TitleClosing, Appraisal, Negotiation, Questionnaire, Condemnation, PropertyRecord, Relocation } from '@/api/parcel-tabs'
+import type { ContactLogEntry, DocumentInfo, Easement, Encumbrance, TitleClosing, Appraisal, Negotiation, Questionnaire, Condemnation, PropertyRecord, Relocation, RelocationBand, RelocationPayment, RelocationProgress } from '@/api/parcel-tabs'
 import { fakeRecordsApi, type FakeRecords, type FakeRecordsOptions } from './fake-records'
 
 function json(body: unknown, status = 200) {
@@ -18,6 +18,11 @@ export interface FakeTabsOptions extends FakeRecordsOptions {
   condemnations?: (Partial<Condemnation> & { parcelId: string })[]
   properties?: (Partial<PropertyRecord> & { parcelId: string })[]
   relocations?: (Partial<Relocation> & { parcelId: string })[]
+  /** The relocation progress the server reports for every parcel. */
+  progress?: Partial<RelocationProgress>
+  bands?: RelocationBand[]
+  /** The signed-in person's user id (the requester of fake payments), so "requested by me" can be tested. */
+  userId?: string
 }
 
 export interface FakeTabs extends FakeRecords {
@@ -32,6 +37,8 @@ export interface FakeTabs extends FakeRecords {
   condemnations: Condemnation[]
   properties: PropertyRecord[]
   relocations: Relocation[]
+  progress: RelocationProgress
+  bands: { bands: RelocationBand[]; isDefault: boolean }
 }
 
 /** An in-memory stand-in for a parcel's Contact Log, Easements and the attachments on them, with the server's rules and page permissions. */
@@ -88,8 +95,11 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
   }))
   const relocations: Relocation[] = (opts.relocations ?? []).map((r) => ({
     id: id('rl'), parcelNumber: '001', vestedOwnerName: null, details: { relocationNumber: 'R-1', displaceeName: 'Kamali', relocationType: 'Residential' }, statusNotes: [], agents: [], contacts: [],
-    eligibilities: [], contactLog: [], updatedAt: '2026-01-01T00:00:00Z', ...r,
+    eligibilities: [], contactLog: [], updatedAt: '2026-01-01T00:00:00Z', payments: [], interestOwnerName: null, claimDeadline: null, stage: 'Not started', ...r,
   }))
+  const progress: RelocationProgress = { displacedInterests: 0, completedInterests: 0, readyToAcquire: false, acquiredStatusAvailable: true, statusName: 'Inactive', isAcquired: false, ...opts.progress }
+  const bands = { bands: opts.bands ?? [{ minAmount: 0, maxAmount: 25000, roles: ['ProjectManager'] }, { minAmount: 25000, maxAmount: null, roles: ['ProjectManager', 'Finance'] }], isDefault: !opts.bands }
+  const rolesOf = () => [opts.role ?? '']
   const pageOf = (entityType: string) =>
     entityType === 'ParcelCondemnation' ? 'parcelcondemnation' : entityType === 'ParcelProperty' ? 'parcelproperty' : entityType === 'ParcelRelocation' ? 'parcelrelocation'
     : entityType === 'ParcelQuestionnaire' ? 'parcelquestionnaire' : entityType === 'ParcelNegotiation' ? 'parcelnegotiation' : entityType === 'ParcelAppraisal' ? 'parcelappraisal' : entityType === 'TitleClosing' ? 'titleclosing' : entityType === 'Encumbrance' ? 'titleencumbrances' : entityType === 'ContactLog' ? 'contactlog' : entityType === 'Easement' ? 'easements' : 'parcels'
@@ -127,18 +137,80 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
       return new Response(null, { status: 204 })
     }
 
-    const om = /^\/api\/v1\/overview\/(appraisals|negotiations|title-closings|encumbrances|easements)$/.exec(url.pathname)
+    if (url.pathname === '/api/v1/relocation-payment-bands') {
+      if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
+      if (method === 'GET') return json(bands)
+      if (!can('administration', 'update')) return forbidden()
+      const sent = (JSON.parse(String(init?.body)).bands ?? []) as RelocationBand[]
+      if (sent.length === 0 || sent[0].minAmount !== 0 || sent[sent.length - 1].maxAmount !== null) return problem(400, 'validation_failed', 'Validation failed.', { Bands: ['The first band must start at 0, and the last band must have no upper limit.'] })
+      bands.bands = sent
+      bands.isDefault = false
+      return json(bands)
+    }
+
+    const pr = /^\/api\/v1\/parcels\/([^/]+)\/relocation-progress$/.exec(url.pathname)
+    if (pr) {
+      if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
+      if (!can('parcelrelocation', 'read')) return forbidden()
+      return json(progress)
+    }
+
+    const pm = /^\/api\/v1\/parcels\/([^/]+)\/relocations\/([^/]+)\/payments(?:\/([^/]+)\/(decision|paid))?$/.exec(url.pathname)
+    if (pm) {
+      if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
+      const [, pid, rlid, payId, verb] = pm
+      const body = JSON.parse(String(init?.body ?? '{}'))
+      base.calls.push({ key: `${method} ${url.pathname}`, body })
+      const r = relocations.find((x) => x.id === rlid && x.parcelId === pid)
+      if (!r) return problem(404, 'not_found', 'Relocation was not found.')
+      r.payments = r.payments ?? []
+      if (!verb) {
+        if (!can('parcelrelocation', 'update')) return forbidden()
+        if (!(body.amount > 0)) return problem(400, 'validation_failed', 'Validation failed.', { Amount: ['Enter an amount above zero.'] })
+        const chain = body.amount >= 25000 ? ['ProjectManager', 'Finance'] : ['ProjectManager']
+        const p: RelocationPayment = {
+          id: id('pay'), paymentType: body.paymentType, amount: body.amount, isAdvance: !!body.isAdvance, taxable: !!body.taxable, notes: body.notes ?? null, status: 'Requested',
+          requiredRoles: chain, approvals: [], nextApprover: chain[0], decisionNote: null, paidAt: null, paymentReference: null, requestedAt: '2026-10-22T00:00:00Z', requestedByMe: true,
+        }
+        r.payments.push(p)
+        return json(r)
+      }
+      const p = r.payments.find((x) => x.id === payId)
+      if (!p) return problem(404, 'not_found', 'Payment was not found.')
+      if (verb === 'paid') {
+        if (!can('payments', 'update')) return forbidden()
+        if (p.status !== 'Approved') return problem(409, 'payment_not_approved', 'Only an approved payment can be marked paid.')
+        p.status = 'Paid'; p.paymentReference = body.reference ?? null; p.paidAt = '2026-10-22T00:00:00Z'
+        return json(r)
+      }
+      if (p.requestedByMe) return problem(403, 'forbidden', 'You requested this payment, so someone else has to approve or reject it.')
+      if (!rolesOf().includes(p.nextApprover ?? '') && opts.role !== 'Admin') return problem(403, 'forbidden', `The next sign-off on this payment is ${p.nextApprover}.`)
+      if (!body.approve) {
+        if (!String(body.note ?? '').trim()) return problem(400, 'validation_failed', 'Validation failed.', { Note: ['Say why the payment is rejected.'] })
+        p.status = 'Rejected'; p.decisionNote = body.note; p.nextApprover = null
+        return json(r)
+      }
+      p.approvals.push({ role: p.nextApprover!, approvedAt: '2026-10-22T00:00:00Z' })
+      const next = p.requiredRoles.find((x) => !p.approvals.some((a) => a.role === x)) ?? null
+      p.nextApprover = next
+      if (!next) p.status = 'Approved'
+      return json(r)
+    }
+
+    const om = /^\/api\/v1\/overview\/(appraisals|negotiations|title-closings|encumbrances|easements|relocations)$/.exec(url.pathname)
     if (om) {
       if (headers.Authorization !== 'Bearer good-token') return json({ title: 'unauthorized' }, 401)
-      const kind = om[1] as 'appraisals' | 'negotiations' | 'title-closings' | 'encumbrances' | 'easements'
-      const page = { appraisals: 'parcelappraisal', negotiations: 'parcelnegotiation', 'title-closings': 'titleclosing', encumbrances: 'titleencumbrances', easements: 'easements' }[kind]
+      const kind = om[1] as 'appraisals' | 'negotiations' | 'title-closings' | 'encumbrances' | 'easements' | 'relocations'
+      const page = { appraisals: 'parcelappraisal', negotiations: 'parcelnegotiation', 'title-closings': 'titleclosing', encumbrances: 'titleencumbrances', easements: 'easements', relocations: 'relocations' }[kind]
       if (!can(page, 'read')) return forbidden()
       const term = (url.searchParams.get('search') ?? '').trim().toLowerCase()
-      const store = ({ appraisals, negotiations, 'title-closings': titleClosings, encumbrances, easements }[kind] as unknown as { id: string; parcelId: string; number: string }[])
+      const store = (kind === 'relocations'
+        ? relocations.map((r) => ({ ...r, number: String(r.details.relocationNumber), displaceeName: r.details.displaceeName, relocationType: r.details.relocationType, assignedTo: r.details.assignedTo ?? null, targetVacateDate: r.details.targetVacateDate ?? null, openPayments: (r.payments ?? []).filter((p) => p.status === 'Requested' || p.status === 'Approved').length }))
+        : ({ appraisals, negotiations, 'title-closings': titleClosings, encumbrances, easements }[kind] as unknown as { id: string; parcelId: string; number: string }[]))
       const rows = store.map((r) => {
         const parcel = base.parcels.find((p) => p.id === r.parcelId)
         return { ...r, parcelNumber: parcel?.number ?? '', address: parcel?.address ?? null, ownerName: parcel?.ownerName ?? null }
-      }).filter((r) => !term || [r.parcelNumber, r.address, r.ownerName, r.number].some((v) => (v ?? '').toLowerCase().includes(term)))
+      }).filter((r) => !term || [r.parcelNumber, r.address, r.ownerName, r.number, (r as { displaceeName?: unknown }).displaceeName as string | undefined].some((v) => (v ?? '').toLowerCase().includes(term)))
       return json(rows)
     }
 
@@ -238,7 +310,7 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
         Object.assign(r, fields)
         return json(r)
       }
-      const r: Relocation = { id: id('rl'), parcelId, parcelNumber: parcel.number, vestedOwnerName: null, ...fields }
+      const r: Relocation = { id: id('rl'), parcelId, parcelNumber: parcel.number, vestedOwnerName: null, payments: [], interestOwnerName: null, claimDeadline: null, stage: 'Not started', ...fields }
       relocations.push(r)
       return json(r, 201)
     }
@@ -408,5 +480,5 @@ export function fakeTabsApi(opts: FakeTabsOptions): FakeTabs {
     return json(e, 201)
   }
 
-  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, encumbrances, titleClosings, appraisals, negotiations, questionnaires, condemnations, properties, relocations }
+  return { ...base, fetch: fetchImpl as typeof fetch, contactLog, easements, documents, encumbrances, titleClosings, appraisals, negotiations, questionnaires, condemnations, properties, relocations, progress, bands }
 }

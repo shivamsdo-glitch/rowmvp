@@ -37,7 +37,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         ['Title Researcher', 'Title & Survey, Title Encumbrances, Title and Closing'],
         ['Appraiser or Appraisal Approver', 'Appraisal'],
         ['Negotiator', 'Negotiation & Closing, Contact Log, Ownership interests'],
-        ['Relocation Agent', 'Questionnaire and Relocation'],
+        ['Relocation Agent', 'Relocations, the Relocation tab, Questionnaire'],
         ['Finance', 'Requests and the records you read for payment'],
         ['Administrator', 'Everything, plus Settings, Library and Configuration'],
       ] },
@@ -184,7 +184,8 @@ export const HELP_TOPICS: HelpTopic[] = [
         ['Appraisal', 'Appraisals with their amounts. Review fields and approved just compensation are for approvers.', 'Appraiser, Appraisal Approver'],
         ['Negotiation', 'Offers, settlement, counteroffers, the right of entry form and status notes.', 'Negotiator'],
         ['Questionnaire', 'Ownership interests and question and answer grids.', 'Relocation Agent'],
-        ['Condemnation, Property management and Relocation', 'Records your agency fills in. The processes behind them come later.', 'Negotiator, Project Manager, Relocation Agent'],
+        ['Relocation', 'One case per displaced ownership interest: notices, advisory interview, housing study and inspection, claim and appeal, payments and completion. See “Relocation cases and payments”.', 'Relocation Agent'],
+        ['Condemnation and Property management', 'Records your agency fills in. The processes behind them come later.', 'Negotiator, Project Manager'],
         ['Contact log', 'Every call, email and visit with the owner.', 'Negotiator'],
         ['Easements', 'Easements with station range and term.', 'Surveyor'],
       ] },
@@ -200,6 +201,28 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
 
   // ── Acquisition work ─────────────────────────────────────────────────────
+  {
+    id: 'relocation', section: 'Acquisition work', title: 'Relocation cases and payments',
+    summary: 'Track a displaced owner or tenant from first notice to completion, and get relocation payments approved and paid.',
+    blocks: [
+      { kind: 'p', text: 'Open Relocations in the side menu, search by parcel, owner, address, relocation number or displacee, and open the case. You can also work the same cases on the parcel’s Relocation tab.' },
+      { kind: 'steps', title: 'Set up a relocation', items: [
+        'On the parcel’s Ownership interests tab, tick Displacement required on each owner who must be relocated.',
+        'On the Relocation tab, add a relocation and choose the ownership interest it is for. The displacee name fills in from the owner.',
+        'Record the planning study, the advisory interview, the General Information Notice, the eligibility notice and the 90-day and 30-day notices as they happen. The case shows its stage and the claim deadline (18 months after the displacee vacated).',
+        'Record the housing study, the comparable dwelling notice, the inspection and any eligibility exception. Record a denied claim and any appeal.',
+        'Fill in Relocation complete when the case is finished.',
+      ] },
+      { kind: 'note', text: 'A parcel becomes Acquired automatically once every displaced ownership interest has a relocation with a Relocation complete date. A parcel with no displaced interests is not changed. If your agency has no “Acquired” status in the Library, the parcel stays as it is and the parcel shows a warning.' },
+      { kind: 'steps', title: 'Pay a displacee', items: [
+        'Open the case’s Payments and request a payment: choose the type and type the amount. The application does not calculate benefits.',
+        'The request goes to the people your agency has set for that amount. They sign in order, and you cannot sign a payment you requested.',
+        'Approvers see waiting payments on their Dashboard. They approve, or reject with a reason.',
+        'Once every sign-off is done, Finance marks the payment paid and can enter the warrant or EFT number.',
+      ] },
+      { kind: 'p', text: 'An Administrator sets who signs at each dollar amount under Configuration, Relocation payment approvals. Until it is saved, placeholder defaults apply.' },
+    ],
+  },
   {
     id: 'requests', section: 'Acquisition work', title: 'Requests and approvals',
     summary: 'Ask for a property to be acquired and have somebody else approve it.',

@@ -174,10 +174,73 @@ public class ParcelRelocation : EntityBase
     public DateOnly? RelocationComplete { get; set; }
     public DateOnly? RelocationComplete1 { get; set; }
 
+    // ── Case workflow (ADR 0026) ──
+    /// <summary>The ownership interest (a <see cref="PartyLink"/>) this relocation is for. Null on records made before ADR 0026.</summary>
+    public Guid? PartyLinkId { get; set; }
+    public DateOnly? PlanningStudyDate { get; set; }
+    public string? AdvisoryNeeds { get; set; }
+    public DateOnly? ReplacementHousingStudyDate { get; set; }
+    public DateOnly? ComparableNoticeDate { get; set; }
+    public DateOnly? InspectionDate { get; set; }
+    public bool? DecentSafeSanitary { get; set; }
+    public bool HousingOfLastResort { get; set; }
+    /// <summary>One of <c>RelocationExceptions</c>, or null.</summary>
+    public string? EligibilityException { get; set; }
+    public DateOnly? ClaimDeniedDate { get; set; }
+    public DateOnly? AppealFiledDate { get; set; }
+    public DateOnly? AppealDecisionDate { get; set; }
+    public string? AppealOutcome { get; set; }
+
+    public List<RelocationPayment> Payments { get; set; } = new();
     public List<RelocationAgentRow> Agents { get; set; } = new();
     public List<RelocationContact> Contacts { get; set; } = new();
     public List<RelocationEligibility> Eligibilities { get; set; } = new();
     public List<RelocationContactLogRow> ContactLog { get; set; } = new();
+}
+
+public static class RelocationExceptions
+{
+    public const string EvictionForCause = "Eviction for cause";
+    public const string NotLawfullyPresent = "Alien not lawfully present";
+    public const string Duplication = "Duplication of payment";
+    public static readonly IReadOnlyList<string> All = new[] { EvictionForCause, NotLawfullyPresent, Duplication };
+}
+
+public enum RelocationPaymentStatus { Requested = 1, Approved = 2, Rejected = 3, Paid = 4 }
+
+/// <summary>A payment request on a relocation (ADR 0026). The amount is typed; the approval steps are fixed from the agency's bands when it is requested.</summary>
+public class RelocationPayment : EntityBase
+{
+    public Guid RelocationId { get; set; }
+    public string PaymentType { get; set; } = default!;
+    public decimal Amount { get; set; }
+    public bool IsAdvance { get; set; }
+    /// <summary>Taxable for 1099 reporting (ROW-097).</summary>
+    public bool Taxable { get; set; }
+    public string? Notes { get; set; }
+    public RelocationPaymentStatus Status { get; set; } = RelocationPaymentStatus.Requested;
+    /// <summary>The ordered roles that must sign, comma separated, as evaluated when the request was made.</summary>
+    public string RequiredRoles { get; set; } = default!;
+    public string? DecisionNote { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public string? PaymentReference { get; set; }
+    public List<RelocationPaymentApproval> Approvals { get; set; } = new();
+}
+
+public class RelocationPaymentApproval : EntityBase
+{
+    public Guid PaymentId { get; set; }
+    public string Role { get; set; } = default!;
+    public Guid ApprovedBy { get; set; }
+    public DateTime ApprovedAt { get; set; }
+}
+
+/// <summary>One band of the relocation payment approval chain. A tenant with no rows uses the defaults in <c>DefaultRelocationBands</c>.</summary>
+public class RelocationPaymentBand : EntityBase
+{
+    public decimal MinAmount { get; set; }
+    public decimal? MaxAmount { get; set; }
+    public string Roles { get; set; } = default!;
 }
 
 public class RelocationAgentRow : EntityBase

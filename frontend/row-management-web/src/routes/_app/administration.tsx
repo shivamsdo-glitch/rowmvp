@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/auth-context'
 import { PlanReviewGateCard } from '@/features/acquisition/PlanReviewGateCard'
 import { CustomFieldsCard, DeadlineRulesCard, ParcelStatusesCard, StepOverrideCard, WorkflowsCard } from '@/features/parcels/ParcelRulesCards'
 import { ProgramSettingsCard } from '@/features/dashboard/ProgramSettingsCard'
+import { RelocationBandsCard } from '@/features/parcels/RelocationBandsCard'
 import { NumberSettingsCard } from '@/features/projects/NumberSettingsCard'
 import { TimeZoneCard } from '@/features/projects/TimeZoneCard'
 
@@ -22,6 +23,7 @@ function AdministrationPage() {
       <NumberSettingsCard />
       <TimeZoneCard />
       <ProgramSettingsCard />
+      {manager.can('parcelrelocation') && <RelocationBandsCard />}
       {parcelRules && (
         <>
           <ParcelStatusesCard />

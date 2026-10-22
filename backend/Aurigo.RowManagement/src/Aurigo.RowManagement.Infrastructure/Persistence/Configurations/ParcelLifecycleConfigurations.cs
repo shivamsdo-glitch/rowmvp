@@ -131,7 +131,51 @@ public class ParcelRelocationConfiguration : IEntityTypeConfiguration<ParcelRelo
         b.HasMany(x => x.Contacts).WithOne().HasForeignKey(c => c.RelocationId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(x => x.Eligibilities).WithOne().HasForeignKey(c => c.RelocationId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(x => x.ContactLog).WithOne().HasForeignKey(c => c.RelocationId).OnDelete(DeleteBehavior.Restrict);
+        b.Property(x => x.AdvisoryNeeds).HasMaxLength(4000);
+        b.Property(x => x.EligibilityException).HasMaxLength(100);
+        b.Property(x => x.AppealOutcome).HasMaxLength(1000);
+        b.HasMany(x => x.Payments).WithOne().HasForeignKey(c => c.RelocationId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.ParcelId, x.RelocationNumber }).IsUnique();
+        b.HasIndex(x => x.PartyLinkId);
+    }
+}
+
+public class RelocationPaymentConfiguration : IEntityTypeConfiguration<RelocationPayment>
+{
+    public void Configure(EntityTypeBuilder<RelocationPayment> b)
+    {
+        b.ToTable("relocation_payments");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.PaymentType).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Amount).HasPrecision(18, 2);
+        b.Property(x => x.Notes).HasMaxLength(2000);
+        b.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.RequiredRoles).IsRequired().HasMaxLength(500);
+        b.Property(x => x.DecisionNote).HasMaxLength(1000);
+        b.Property(x => x.PaymentReference).HasMaxLength(200);
+        b.HasMany(x => x.Approvals).WithOne().HasForeignKey(c => c.PaymentId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class RelocationPaymentApprovalConfiguration : IEntityTypeConfiguration<RelocationPaymentApproval>
+{
+    public void Configure(EntityTypeBuilder<RelocationPaymentApproval> b)
+    {
+        b.ToTable("relocation_payment_approvals");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Role).IsRequired().HasMaxLength(100);
+    }
+}
+
+public class RelocationPaymentBandConfiguration : IEntityTypeConfiguration<RelocationPaymentBand>
+{
+    public void Configure(EntityTypeBuilder<RelocationPaymentBand> b)
+    {
+        b.ToTable("relocation_payment_bands");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.MinAmount).HasPrecision(18, 2);
+        b.Property(x => x.MaxAmount).HasPrecision(18, 2);
+        b.Property(x => x.Roles).IsRequired().HasMaxLength(500);
     }
 }
 

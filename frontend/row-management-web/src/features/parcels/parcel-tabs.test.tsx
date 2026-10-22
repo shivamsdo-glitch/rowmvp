@@ -812,7 +812,7 @@ describe('Property management and disposition (AT-PM-43)', () => {
 
 describe('Relocation (AT-RA-41)', () => {
   it('adds a relocation with its required fields, contacts, eligibility and contact log', async () => {
-    const { fake, user } = open('RelocationAgent')
+    const { fake, user } = open('RelocationAgent', { parties: [{ id: 'pt1', name: 'Kamali' }], links: [{ partyId: 'pt1', parcelId: 'pc1', role: 'FeeOwner' as const }] })
     await tab(user, 'Relocation')
     const form = await screen.findByRole('form', { name: 'Add a relocation' })
 
@@ -823,7 +823,8 @@ describe('Relocation (AT-RA-41)', () => {
     expect(fake.relocations).toHaveLength(0)
 
     await user.type(within(form).getByLabelText(/^Relocation number/), 'R-7')
-    await user.type(within(form).getByLabelText(/^Displacee name/), 'Kamali')
+    await user.selectOptions(within(form).getByLabelText(/^Ownership interest/), within(within(form).getByLabelText(/^Ownership interest/)).getByRole('option', { name: /Kamali/ }))
+    expect(within(form).getByLabelText(/^Displacee name/)).toHaveValue('Kamali')
     await user.selectOptions(within(form).getByLabelText(/^Relocation type/), 'Residential')
     fireEvent.change(within(form).getByLabelText('GIN mailed date'), { target: { value: '2026-03-05' } })
     fireEvent.change(within(form).getByLabelText('GIN delivered date'), { target: { value: '2026-03-01' } })

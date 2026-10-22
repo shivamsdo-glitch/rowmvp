@@ -40,6 +40,7 @@ internal static class DashboardShared
 {
     public const int WindowDays = 30;
     public const int SoonDays = 30;
+    public const int RelocationClaimWarnDays = 60;
     /// <summary>The most audit rows read for one dashboard; the window is short, so this only bites an unusually busy agency.</summary>
     public const int MaxAuditRows = 20_000;
 
@@ -67,9 +68,11 @@ internal static class DashboardShared
         private readonly Func<string, PermissionAction, bool> _can;
         private readonly DateOnly _today;
         private readonly Guid _me;
+        private readonly IReadOnlyCollection<string> _roles;
 
-        public Counter(IRowDbContext db, IMediator mediator, Func<string, PermissionAction, bool> can, DateOnly today, Guid me)
+        public Counter(IRowDbContext db, IMediator mediator, Func<string, PermissionAction, bool> can, DateOnly today, Guid me, IReadOnlyCollection<string>? roles = null)
         {
+            _roles = roles ?? Array.Empty<string>();
             _db = db;
             _mediator = mediator;
             _can = can;
@@ -125,6 +128,24 @@ internal static class DashboardShared
                 var n = await _db.ParcelEncumbrances.CountAsync(e => e.CureStatus == null || e.CureStatus == "", ct);
                 Add("encumbrances-open", "Title encumbrances with no cure status", n, LinkFor(PageKeys.Title, "/title", "/parcels"), "info");
             }
+            if (_can(PageKeys.ParcelRelocation, PermissionAction.Read))
+            {
+                var cases = await _db.ParcelRelocations.AsNoTracking()
+                    .Select(r => new { r.RelocationComplete, r.IneligibleForRelocation, r.ActualVacateDate }).ToListAsync(ct);
+                var open = cases.Where(c => c.RelocationComplete == null && !c.IneligibleForRelocation).ToList();
+                Add("relocations-open", "Relocation cases still open", open.Count, LinkFor(PageKeys.Relocations, "/relocations", "/parcels"), "info");
+                var expiring = open.Count(c => RelocationCalc.ClaimExpiring(c.ActualVacateDate, c.RelocationComplete, _today, RelocationClaimWarnDays));
+                Add("relocation-claims-expiring", $"Relocation claim periods ending within {RelocationClaimWarnDays} days", expiring, LinkFor(PageKeys.Relocations, "/relocations", "/parcels"), "warn");
+                // Payments waiting for this person's sign-off: the next role in the chain is one of theirs, and they did not ask for it.
+                var toSign = await _db.RelocationPayments.AsNoTracking().Include(p => p.Approvals).Where(p => p.Status == RelocationPaymentStatus.Requested && p.CreatedBy != _me).ToListAsync(ct);
+                var signCount = toSign.Count(p => RelocationCalc.ParseRoles(p.RequiredRoles).FirstOrDefault(r => !p.Approvals.Any(a => a.Role == r)) is { } next && _roles.Contains(next));
+                if (signCount > 0) Add("relocation-payments-to-sign", "Relocation payments waiting for your sign-off", signCount, "/parcels", "warn");
+            }
+            if (_can(PageKeys.Payments, PermissionAction.Update))
+            {
+                var n = await _db.RelocationPayments.CountAsync(p => p.Status == RelocationPaymentStatus.Approved, ct);
+                Add("relocation-payments-to-pay", "Approved relocation payments waiting to be paid", n, "/parcels", "warn");
+            }
             return items;
         }
     }
@@ -161,7 +182,7 @@ public sealed class GetMyDashboardQueryHandler : IRequestHandler<GetMyDashboardQ
             PermissionAction.Create => g.CanCreate, PermissionAction.Read => g.CanRead, PermissionAction.Update => g.CanUpdate, _ => g.CanDelete,
         };
 
-        var pending = await new DashboardShared.Counter(_db, _mediator, Can, DateOnly.FromDateTime(now), _user.Id).PendingAsync(ct);
+        var pending = await new DashboardShared.Counter(_db, _mediator, Can, DateOnly.FromDateTime(now), _user.Id, _user.Roles).PendingAsync(ct);
         var entries = await DashboardShared.EntriesAsync(_db, now.AddDays(-DashboardShared.WindowDays), _user.Id, ct);
         var done = ActivitySummary.Summarize(entries, now, DashboardShared.WindowDays);
         var name = await _db.AppUsers.AsNoTracking().Where(u => u.Id == _user.Id).Select(u => u.FirstName + " " + u.LastName).FirstOrDefaultAsync(ct) ?? _user.Email;
@@ -208,6 +229,8 @@ public sealed class GetTeamDashboardQueryHandler : IRequestHandler<GetTeamDashbo
         var reminders = await _mediator.Send(new ListRemindersQuery(7), ct);
         var roe = await _db.RightsOfEntry.CountAsync(r => r.Status == RightOfEntryStatus.Granted && r.ExpiresOn != null && r.ExpiresOn >= today && r.ExpiresOn <= soon, ct);
         var closings = await _db.ParcelTitleClosings.CountAsync(t => t.ActualClosingDate == null && t.AnticipatedClosingDate != null && t.AnticipatedClosingDate <= soon, ct);
+        var relocating = await _db.ParcelRelocations.CountAsync(r => r.RelocationComplete == null && !r.IneligibleForRelocation, ct);
+        var paymentsWaiting = await _db.RelocationPayments.CountAsync(p => p.Status == RelocationPaymentStatus.Requested || p.Status == RelocationPaymentStatus.Approved, ct);
         var tiles = new List<TeamTileDto>
         {
             new("projects", "Projects", projects, "/projects", "info"),
@@ -216,6 +239,8 @@ public sealed class GetTeamDashboardQueryHandler : IRequestHandler<GetTeamDashbo
             new("deadlines-overdue", "Overdue deadlines", reminders.Count(r => r.Status == nameof(DeadlineStatus.Overdue)), "/parcels", "danger"),
             new("roe-expiring", "Rights of entry expiring", roe, "/rights-of-entry", "warn"),
             new("closings-due", "Closings due or past due", closings, "/negotiations", "warn"),
+            new("relocations-open", "Relocation cases open", relocating, "/relocations", "info"),
+            new("relocation-payments", "Relocation payments waiting", paymentsWaiting, "/relocations", "warn"),
         };
 
         // Parcels by status, in the agency's own order.

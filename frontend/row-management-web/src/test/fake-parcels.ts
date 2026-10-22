@@ -62,6 +62,7 @@ export const LIBRARY_LISTS: [string, string, string[]][] = [
   ['displacee_status', 'Displacee status', ['Owner', 'Tenant']],
   ['displacee_interest', 'Displacee interest', ['Fee', 'Lease']],
   ['eligibility_type', 'Relocation eligibility type', ['Moving Expenses', 'Replacement Housing']],
+  ['relocation_payment_type', 'Relocation payment type', ['Moving expense', 'Fixed payment']],
   ['offer_type', 'Offer type', ['Initial Offer', 'Final Offer']],
   ['settlement_type', 'Settlement type', ['Administrative']],
   ['counteroffer_response', 'Counteroffer response', ['Accepted', 'Declined']],

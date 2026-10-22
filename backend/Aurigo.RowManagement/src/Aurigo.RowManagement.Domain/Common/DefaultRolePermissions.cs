@@ -114,6 +114,10 @@ public static class DefaultRolePermissions
             {
                 [RoleNames.RelocationAgent] = P, [RoleNames.Admin] = P,
             },
+            [PageKeys.Relocations] = new Dictionary<string, string>
+            {
+                [RoleNames.RelocationAgent] = P, [RoleNames.Admin] = P,
+            },
             [PageKeys.ParcelQuestionnaire] = new Dictionary<string, string>
             {
                 [RoleNames.RelocationAgent] = P, [RoleNames.Admin] = P,

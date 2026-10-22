@@ -26,7 +26,7 @@ public sealed class NewPartyFieldsValidator : PartyFieldsValidator<NewPartyField
 /// </summary>
 public sealed record PartyLinkInput(
     Guid? PartyId, NewPartyFields? NewParty, PartyRole Role, decimal? SharePercent, string? Notes,
-    bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null);
+    bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null, bool DisplacementRequired = false);
 
 public sealed class PartyLinkInputValidator : AbstractValidator<PartyLinkInput>
 {
@@ -54,6 +54,8 @@ public sealed class PartyLinkInputValidator : AbstractValidator<PartyLinkInput>
         RuleFor(x => x.LeaseDetails).MaximumLength(1000);
         RuleFor(x => x.InsuranceDetails).MaximumLength(1000);
         RuleFor(x => x.OwnerType).MaximumLength(100);
+        RuleFor(x => x).Must(x => !x.DisplacementRequired || !Enum.IsDefined(x.Role) || PartyRoles.CategoryOf(x.Role) == PartyCategory.Ownership)
+            .OverridePropertyName("DisplacementRequired").WithMessage("Displacement applies to ownership interests only.");
         RuleFor(x => x).Must(x => x.OwnerType is null || !Enum.IsDefined(x.Role) || PartyRoles.CategoryOf(x.Role) == PartyCategory.Ownership)
             .OverridePropertyName("OwnerType").WithMessage("An owner type applies to ownership interests only.");
     }
@@ -96,10 +98,12 @@ internal static class PartyLinkWriter
             PartyId = party.Id, ParcelId = parcel?.Id, ParentTractId = tract?.Id, Role = input.Role, SharePercent = input.SharePercent,
             OwnerType = PartyRules.Clean(input.OwnerType), Notes = PartyRules.Clean(input.Notes), LeaseOnFile = input.LeaseOnFile,
             LeaseDetails = PartyRules.Clean(input.LeaseDetails), InsuranceDetails = PartyRules.Clean(input.InsuranceDetails),
+            DisplacementRequired = input.DisplacementRequired,
         };
         db.PartyLinks.Add(link);
         if (PartyRoles.CarriesShare(input.Role)) Touch(parcel, tract);
         await SaveAsync(db, ct);
+        if (link.DisplacementRequired) await SyncRelocationAsync(db, link, ct);
         return (await parties.ToLinkDtosAsync(new[] { link }, ct)).Single();
     }
 
@@ -138,6 +142,14 @@ internal static class PartyLinkWriter
             db.ChangeTracker.Clear();
             throw new ConflictException("party_link_exists", "That party is already recorded here in that role.");
         }
+    }
+
+    /// <summary>Re-checks the Acquired rule (ADR 0026) for the parcel the link is on, or every parcel of its tract.</summary>
+    public static async Task SyncRelocationAsync(IRowDbContext db, PartyLink link, CancellationToken ct)
+    {
+        if (link.ParcelId is { } pid) await Aurigo.RowManagement.Application.ParcelTabs.RelocationSync.RunAsync(db, pid, ct);
+        else if (link.ParentTractId is { } tid)
+            foreach (var id in await db.Parcels.Where(p => p.ParentTractId == tid).Select(p => p.Id).ToListAsync(ct)) await Aurigo.RowManagement.Application.ParcelTabs.RelocationSync.RunAsync(db, id, ct);
     }
 
     public static string Describe(PartyRole role, bool plural = false) => role switch
@@ -276,7 +288,7 @@ public sealed class AddTractPartyCommandHandler : IRequestHandler<AddTractPartyC
 
 /// <summary>Changes a link's share, notes or tenant details. Its party and role stay; to change those, remove it and add another.</summary>
 public sealed record UpdatePartyLinkCommand(
-    Guid LinkId, decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null) : IRequest<PartyLinkDto>;
+    Guid LinkId, decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null, bool? DisplacementRequired = null) : IRequest<PartyLinkDto>;
 
 public sealed class UpdatePartyLinkCommandValidator : AbstractValidator<UpdatePartyLinkCommand>
 {
@@ -328,6 +340,9 @@ public sealed class UpdatePartyLinkCommandHandler : IRequestHandler<UpdatePartyL
 
         if (request.OwnerType is not null && PartyRoles.CategoryOf(link.Role) != PartyCategory.Ownership)
             throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("OwnerType", "An owner type applies to ownership interests only.") });
+        if (request.DisplacementRequired is not null && PartyRoles.CategoryOf(link.Role) != PartyCategory.Ownership)
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("DisplacementRequired", "Displacement applies to ownership interests only.") });
+        if (request.DisplacementRequired is { } flag) link.DisplacementRequired = flag;
         link.SharePercent = request.SharePercent;
         link.OwnerType = PartyRules.Clean(request.OwnerType);
         link.Notes = PartyRules.Clean(request.Notes);
@@ -336,6 +351,7 @@ public sealed class UpdatePartyLinkCommandHandler : IRequestHandler<UpdatePartyL
         link.InsuranceDetails = PartyRules.Clean(request.InsuranceDetails);
         if (PartyRoles.CarriesShare(link.Role)) PartyLinkWriter.Touch(parcel, tract);
         await PartyLinkWriter.SaveAsync(_db, ct);
+        await PartyLinkWriter.SyncRelocationAsync(_db, link, ct);
         return (await _parties.ToLinkDtosAsync(new[] { link }, ct)).Single();
     }
 
@@ -370,5 +386,6 @@ public sealed class DeletePartyLinkCommandHandler : IRequestHandler<DeletePartyL
         _db.PartyLinks.Remove(link);
         if (PartyRoles.CarriesShare(link.Role)) PartyLinkWriter.Touch(parcel, tract);
         await PartyLinkWriter.SaveAsync(_db, ct);
+        if (link.DisplacementRequired) await PartyLinkWriter.SyncRelocationAsync(_db, link, ct);
     }
 }

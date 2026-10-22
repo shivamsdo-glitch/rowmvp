@@ -103,7 +103,7 @@ function clearText(p: ProjectRow) {
 function ProjectsTable({ projects, onOpen }: { projects: ProjectRow[]; onOpen: (p: ProjectRow) => void }) {
   if (projects.length === 0) return <p className="text-sm text-muted-foreground">No projects yet. Create one under Projects.</p>
   return (
-    <DataTable caption="Projects" headers={['Project', 'Health', 'Parcels', 'Closed', 'Where the parcels are', 'Overdue', 'Stuck', 'Estimate', 'Known cost', 'ROW clear']}>
+    <DataTable caption="Projects" headers={['Project', 'Health', 'Parcels', 'Closed', 'Where the parcels are', 'Overdue', 'Stuck', 'Relocated', 'Estimate', 'Known cost', 'ROW clear']}>
       {projects.map((p) => (
         <tr key={p.id} className="align-top">
           <td className="px-3 py-2">
@@ -121,6 +121,7 @@ function ProjectsTable({ projects, onOpen }: { projects: ProjectRow[]; onOpen: (
           <td className="px-3 py-2"><Pipeline steps={p.byStep} total={p.parcels} /></td>
           <td className={cn('px-3 py-2 tabular-nums', p.overdueParcels > 0 && 'font-semibold text-danger')}>{p.overdueParcels}</td>
           <td className={cn('px-3 py-2 tabular-nums', p.stuckParcels > 0 && 'font-semibold text-danger')}>{p.stuckParcels}</td>
+          <td className="px-3 py-2 tabular-nums">{(p.displaced ?? 0) > 0 ? `${p.relocated ?? 0}/${p.displaced}` : '—'}{(p.relocationsOpen ?? 0) > 0 && <div className="text-xs text-muted-foreground">{p.relocationsOpen} open</div>}</td>
           <td className="px-3 py-2 tabular-nums">{money(p.estimateTotal)}</td>
           <td className={cn('px-3 py-2 tabular-nums', p.estimateTotal && p.knownCost > p.estimateTotal && 'font-semibold text-danger')}>{money(p.knownCost)}</td>
           <td className="px-3 py-2 text-xs">{clearText(p)}</td>
@@ -180,7 +181,7 @@ function Program({ data, onOpen }: { data: ProgramDashboard; onOpen: (p: Project
 function ParcelsTable({ parcels }: { parcels: ParcelRow[] }) {
   if (parcels.length === 0) return <p className="text-sm text-muted-foreground">This project has no parcels yet.</p>
   return (
-    <DataTable caption="Parcels in this project" headers={['Parcel', 'Owner', 'Status', 'Step', 'Days on step', 'Appraisal', 'Approved just comp.', 'Agreed', 'Closing', 'Attention']}>
+    <DataTable caption="Parcels in this project" headers={['Parcel', 'Owner', 'Status', 'Step', 'Days on step', 'Appraisal', 'Approved just comp.', 'Agreed', 'Closing', 'Relocation', 'Attention']}>
       {parcels.map((p) => (
         <tr key={p.id} className="align-top">
           <td className="px-3 py-2">
@@ -195,6 +196,7 @@ function ParcelsTable({ parcels }: { parcels: ParcelRow[] }) {
           <td className="px-3 py-2 tabular-nums">{money(p.approvedJustCompensation)}</td>
           <td className="px-3 py-2 tabular-nums">{money(p.agreedAmount)}</td>
           <td className="px-3 py-2 text-xs">{p.closed ? <span className="font-semibold text-ok">Closed {dateText(p.actualClosing)}</span> : p.anticipatedClosing ? `Due ${dateText(p.anticipatedClosing)}` : '—'}</td>
+          <td className="px-3 py-2 text-xs">{p.relocation ?? '—'}</td>
           <td className="px-3 py-2">
             {p.flags.length === 0 ? <span className="text-xs text-muted-foreground">—</span> : (
               <ul className="space-y-0.5">{p.flags.map((f) => <li key={f} className="text-xs font-medium text-danger">{f}</li>)}</ul>
@@ -224,6 +226,7 @@ function ProjectDetail({ data, onBack }: { data: ProjectDashboard; onBack: () =>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <KpiTile label="Parcels" value={p.parcels} />
         <KpiTile label="Closed" value={`${p.percentClosed}%`} hint={`${p.closed} of ${p.parcels} parcels`} />
+        {(p.displaced ?? 0) > 0 && <KpiTile label="Relocated" value={`${p.relocated ?? 0}/${p.displaced}`} hint="Displaced interests relocated" />}
         <KpiTile label="Estimate" value={p.estimateTotal === null ? '—' : compactMoney(p.estimateTotal)} hint="Latest ROW cost estimate" />
         <KpiTile label="Known cost" value={compactMoney(p.knownCost)} tone={p.estimateTotal && p.knownCost > p.estimateTotal ? 'danger' : 'info'} hint="Agreed amounts, else approved just compensation" />
         <KpiTile label="ROW clear" value={<span className="text-xl">{p.rowClearDate ? dateText(p.rowClearDate) : '—'}</span>} tone={p.daysToClear !== null && p.daysToClear < 0 && p.closed < p.parcels ? 'danger' : 'info'} hint={p.rowClearDate ? clearText(p).replace(/^.*\(/, '').replace(')', '') : 'No date set'} />

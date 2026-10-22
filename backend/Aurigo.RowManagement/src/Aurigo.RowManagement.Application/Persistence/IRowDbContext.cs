@@ -79,6 +79,9 @@ public interface IRowDbContext
     DbSet<RelocationContact> RelocationContacts { get; }
     DbSet<RelocationEligibility> RelocationEligibilities { get; }
     DbSet<RelocationContactLogRow> RelocationContactLogRows { get; }
+    DbSet<RelocationPayment> RelocationPayments { get; }
+    DbSet<RelocationPaymentApproval> RelocationPaymentApprovals { get; }
+    DbSet<RelocationPaymentBand> RelocationPaymentBands { get; }
     DbSet<RightOfEntry> RightsOfEntry { get; }
     DbSet<AcquisitionRequest> AcquisitionRequests { get; }
     DbSet<ParcelPlanReview> ParcelPlanReviews { get; }

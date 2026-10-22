@@ -23,11 +23,13 @@ public sealed record StuckParcelDto(Guid ParcelId, string ParcelNumber, Guid Pro
 public sealed record ProjectRowDto(
     Guid Id, string Number, string Name, string? Phase, string? ProjectManager, string OversightType,
     int Parcels, int Closed, int PercentClosed, IReadOnlyList<StepCountDto> ByStep, int OverdueParcels, int StuckParcels,
-    decimal? EstimateTotal, decimal KnownCost, DateOnly? RowClearDate, int? DaysToClear, string Health, IReadOnlyList<string> Reasons);
+    decimal? EstimateTotal, decimal KnownCost, DateOnly? RowClearDate, int? DaysToClear, string Health, IReadOnlyList<string> Reasons,
+    int Displaced = 0, int Relocated = 0, int RelocationsOpen = 0);
 
 public sealed record ParcelRowDto(
     Guid Id, string Number, string? Address, string? OwnerName, string Status, string StatusColor, string StepKey, string StepLabel, string Team, double DaysInStep,
-    decimal? AppraisalTotal, decimal? ApprovedJustCompensation, decimal? AgreedAmount, DateOnly? AnticipatedClosing, DateOnly? ActualClosing, bool Closed, IReadOnlyList<string> Flags);
+    decimal? AppraisalTotal, decimal? ApprovedJustCompensation, decimal? AgreedAmount, DateOnly? AnticipatedClosing, DateOnly? ActualClosing, bool Closed, IReadOnlyList<string> Flags,
+    string? Relocation = null, int Displaced = 0, int Relocated = 0);
 
 public sealed record ProgramDashboardDto(
     DateTime GeneratedAt, int StuckDays, ProgramRulesDto Rules, IReadOnlyList<ProgramTileDto> Tiles, IReadOnlyList<ProjectRowDto> Projects, IReadOnlyList<StageDto> Stages,
@@ -95,6 +97,14 @@ internal sealed class ProgramBuilder
             .GroupBy(e => e.ProjectId).ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.Version).First().Total);
         var overdue = (await _mediator.Send(new ListRemindersQuery(0), ct)).Where(r => r.Status == nameof(DeadlineStatus.Overdue)).Select(r => r.ParcelId).ToHashSet();
 
+        // Relocation (ADR 0026): per parcel, the displaced ownership interests and how many have finished.
+        var tractOf = await _db.Parcels.AsNoTracking().Where(x => parcelIds.Contains(x.Id)).Select(x => new { x.Id, x.ParentTractId }).ToDictionaryAsync(x => x.Id, x => x.ParentTractId, ct);
+        var tractIds = tractOf.Values.Where(t => t != null).Select(t => t!.Value).Distinct().ToList();
+        var flagged = (await _db.PartyLinks.AsNoTracking().Where(l => l.DisplacementRequired && ((l.ParcelId != null && parcelIds.Contains(l.ParcelId.Value)) || (l.ParentTractId != null && tractIds.Contains(l.ParentTractId.Value))))
+            .Select(l => new { l.Id, l.ParcelId, l.ParentTractId, l.Role }).ToListAsync(ct)).Where(l => PartyRoles.CategoryOf(l.Role) == PartyCategory.Ownership).ToList();
+        var relocs = (await _db.ParcelRelocations.AsNoTracking().Where(r => parcelIds.Contains(r.ParcelId))
+            .Select(r => new { r.ParcelId, r.PartyLinkId, r.RelocationComplete, r.IneligibleForRelocation, r.ActualVacateDate }).ToListAsync(ct)).ToLookup(r => r.ParcelId);
+
         var parcelRows = new Dictionary<Guid, List<ParcelRowDto>>();
         var projectRows = new List<ProjectRowDto>();
         foreach (var project in projects)
@@ -116,9 +126,14 @@ internal sealed class ProgramBuilder
                 if (overdue.Contains(p.Id)) flags.Add("Overdue deadline");
                 if (!isClosed && days > rules.StuckDays) flags.Add($"{Math.Floor(days):0} days on this step");
                 if (!isClosed && closing is { AnticipatedClosingDate: { } due, ActualClosingDate: null } && due < today) flags.Add("Closing past due");
+                var interests = flagged.Where(l => l.ParcelId == p.Id || (tractOf.GetValueOrDefault(p.Id) is { } tid && l.ParentTractId == tid)).Select(l => l.Id).ToList();
+                var rel = RelocationCalc.Progress(interests, relocs[p.Id].Select(r => new RelocationProgressInput(r.PartyLinkId, r.RelocationComplete)));
+                if (relocs[p.Id].Any(r => RelocationCalc.ClaimExpiring(r.ActualVacateDate, r.RelocationComplete, today, 60))) flags.Add("Relocation claim period ending");
+                var relocationText = rel.Flagged == 0 ? (relocs[p.Id].Any() ? $"{relocs[p.Id].Count()} case(s)" : null) : $"{rel.Completed} of {rel.Flagged} relocated";
                 var status = statuses.GetValueOrDefault(p.StatusId);
                 rows.Add(new ParcelRowDto(p.Id, p.Number, p.Address, owners.GetValueOrDefault(p.Id), status?.Name ?? "—", status?.Color ?? "#64748b", p.CurrentStepKey, Label(p.CurrentStepKey),
-                    TeamOf(p.CurrentStepKey), Math.Round(days, 1), apps?.FirstOrDefault()?.Total, approved, agreed, closing?.AnticipatedClosingDate, closing?.ActualClosingDate, isClosed, flags));
+                    TeamOf(p.CurrentStepKey), Math.Round(days, 1), apps?.FirstOrDefault()?.Total, approved, agreed, closing?.AnticipatedClosingDate, closing?.ActualClosingDate, isClosed, flags,
+                    relocationText, rel.Flagged, rel.Completed));
             }
             parcelRows[project.Id] = rows;
 
@@ -132,7 +147,8 @@ internal sealed class ProgramBuilder
                 rows.Count, closed, rows.Count == 0 ? 0 : (int)Math.Floor(closed * 100.0 / rows.Count),
                 standardKeys.Concat(extraKeys).Select(k => new StepCountDto(k, Label(k), rows.Count(r => r.StepKey == k))).Where(c => c.Count > 0 || standardKeys.Contains(c.StepKey)).ToList(), overdueCount, stuckCount,
                 estimates.ContainsKey(project.Id) ? estimate : null, known, project.RightOfWayClearDate,
-                project.RightOfWayClearDate is { } d ? d.DayNumber - today.DayNumber : null, health.Level.ToString(), health.Reasons));
+                project.RightOfWayClearDate is { } d ? d.DayNumber - today.DayNumber : null, health.Level.ToString(), health.Reasons,
+                rows.Sum(r => r.Displaced), rows.Sum(r => r.Relocated), mine.Sum(p => relocs[p.Id].Count(r => r.RelocationComplete == null && !r.IneligibleForRelocation))));
         }
 
         var all = histories.Values.ToList();
@@ -195,6 +211,7 @@ public sealed class GetProgramDashboardQueryHandler : IRequestHandler<GetProgram
             new("closed", "Parcels closed", parcels == 0 ? 0 : Math.Floor(closed * 100m / parcels), "percent", "info"),
             new("attention", "Projects needing attention", attention, "count", attention > 0 ? "warn" : "info"),
             new("stuck", "Parcels stuck on a step", b.Projects.Sum(p => p.StuckParcels), "count", b.Projects.Any(p => p.StuckParcels > 0) ? "danger" : "info"),
+            new("relocating", "Displaced interests relocated", b.Projects.Sum(p => p.Relocated), "count", "info"),
             new("estimate", "Estimated ROW cost", b.Projects.Sum(p => p.EstimateTotal ?? 0), "money", "info"),
             new("known", "Known cost to date", b.Projects.Sum(p => p.KnownCost), "money", "info"),
         };

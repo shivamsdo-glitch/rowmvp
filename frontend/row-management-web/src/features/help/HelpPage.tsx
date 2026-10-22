@@ -12,7 +12,7 @@ export const PAGE_LABELS: Record<string, string> = {
   administration: 'Configuration and Settings', library: 'Library', contactlog: 'Parcel tab: Contact log', easements: 'Parcel tab: Easements',
   parcellocation: 'Parcel tab: Parcel location', titleencumbrances: 'Parcel tab: Title encumbrances', titleclosing: 'Parcel tab: Title and closing', parcelappraisal: 'Parcel tab: Appraisal',
   parcelnegotiation: 'Parcel tab: Negotiation', parcelquestionnaire: 'Parcel tab: Questionnaire', parcelcondemnation: 'Parcel tab: Condemnation', parcelproperty: 'Parcel tab: Property management & disposition',
-  parcelrelocation: 'Parcel tab: Relocation',
+  parcelrelocation: 'Parcel tab: Relocation', relocations: 'Relocations screen',
 }
 
 function MyAccess() {

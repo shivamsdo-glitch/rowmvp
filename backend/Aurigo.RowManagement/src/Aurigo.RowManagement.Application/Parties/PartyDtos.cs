@@ -25,7 +25,7 @@ public sealed record PartyContactDto(Guid Id, string? ContactType, string Name, 
 public sealed record PartyLinkDto(
     Guid Id, PartyCategory Category, PartyRole Role, decimal? SharePercent, string? OwnerType, string? Notes,
     bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails,
-    string Source, Guid? ParentTractId, string? TractNumber, Guid? ParcelId, PartySummaryDto Party);
+    string Source, Guid? ParentTractId, string? TractNumber, Guid? ParcelId, PartySummaryDto Party, bool DisplacementRequired = false);
 
 /// <summary>Everyone around a parcel, in the four lists of ROW-014..017.</summary>
 public sealed record ParcelPartiesDto(

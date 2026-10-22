@@ -89,6 +89,10 @@ export interface ProjectRow {
   daysToClear: number | null
   health: Health
   reasons: string[]
+  /** Displaced ownership interests, how many have finished relocating, and open relocation cases (ADR 0026). */
+  displaced?: number
+  relocated?: number
+  relocationsOpen?: number
 }
 export interface ParcelRow {
   id: string
@@ -108,6 +112,9 @@ export interface ParcelRow {
   actualClosing: string | null
   closed: boolean
   flags: string[]
+  relocation?: string | null
+  displaced?: number
+  relocated?: number
 }
 export interface ProgramDashboard { generatedAt: string; stuckDays: number; rules: ProgramRules; tiles: ProgramTile[]; projects: ProjectRow[]; stages: Stage[]; teams: TeamTime[]; stuck: StuckParcel[] }
 export interface ProjectDashboard { generatedAt: string; stuckDays: number; rules: ProgramRules; project: ProjectRow; stages: Stage[]; teams: TeamTime[]; parcels: ParcelRow[] }

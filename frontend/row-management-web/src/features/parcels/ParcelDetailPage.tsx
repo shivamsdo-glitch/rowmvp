@@ -1,3 +1,4 @@
+import { RelocationProgressBanner } from './RelocationPayments'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -245,6 +246,7 @@ function SummaryTab({ parcel: p }: { parcel: Parcel }) {
           </dl>
         </Section>
       )}
+      <RelocationProgressBanner parcelId={p.id} compact />
       <Section title="Deadlines">
         <DeadlineTable parcel={p} />
       </Section>

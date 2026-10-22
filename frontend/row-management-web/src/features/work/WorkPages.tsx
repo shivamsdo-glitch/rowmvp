@@ -1,6 +1,6 @@
 import { useAuth } from '@/auth/auth-context'
 import {
-  overviewApi, type AppraisalOverview, type EasementOverview, type EncumbranceOverview, type NegotiationOverview, type TitleClosingOverview,
+  overviewApi, type AppraisalOverview, type EasementOverview, type EncumbranceOverview, type NegotiationOverview, type RelocationOverview, type TitleClosingOverview,
 } from '@/api/overview'
 import { dateText } from '../projects/form-kit'
 import { AppraisalTab } from '../parcels/AppraisalTab'
@@ -8,6 +8,7 @@ import { NegotiationTab } from '../parcels/NegotiationTab'
 import { EasementsTab } from '../parcels/ParcelTabs'
 import { EncumbrancesTab } from '../parcels/TitleTabs'
 import { TitleClosingTab } from '../parcels/TitleClosingTab'
+import { RelocationTab } from '../parcels/LifecycleTabs'
 import { ParcelWorkPage, type WorkKind } from './ParcelWorkPage'
 
 const day = (d: string | null) => (d ? dateText(d) : '—')
@@ -63,4 +64,17 @@ export function TitleSurveyPage() {
     tab: (p, editable) => <EasementsTab parcelId={p.id} editable={editable} />,
   }
   return <ParcelWorkPage title="Title & Survey" subtitle="Find a parcel's title encumbrances or easements by parcel, owner, address or ID, then add to them or update them here." kinds={[encumbrances, easements] as unknown as WorkKind[]} />
+}
+
+/** Relocations (ADR 0026): find a displacee's relocation case by parcel, owner, relocation number or displacee, then work it through right here. */
+export function RelocationWorkPage() {
+  const { manager } = useAuth()
+  const api = overviewApi(manager.api)
+  const relocations: WorkKind<RelocationOverview> = {
+    key: 'relocations', label: 'Relocations', page: 'parcelrelocation', fetch: api.relocations,
+    headers: ['Displacee', 'Stage', 'Assigned to', 'Target vacate', 'Claim deadline', 'Open payments'],
+    cells: (r) => [r.displaceeName, r.stage, text(r.assignedTo), day(r.targetVacateDate), day(r.claimDeadline), String(r.openPayments)],
+    tab: (p, editable) => <RelocationTab parcel={p} editable={editable} />,
+  }
+  return <ParcelWorkPage title="Relocations" subtitle="Find a displacee's relocation by parcel, owner, address, relocation number or displacee, then work the case here." kinds={[relocations] as unknown as WorkKind[]} />
 }

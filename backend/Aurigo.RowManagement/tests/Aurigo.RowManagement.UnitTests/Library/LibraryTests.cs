@@ -99,7 +99,7 @@ public class LibraryTests
         var status = await c.Field(LibraryKeys.ParcelStatus);
 
         status.Values.Select(v => v.Value).Should().Equal(
-            "Inactive", "In Design", "Pre-Acquisition", "Appraisal", "Initial Offer", "Final Offer", "In Possession - PUA", "In Possession - CLOSED",
+            "Inactive", "In Design", "Pre-Acquisition", "Appraisal", "Initial Offer", "Final Offer", "In Possession - PUA", "In Possession - CLOSED", "Acquired",
             "In Possession - NOD", "Pending Condemnation", "Petition Filed", "Hearing Scheduled", "Objections Filed", "Deleted",
             "Disposition In Progress", "Disposition Complete");
         status.Values.Single(v => v.IsDefault).Value.Should().Be("Inactive");

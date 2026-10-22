@@ -19,7 +19,7 @@ public sealed record PartyTaxBody(TaxIdType? Type, string? TaxId, DateOnly? W9Re
     public override string ToString() => $"PartyTaxBody {{ Type = {Type}, TaxId = [redacted] }}";
 }
 
-public sealed record PartyLinkUpdateBody(decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null);
+public sealed record PartyLinkUpdateBody(decimal? SharePercent, string? Notes, bool LeaseOnFile, string? LeaseDetails, string? InsuranceDetails, string? OwnerType = null, bool? DisplacementRequired = null);
 
 /// <summary>Owners, interests, contacts, tenants and abutters (ROW-014..018).</summary>
 [ApiController]
@@ -96,7 +96,7 @@ public sealed class PartiesController : ControllerBase
     [HttpPut("party-links/{linkId:guid}")]
     [ProducesResponseType(typeof(PartyLinkDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateLink(Guid linkId, [FromBody] PartyLinkUpdateBody b, CancellationToken ct) =>
-        Ok(await _mediator.Send(new UpdatePartyLinkCommand(linkId, b.SharePercent, b.Notes, b.LeaseOnFile, b.LeaseDetails, b.InsuranceDetails, b.OwnerType), ct));
+        Ok(await _mediator.Send(new UpdatePartyLinkCommand(linkId, b.SharePercent, b.Notes, b.LeaseOnFile, b.LeaseDetails, b.InsuranceDetails, b.OwnerType, b.DisplacementRequired), ct));
 
     [HttpDelete("party-links/{linkId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

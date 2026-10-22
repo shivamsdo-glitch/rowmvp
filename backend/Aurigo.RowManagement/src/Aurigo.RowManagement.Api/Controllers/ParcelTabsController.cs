@@ -38,6 +38,9 @@ public sealed record CondemnationBody(
     List<CondemnationNoticeInput>? Notices);
 public sealed record PropertyEnvelope(PropertyDto? Record);
 public sealed record PropertyBody(PropertyDetails? Details, List<StatusNoteInput>? StatusNotes, List<PropertyFundingInput>? Funding);
+public sealed record RelocationPaymentBody(string? PaymentType, decimal Amount, bool IsAdvance, bool Taxable, string? Notes);
+public sealed record RelocationPaymentDecisionBody(bool Approve, string? Note);
+public sealed record RelocationPaymentPaidBody(string? Reference);
 public sealed record RelocationBody(
     RelocationDetails? Details, List<StatusNoteInput>? StatusNotes, List<RelocationAgentInput>? Agents, List<RelocationContactInput>? Contacts,
     List<RelocationEligibilityInput>? Eligibilities, List<RelocationContactLogInput>? ContactLog);
@@ -189,6 +192,26 @@ public sealed class ParcelTabsController : ControllerBase
         await _mediator.Send(new RemoveRelocationCommand(parcelId, relocationId), ct);
         return NoContent();
     }
+
+    [HttpGet("relocation-progress")]
+    [ProducesResponseType(typeof(ParcelRelocationProgressDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RelocationProgress(Guid parcelId, CancellationToken ct) => Ok(await _mediator.Send(new GetParcelRelocationProgressQuery(parcelId), ct));
+
+    /// <summary>Asks for a payment on a relocation (ADR 0026). The amount is typed; the approval steps come from the agency's bands.</summary>
+    [HttpPost("relocations/{relocationId:guid}/payments")]
+    [ProducesResponseType(typeof(RelocationDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RequestRelocationPayment(Guid parcelId, Guid relocationId, [FromBody] RelocationPaymentBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new RequestRelocationPaymentCommand(parcelId, relocationId, b.PaymentType ?? "", b.Amount, b.IsAdvance, b.Taxable, b.Notes), ct));
+
+    [HttpPost("relocations/{relocationId:guid}/payments/{paymentId:guid}/decision")]
+    [ProducesResponseType(typeof(RelocationDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DecideRelocationPayment(Guid parcelId, Guid relocationId, Guid paymentId, [FromBody] RelocationPaymentDecisionBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new DecideRelocationPaymentCommand(parcelId, relocationId, paymentId, b.Approve, b.Note), ct));
+
+    [HttpPost("relocations/{relocationId:guid}/payments/{paymentId:guid}/paid")]
+    [ProducesResponseType(typeof(RelocationDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> MarkRelocationPaymentPaid(Guid parcelId, Guid relocationId, Guid paymentId, [FromBody] RelocationPaymentPaidBody b, CancellationToken ct) =>
+        Ok(await _mediator.Send(new MarkRelocationPaymentPaidCommand(parcelId, relocationId, paymentId, b.Reference), ct));
 
     [HttpGet("negotiation")]
     [ProducesResponseType(typeof(NegotiationEnvelope), StatusCodes.Status200OK)]

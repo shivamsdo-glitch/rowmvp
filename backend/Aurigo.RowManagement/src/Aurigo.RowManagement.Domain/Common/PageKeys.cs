@@ -30,12 +30,13 @@ public static class PageKeys
     public const string ParcelLocation = "parcellocation"; // a parcel's Parcel Location tab (read-only grid)
     public const string ContactLog = "contactlog";    // a parcel's Contact Log tab
     public const string Easements = "easements";      // a parcel's Easements tab
-    public const string Library = "library";          // the Library: everyone reads it (form dropdowns); administrators edit it
+    public const string Relocations = "relocations";  // the Relocations work screen across parcels (ADR 0026)
+    public const string Library = "library";        // the Library: everyone reads it (form dropdowns); administrators edit it
 
     public static readonly IReadOnlyList<string> All = new[]
     {
         Dashboard, Projects, Parcels, Parties, Title, Survey, Appraisals,
-        Approvals, Negotiations, Agreements, Closing, Payments, Administration, Library, ContactLog, Easements, ParcelLocation, TitleEncumbrances, TitleClosing, ParcelAppraisal, ParcelNegotiation, ParcelQuestionnaire, ParcelCondemnation, ParcelProperty, ParcelRelocation,
+        Approvals, Negotiations, Agreements, Closing, Payments, Administration, Library, ContactLog, Easements, ParcelLocation, TitleEncumbrances, TitleClosing, ParcelAppraisal, ParcelNegotiation, ParcelQuestionnaire, ParcelCondemnation, ParcelProperty, ParcelRelocation, Relocations,
     };
 
     public static bool IsKnown(string? key) => key is not null && All.Contains(key, StringComparer.Ordinal);

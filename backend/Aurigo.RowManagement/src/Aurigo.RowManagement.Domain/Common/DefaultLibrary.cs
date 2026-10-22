@@ -73,6 +73,11 @@ public static class DefaultLibrary
         new("displacee_status", "Displacee status", CustomFieldType.List, Array.Empty<string>()),
         new("displacee_interest", "Displacee interest", CustomFieldType.List, Array.Empty<string>()),
         new("eligibility_type", "Relocation eligibility type", CustomFieldType.List, Array.Empty<string>()),
+        new("relocation_payment_type", "Relocation payment type", CustomFieldType.List, new[]
+        {
+            "Moving expense", "Replacement housing - purchase supplement", "Replacement housing - rental assistance", "Down payment assistance",
+            "Reestablishment expense", "Fixed payment", "Advance payment", "Other",
+        }),
         new("conveyance_type", "Conveyance type", CustomFieldType.List, Array.Empty<string>()),
         new("fund_type", "Fund type", CustomFieldType.List, Array.Empty<string>()),
         new("title_company", "Title company", CustomFieldType.List, Array.Empty<string>()),

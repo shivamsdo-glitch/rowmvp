@@ -162,7 +162,7 @@ public sealed class PartyService
             .Select(l => new PartyLinkDto(
                 l.Id, PartyRoles.CategoryOf(l.Role), l.Role, l.SharePercent, l.OwnerType, l.Notes, l.LeaseOnFile, l.LeaseDetails, l.InsuranceDetails,
                 l.ParentTractId is not null ? "Tract" : "Parcel", l.ParentTractId, l.ParentTractId is { } t ? tracts.GetValueOrDefault(t) : null, l.ParcelId,
-                ToSummary(parties[l.PartyId], counts.GetValueOrDefault(l.PartyId))))
+                ToSummary(parties[l.PartyId], counts.GetValueOrDefault(l.PartyId)), l.DisplacementRequired))
             .OrderBy(d => d.Role).ThenBy(d => d.Party.Name, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Id)
             .ToList();
     }

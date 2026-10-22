@@ -22,6 +22,7 @@ export const NAV = [
   { label: 'Title & Survey', page: 'title', built: true },
   { label: 'Appraisal', page: 'appraisals', built: true },
   { label: 'Negotiation & Closing', page: 'negotiations', built: true },
+  { label: 'Relocations', page: 'relocations', built: true },
   { label: 'Configuration', page: 'administration', built: true },
   { label: 'Settings', page: 'administration', built: true },
   { label: 'Library', page: 'library', built: true },
