@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { freemem } from 'node:os'
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -28,7 +29,8 @@ export default defineConfig({
     pool: 'threads',
     // Each worker loads the whole component library (~1 GB). Unbounded parallelism on a busy machine made workers
     // time out while starting; a small cap (2) keeps the run reliable; a start timeout is a fixed 60 s, so a memory-starved machine failed whole files, which matters more than shaving seconds.
-    maxWorkers: 2,
+    // Sized to the memory free right now (about 1.5 GB per worker, never fewer than 2 or more than 4); VITEST_MAX_WORKERS overrides.
+    maxWorkers: Number(process.env.VITEST_MAX_WORKERS ?? Math.min(4, Math.max(2, Math.floor(freemem() / 1.5 / 1024 ** 3)))),
     testTimeout: 60_000,
   },
 })

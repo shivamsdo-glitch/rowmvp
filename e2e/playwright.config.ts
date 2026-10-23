@@ -1,3 +1,4 @@
+import { freemem } from 'node:os'
 import { defineConfig } from '@playwright/test'
 
 /**
@@ -13,14 +14,18 @@ export const PG = process.env.E2E_PG ?? 'Host=127.0.0.1;Port=5434;Username=row;P
 
 export default defineConfig({
   testDir: './tests',
+  // Playwright empties its output folder when a run starts, which breaks any other run still using it (a second chat's gate, a
+  // run in your own terminal). A run on non-default ports therefore gets its own folder.
+  outputDir: WEB === 5174 ? 'test-results' : `test-results-${WEB}`,
   globalSetup: './warm-up.ts',
   fullyParallel: true,
-  workers: 4,
+  // About 0.8 GB per worker (Edge tab + API share); sized to the memory free now, 3 to 6. E2E_WORKERS overrides.
+  workers: Number(process.env.E2E_WORKERS ?? Math.min(6, Math.max(3, Math.floor(freemem() / 0.8 / 1024 ** 3)))),
   retries: 0, // a retry would hide a flaky test; flakiness is a defect to fix
   forbidOnly: !!process.env.CI,
   timeout: 90_000, // the role-matrix specs now run for eleven roles, so the shared API is busier
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['dot']],
   use: {
     baseURL: `http://localhost:${WEB}`,
     channel: 'msedge',
@@ -49,12 +54,17 @@ export default defineConfig({
       },
     },
     {
-      command: `npm run dev -- --port ${WEB} --strictPort`,
+      // The production bundle loads in a fraction of the time the dev server needs for its unbundled modules, and every test
+      // loads pages many times. E2E_DEV_SERVER=1 goes back to the dev server (for debugging with source maps / HMR).
+      command: process.env.E2E_DEV_SERVER
+        ? `npm run dev -- --port ${WEB} --strictPort`
+        : `npx vite build --mode development --outDir dist-e2e --emptyOutDir && npx vite preview --outDir dist-e2e --port ${WEB} --strictPort`,
       cwd: '../frontend/row-management-web',
       url: `http://localhost:${WEB}`,
       timeout: 120_000,
       reuseExistingServer: false,
-      env: { VITE_PROXY_TARGET: `http://localhost:${API}` },
+      // NODE_ENV=development keeps import.meta.env.DEV true in the bundle: the sign-in screen's role buttons are dev-only.
+      env: { VITE_PROXY_TARGET: `http://localhost:${API}`, NODE_ENV: 'development' },
     },
   ],
 })

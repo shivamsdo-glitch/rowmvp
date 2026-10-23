@@ -28,10 +28,45 @@ export const NAV = [
   { label: 'Library', page: 'library', built: true },
 ]
 
-/** Signs in through the real login screen, exactly as a person would. */
+/** Rarely used form sections start folded (ADR 0028); the tests fill whole forms, so unfold them as they appear. */
+async function unfoldFormSections(page: Page) {
+  await page.addInitScript(() => {
+    const unfold = () => document.querySelectorAll('details:not([open])').forEach((d) => { (d as HTMLDetailsElement).open = true })
+    new MutationObserver(unfold).observe(document, { childList: true, subtree: true })
+  })
+}
+
+/**
+ * Signs in the way the login screen does, minus the screen (fast path): asks the dev-token endpoint for the role's token (what the
+ * screen's button calls) and hands it to the tab's session before the app loads. Most tests are about something after
+ * sign-in, and the screen itself costs seconds per test; login.spec.ts and signInViaLoginScreen keep the screen covered.
+ * OPT-IN (E2E_FAST_LOGIN=1): measured no faster on the full run, and it broke tracing of page.request on some runs
+ * (ENOENT in test-results/.playwright-artifacts), so the default stays the real login screen.
+ */
 export async function signInViaUi(page: Page, role: string) {
+  if (!process.env.E2E_FAST_LOGIN) return signInViaLoginScreen(page, role)
+  await unfoldFormSections(page)
+  const token = await devToken(page.request, role)
+  // Seed once per tab (sessionStorage survives reloads), so a later sign-out or reload is not undone by this script.
+  await page.addInitScript((t) => {
+    if (!sessionStorage.getItem('e2e.seeded')) {
+      sessionStorage.setItem('row.auth.token', t)
+      sessionStorage.setItem('e2e.seeded', '1')
+    }
+  }, token)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto('/')
+    // The Vite dev server can answer a page load with a blank page while it re-optimises dependencies under load; load again.
+    if (await page.getByRole('heading', { name: 'Dashboard' }).waitFor({ timeout: attempt < 3 ? 20_000 : 60_000 }).then(() => true, () => false)) break
+  }
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+}
+
+/** Signs in through the real login screen, exactly as a person would. */
+export async function signInViaLoginScreen(page: Page, role: string) {
   // The Vite dev server can answer a page load with a blank page while it re-optimises dependencies under load; load again
   // (up to three times) instead of failing a test that is about something else. A page that never renders still fails below.
+  await unfoldFormSections(page)
   const pick = page.getByRole('button', { name: role, exact: true })
   for (let attempt = 1; attempt <= 3; attempt++) {
     await page.goto('/login')
