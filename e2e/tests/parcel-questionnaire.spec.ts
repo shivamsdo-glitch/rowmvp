@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi , sectionVisible } from './support'
 
 /**
  * Phase 1.5 slice 7b (ADR 0019): a parcel's Questionnaire tab. Real browser, UI, API and Postgres.
@@ -29,7 +29,7 @@ async function seed(request: APIRequestContext, parcelId: string) {
 async function openTab(page: Page, parcelId: string) {
   await page.goto(`/parcels/${parcelId}`)
   await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
-  await page.getByRole('tab', { name: 'Questionnaire' }).click()
+  await page.getByRole('tab', { name: 'Relocation' }).click()
 }
 
 test.describe('Relocation Agent · questionnaire', () => {
@@ -61,7 +61,7 @@ test.describe('Relocation Agent · questionnaire', () => {
     await expect(table).toContainText(`QST-${parcel.number}-001`)
     await expect(table).toContainText('Residential')
 
-    await page.getByRole('button', { name: `Edit questionnaire QST-${parcel.number}-001` }).click()
+    await page.getByRole('button', { name: `Open questionnaire QST-${parcel.number}-001` }).click()
     const panel = page.getByRole('region', { name: `Attachments for QST-${parcel.number}-001` })
     await panel.getByLabel('Upload document').setInputFiles({ name: 'answers.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') })
     await expect(panel.getByText('answers.pdf')).toBeVisible()
@@ -96,12 +96,12 @@ test.describe('Everyone · questionnaire', () => {
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
 
       const readable = level(role, 'parcelquestionnaire') !== null
-      await expect(page.getByRole('tab', { name: 'Questionnaire' }), `${role} tab`).toHaveCount(readable ? 1 : 0)
+      expect(await sectionVisible(page, 'Questionnaire'), `${role} section`).toBe(readable)
       if (readable) {
-        await page.getByRole('tab', { name: 'Questionnaire' }).click()
+        await page.getByRole('tab', { name: 'Relocation' }).click()
         await expect(page.getByRole('table', { name: 'Questionnaires' })).toBeVisible()
         await expect(page.getByRole('form', { name: 'Add a questionnaire' }), `${role} add`).toHaveCount(canCreate(role, 'parcelquestionnaire') ? 1 : 0)
-        await expect(page.getByRole('button', { name: `Edit questionnaire ${keep.number}` }), `${role} edit`).toHaveCount(canUpdate(role, 'parcelquestionnaire') ? 1 : 0)
+        await expect(page.getByRole('button', { name: `Open questionnaire ${keep.number}` }), `${role} edit`).toHaveCount(1)
         await expect(page.getByRole('button', { name: `Remove questionnaire ${keep.number}` }), `${role} remove`).toHaveCount(canDelete(role, 'parcelquestionnaire') ? 1 : 0)
       }
 

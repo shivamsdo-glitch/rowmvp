@@ -41,7 +41,7 @@ test.describe('Administrator and Project Manager · plan-review gate', () => {
       await pm.goto(`/parcels/${parcel.id}`)
 
       // Held: the button is refused with the reason, and an override cannot get past it.
-      await pm.getByRole('tab', { name: 'Workflow' }).click()
+      await pm.getByRole('tab', { name: 'Workflow & milestones' }).click()
       await pm.getByRole('button', { name: /^Advance to / }).click()
       await expect(pm.getByText(/requires an approved plan review by the engineer and surveyor/)).toBeVisible()
       const refused = await request.post(`/api/v1/parcels/${parcel.id}/advance`, { headers: admin, data: { targetStepKey: 'offer', overrideReason: 'Cleared by the director' } })
@@ -49,7 +49,7 @@ test.describe('Administrator and Project Manager · plan-review gate', () => {
       expect(await refused.text()).toContain('plan_review_required')
 
       // The reviews are recorded on the parcel.
-      await pm.getByRole('tab', { name: 'Reviews & reports' }).click()
+      await pm.getByRole('tab', { name: 'Reviews & site visits' }).click()
       const banner = pm.getByRole('status', { name: 'Plan review gate' })
       await expect(banner).toContainText('held at Title & survey')
       const form = pm.getByRole('form', { name: 'Record a plan review' })
@@ -80,7 +80,7 @@ test.describe('Administrator and Project Manager · plan-review gate', () => {
       await expect(banner).toContainText('Plan reviews complete')
       await expect(pm.getByRole('table', { name: 'Plan reviews' }).getByRole('row')).toHaveCount(4)
 
-      await pm.getByRole('tab', { name: 'Workflow' }).click()
+      await pm.getByRole('tab', { name: 'Workflow & milestones' }).click()
       await pm.getByRole('button', { name: /^Advance to / }).click()
       await expect(pm.getByRole('listitem').filter({ hasText: '(current step)' })).not.toContainText('Title & survey')
       await context.close()

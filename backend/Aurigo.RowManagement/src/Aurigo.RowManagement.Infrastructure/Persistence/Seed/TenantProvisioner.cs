@@ -77,13 +77,27 @@ public sealed class TenantProvisioner
     /// </summary>
     public async Task EnsureLibraryAsync(Guid tenantId, CancellationToken ct = default)
     {
-        var have = await _db.LibraryFields.IgnoreQueryFilters().Where(f => f.TenantId == tenantId).Select(f => f.Key).ToListAsync(ct);
+        var existing = await _db.LibraryFields.IgnoreQueryFilters().Include(f => f.Values).Where(f => f.TenantId == tenantId).ToListAsync(ct);
+        var have = existing.Select(f => f.Key).ToList();
         var order = 0;
         var changed = false;
         foreach (var d in DefaultLibrary.Fields)
         {
             order++;
-            if (have.Contains(d.Key)) continue;
+            if (have.Contains(d.Key))
+            {
+                // A default list that was created empty (earlier versions shipped many lists with no values) gets its starter values. Values are
+                // never deleted, only switched off, so a list with no rows at all was never configured by anyone: nothing of theirs is touched.
+                var current = existing.First(f => f.Key == d.Key);
+                if (current.IsSystem && current.FieldType == d.Type && current.Values.Count == 0 && d.Values.Count > 0)
+                {
+                    var next = 0;
+                    foreach (var v in d.Values)
+                        _db.LibraryValues.Add(new LibraryValue { TenantId = tenantId, LibraryFieldId = current.Id, Value = v, NormalizedValue = v.ToUpperInvariant(), SortOrder = next++ });
+                    changed = true;
+                }
+                continue;
+            }
             var field = new LibraryField { TenantId = tenantId, Key = d.Key, Label = d.Label, FieldType = d.Type, IsSystem = true, SortOrder = order };
             var sort = 0;
             foreach (var v in d.Values)

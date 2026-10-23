@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi, PARCEL_TAB_OF , sectionVisible } from './support'
 
 /**
  * Phase 1.5 slice 8 (ADR 0020): a parcel's Condemnation, Property Management & Disposition and Relocation tabs.
@@ -38,7 +38,7 @@ async function makeParcel(request: APIRequestContext) {
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
   await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
-  await page.getByRole('tab', { name: tab, ...exact }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, ...exact }).click()
 }
 
 const attach = async (page: Page, title: string, file: string) => {
@@ -155,7 +155,7 @@ test.describe('Project Manager · property management and disposition', () => {
 })
 
 test.describe('Relocation Agent · relocation', () => {
-  test('AT-RA-41 records a relocation with its contacts, eligibility and contact log, attaches a file, changes it and removes it', async ({ page, request }) => {
+  test('AT-RA-41 records a relocation with its contacts and eligibility, attaches a file, changes it and removes it', async ({ page, request }) => {
     for (const [k, v] of [['relocation_type', 'Residential'], ['eligibility_type', 'Moving Expenses']]) await ensureLibraryValue(request, k, v)
     const parcel = await makeParcel(request)
     const ownerName = unique('Reloc Owner')
@@ -187,9 +187,6 @@ test.describe('Relocation Agent · relocation', () => {
     await form.getByLabel('Eligibility type', exact).selectOption('Moving Expenses')
     await form.getByLabel('Claim limit', exact).fill('5000')
     await form.getByRole('button', { name: 'Add eligibility' }).click()
-    await form.getByLabel('Log date and time', exact).fill('2026-03-04T15:30')
-    await form.getByLabel('Log discussion notes', exact).fill('Left a message.')
-    await form.getByRole('button', { name: 'Add contact log entry' }).click()
     await form.getByLabel('Status note', exact).fill('Interview booked.')
     await form.getByRole('button', { name: 'Add status note' }).click()
     await form.getByRole('button', { name: 'Add relocation', ...exact }).click()
@@ -198,13 +195,13 @@ test.describe('Relocation Agent · relocation', () => {
     await expect(table).toContainText('R-7')
     await expect(table).toContainText(ownerName)
 
-    await page.getByRole('button', { name: 'Edit relocation R-7' }).click()
+    await page.getByRole('button', { name: 'Open relocation R-7' }).click()
+    await expect(page.getByRole('heading', { name: 'Relocation R-7', ...exact })).toBeVisible()
     await attach(page, 'Attachments for relocation R-7', 'plan.pdf')
     const change = page.getByRole('form', { name: 'Change relocation' })
     await change.getByLabel('Target vacate date', exact).fill('2026-09-01')
     await change.getByRole('button', { name: 'Save changes' }).click()
-    await expect(page.getByRole('form', { name: 'Add a relocation' })).toBeVisible()
-    await expect(table).toContainText('2026')
+    await expect(table).toBeVisible()
 
     const admin = await adminHeaders(request)
     const rows = (await (await request.get(`/api/v1/parcels/${parcel.id}/relocations`, { headers: admin })).json()) as { details: { targetVacateDate: string }; contacts: unknown[]; eligibilities: unknown[]; contactLog: unknown[]; statusNotes: unknown[] }[]
@@ -212,7 +209,6 @@ test.describe('Relocation Agent · relocation', () => {
     expect(rows[0].details.targetVacateDate).toBe('2026-09-01')
     expect(rows[0].contacts).toHaveLength(1)
     expect(rows[0].eligibilities).toHaveLength(1)
-    expect(rows[0].contactLog).toHaveLength(1)
     expect(rows[0].statusNotes).toHaveLength(1)
 
     await page.getByRole('button', { name: 'Remove relocation R-7' }).click()
@@ -287,12 +283,12 @@ test.describe('Everyone · condemnation, property management and relocation', ()
       await page.goto(`/parcels/${parcel.id}`)
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
       const readable = level(role, 'parcelrelocation') !== null
-      await expect(page.getByRole('tab', { name: 'Relocation', ...exact }), `${role} tab`).toHaveCount(readable ? 1 : 0)
+      expect(await sectionVisible(page, 'Relocation'), `${role} section`).toBe(readable)
       if (readable) {
         await page.getByRole('tab', { name: 'Relocation', ...exact }).click()
         await expect(page.getByRole('table', { name: 'Relocations' })).toBeVisible()
         await expect(page.getByRole('form', { name: 'Add a relocation' }), `${role} add`).toHaveCount(canCreate(role, 'parcelrelocation') ? 1 : 0)
-        await expect(page.getByRole('button', { name: 'Edit relocation SEED' }), `${role} edit`).toHaveCount(canUpdate(role, 'parcelrelocation') ? 1 : 0)
+        await expect(page.getByRole('button', { name: 'Open relocation SEED' }), `${role} open`).toHaveCount(1)
         await expect(page.getByRole('button', { name: 'Remove relocation SEED' }), `${role} remove`).toHaveCount(canDelete(role, 'parcelrelocation') ? 1 : 0)
       }
       const headers = { Authorization: `Bearer ${await sessionToken(page)}` }

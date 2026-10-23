@@ -146,6 +146,7 @@ public sealed class DemoDataSeedStep : ISeedStep
         if (!await _db.Projects.AnyAsync(p => p.Number == "DEMO-001", ct)) await SeedProjectsAsync(ct);
         await SeedParcelsAsync(ct);
         await SeedPartiesAsync(ct);
+        await SeedLibraryAgentsAsync(ct);
         await SeedParcelRecordsAsync(ct);
         await SeedAcquisitionRecordsAsync(ct);
     }
@@ -272,6 +273,35 @@ public sealed class DemoDataSeedStep : ISeedStep
         _db.Parcels.AddRange(atOffer, late, closed, original, partA, remnant, held1, held2);
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Seeded demo parcels.");
+    }
+
+    /// <summary>
+    /// The people the demo agency assigns to parcels, so every "Assigned to" and team dropdown has someone to pick, one or two per agent type.
+    /// Add-only: an agent that is already in the Library (same name, type and company) is left alone. Names match scripts/seed-demo-data.mjs.
+    /// </summary>
+    private async Task SeedLibraryAgentsAsync(CancellationToken ct)
+    {
+        (string Name, string Type, string Company)[] agents =
+        {
+            ("Dana Whitfield", "Project Lead", "Agency ROW office"), ("Devon Park", "Row Designer", "Agency Design Group"), ("Elena Voss", "Row Designer", "Agency Design Group"),
+            ("Sam Okafor", "Surveyor", "Okafor Survey Co."), ("Wei Chen", "Surveyor", "Pioneer Surveying"), ("Tamara Quinn", "Title Researcher", "Capitol Abstract"),
+            ("Isaac Brooks", "Title Researcher", "Lone Star Title"), ("Priya Natarajan", "Appraisal Coordinator", "Agency ROW office"), ("Ann Appraiser", "Appraiser", "Cohen Valuation"),
+            ("Marcus Hale", "Appraiser", "Hale & Partners Appraisal"), ("Allison Jackson", "Appraiser", "CBRE, Inc."), ("Rita Reviewer", "Appraisal Reviewer", "Agency ROW office"),
+            ("Casey Closer", "Negotiator", "Agency ROW office"), ("Morgan Reyes", "Negotiator", "Okafor Land Services"), ("Riley Okafor", "Negotiator", "Okafor Land Services"),
+            ("Jordan Blake", "Broker", "Blake Realty Group"), ("Helen Marsh", "Counsel", "Marsh & Lowe LLP"), ("Victor Salazar", "Counsel", "Salazar Land Law"),
+            ("Lena Ortiz", "Relocation", "Agency Relocation Unit"), ("Marcus Bell", "Relocation", "Agency Relocation Unit"), ("Grace Tan", "FHWA Representative", "FHWA Texas Division"),
+            ("Noor Haddad", "Land Planner", "Haddad Planning"), ("Owen Price", "Community Engagement", "Agency Outreach Office"), ("Felix Mora", "Site Work", "Mora Site Services"),
+        };
+        var changed = false;
+        foreach (var (name, type, company) in agents)
+        {
+            var key = $"{name.ToUpperInvariant()}|{type.ToUpperInvariant()}|{company.ToUpperInvariant()}";
+            if (await _db.LibraryAgents.AnyAsync(a => a.NormalizedKey == key, ct)) continue;
+            var email = name.ToLowerInvariant().Replace(" ", ".").Replace(",", "") + "@example.com";
+            _db.LibraryAgents.Add(new LibraryAgent { TenantId = WellKnownIds.DevTenant, Name = name, AgentType = type, Company = company, Email = email, Phone = "(512) 555-0100", IsActive = true, NormalizedKey = key });
+            changed = true;
+        }
+        if (changed) await _db.SaveChangesAsync(ct);
     }
 
     /// <summary>A team, a diary and a note on the demo parcel at the offer step. Skipped once any exist.</summary>

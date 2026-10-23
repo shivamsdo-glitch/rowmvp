@@ -1,5 +1,5 @@
 import { RelocationProgressBanner } from './RelocationPayments'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Printer, Trash2 } from 'lucide-react'
@@ -17,6 +17,7 @@ import {
 } from '../projects/form-kit'
 import { PartyLinksPanel } from '../parties/PartyLinksPanel'
 import { ReviewsReportsTab } from './AcquisitionTabs'
+import type { EntryNav } from './entry-kit'
 import { DiaryTab, NotesTab, TeamTab } from './ParcelRecordTabs'
 import { ParcelForm } from './ParcelForm'
 import { ContactLogTab, EasementsTab } from './ParcelTabs'
@@ -31,13 +32,29 @@ import { acres, DeadlinePill, sqFtText, StateNote, StatusChip, zoneName } from '
 
 const NOTICE_MILESTONE = 'Notice to owner'
 
-const TABS = [
-  ['summary', 'Summary'], ['team', 'Team'], ['parties', 'Ownership interests'], ['diary', 'Diary'], ['notes', 'Notes'], ['reviews', 'Reviews & reports'], ['interests', 'Interests'], ['milestones', 'Milestones & deadlines'], ['workflow', 'Workflow'], ['visits', 'Site visits & notice'],
-  ['parcellocation', 'Parcel location'], ['titleencumbrances', 'Title encumbrances'], ['titleclosing', 'Title and closing'], ['parcelappraisal', 'Appraisal'], ['parcelnegotiation', 'Negotiation'], ['parcelquestionnaire', 'Questionnaire'], ['parcelcondemnation', 'Condemnation'], ['parcelproperty', 'Property management & disposition'], ['parcelrelocation', 'Relocation'], ['contactlog', 'Contact log'], ['easements', 'Easements'],
-] as const
-type TabKey = (typeof TABS)[number][0]
-/** Tabs with their own page permission: shown only to roles that can read that page. */
-const PAGE_TABS: readonly string[] = ['parcellocation', 'contactlog', 'easements', 'titleencumbrances', 'titleclosing', 'parcelappraisal', 'parcelnegotiation', 'parcelquestionnaire', 'parcelcondemnation', 'parcelproperty', 'parcelrelocation']
+/**
+ * The parcel's tabs. Related records share a tab as stacked sections (fewer tabs); each section keeps its own page key, so access is
+ * still per section and a role sees only the sections it can read. Old tab names (`?tab=easements`) still deep-link: they open the
+ * tab that now holds the section and scroll to it.
+ */
+interface SectionDef { key: string; title: string; page?: string }
+interface TabDef { key: string; label: string; sections: SectionDef[] }
+const TAB_DEFS: readonly TabDef[] = [
+  { key: 'summary', label: 'Summary', sections: [{ key: 'summary', title: 'Summary' }, { key: 'team', title: 'Team' }, { key: 'parcellocation', title: 'Parcel location', page: 'parcellocation' }, { key: 'notes', title: 'Notes' }] },
+  { key: 'parties', label: 'Ownership interests', sections: [{ key: 'parties', title: 'Ownership interests', page: 'parties' }] },
+  { key: 'negotiation', label: 'Negotiation', sections: [{ key: 'parcelnegotiation', title: 'Negotiation', page: 'parcelnegotiation' }, { key: 'diary', title: 'Diary' }, { key: 'contactlog', title: 'Contact log', page: 'contactlog' }] },
+  { key: 'reviews', label: 'Reviews & site visits', sections: [{ key: 'reviews', title: 'Reviews & reports' }, { key: 'visits', title: 'Site visits & notice' }] },
+  { key: 'interests', label: 'Interests & easements', sections: [{ key: 'interests', title: 'Interests' }, { key: 'easements', title: 'Easements', page: 'easements' }] },
+  { key: 'title', label: 'Title', sections: [{ key: 'titleencumbrances', title: 'Title encumbrances', page: 'titleencumbrances' }, { key: 'titleclosing', title: 'Title and closing', page: 'titleclosing' }] },
+  { key: 'parcelappraisal', label: 'Appraisal', sections: [{ key: 'parcelappraisal', title: 'Appraisal', page: 'parcelappraisal' }] },
+  { key: 'workflow', label: 'Workflow & milestones', sections: [{ key: 'workflow', title: 'Workflow' }, { key: 'milestones', title: 'Milestones & deadlines' }] },
+  { key: 'parcelrelocation', label: 'Relocation', sections: [{ key: 'parcelrelocation', title: 'Relocation', page: 'parcelrelocation' }, { key: 'parcelquestionnaire', title: 'Questionnaire', page: 'parcelquestionnaire' }] },
+  { key: 'parcelcondemnation', label: 'Condemnation', sections: [{ key: 'parcelcondemnation', title: 'Condemnation', page: 'parcelcondemnation' }] },
+  { key: 'parcelproperty', label: 'Property management & disposition', sections: [{ key: 'parcelproperty', title: 'Property management & disposition', page: 'parcelproperty' }] },
+]
+/** The tab that holds a section (or is itself named), for old and new deep links. */
+const TAB_OF = new Map<string, string>(TAB_DEFS.flatMap((t) => [[t.key, t.key] as const, ...t.sections.map((x) => [x.key, t.key] as const)]))
+export const isTabKey = (v: unknown): v is string => typeof v === 'string' && TAB_OF.has(v)
 
 /** Runs a save or delete, keeping the screen's error and busy state and refreshing what depends on the parcel. */
 function useParcelActions(parcelId: string) {
@@ -80,13 +97,27 @@ function useParcelActions(parcelId: string) {
 }
 
 /** One parcel: its synopsis, interests, milestones and deadlines, workflow step and visits (ROW-008, 010, 071-074, 234, 237). */
-export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
+export function ParcelDetailPage({ parcelId, initialTab, initialRecord }: { parcelId: string; initialTab?: string; initialRecord?: string }) {
   const { manager } = useAuth()
   const api = parcelsApi(manager.api)
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<TabKey>('summary')
+  const [tab, setTab] = useState<string>((isTabKey(initialTab) && TAB_OF.get(initialTab)) || 'summary')
+  // A record opens on a page of its own inside its tab (ADR 0028); `section` says which of the tab's sections it belongs to. Choosing another tab leaves it.
+  const [record, setRecord] = useState<{ section: string; id: string } | null>(initialRecord && initialTab ? { section: initialTab, id: initialRecord } : null)
+  const navFor = (section: string): EntryNav => ({
+    id: record?.section === section ? record.id : null,
+    open: (id) => setRecord({ section, id }),
+    back: () => setRecord(null),
+  })
   const [panel, setPanel] = useState<'none' | 'edit' | 'split'>('none')
   const parcel = useQuery({ queryKey: ['parcel', parcelId], queryFn: () => api.get(parcelId) })
+  // An old-style link to a section (`?tab=easements`) lands on its tab and brings that section into view.
+  const wanted = useRef(initialTab && !initialRecord && TAB_OF.get(initialTab) !== initialTab ? initialTab : null)
+  useEffect(() => {
+    if (!parcel.isSuccess || !wanted.current) return
+    document.getElementById(`section-${wanted.current}`)?.scrollIntoView?.()
+    wanted.current = null
+  }, [parcel.isSuccess])
 
   if (parcel.isPending) return <LoadingRows />
   if (parcel.isError) {
@@ -96,6 +127,37 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
   const live = p.state === 'Active'
   const canUpdate = manager.can('parcels', 'update') && live
   const canSplit = manager.can('parcels', 'create') && live
+  const canSee = (x: SectionDef) => !x.page || manager.can(x.page)
+  const visibleTabs = TAB_DEFS.filter((t) => t.sections.some(canSee))
+  const current = visibleTabs.find((t) => t.key === tab) ?? visibleTabs[0]
+  const open = record ? current?.sections.find((x) => x.key === record.section && canSee(x)) : undefined
+
+  const renderSection = (key: string): ReactNode => {
+    switch (key) {
+      case 'summary': return <SummaryTab parcel={p} />
+      case 'team': return <TeamTab parcelId={p.id} editable={live} />
+      case 'notes': return <NotesTab parcelId={p.id} editable={live} />
+      case 'parcellocation': return <ParcelLocationTab parcel={p} />
+      case 'parties': return <PartyLinksPanel target={{ kind: 'parcel', parcelId: p.id }} editable={live} />
+      case 'parcelnegotiation': return <NegotiationTab parcel={p} editable={live} />
+      case 'diary': return <DiaryTab parcelId={p.id} editable={live} />
+      case 'contactlog': return <ContactLogTab parcelId={p.id} editable={live} nav={navFor(key)} />
+      case 'reviews': return <ReviewsReportsTab parcelId={p.id} editable={live} />
+      case 'visits': return <VisitsTab parcel={p} editable={live} />
+      case 'interests': return <InterestsTab parcel={p} editable={live} />
+      case 'easements': return <EasementsTab parcelId={p.id} editable={live} nav={navFor(key)} />
+      case 'titleencumbrances': return <EncumbrancesTab parcelId={p.id} editable={live} nav={navFor(key)} />
+      case 'titleclosing': return <TitleClosingTab parcelId={p.id} editable={live} />
+      case 'parcelappraisal': return <AppraisalTab parcelId={p.id} editable={live} nav={navFor(key)} />
+      case 'workflow': return <WorkflowTab parcel={p} editable={live} />
+      case 'milestones': return <MilestonesTab parcel={p} editable={live} />
+      case 'parcelrelocation': return <RelocationTab parcel={p} editable={live} nav={navFor(key)} />
+      case 'parcelquestionnaire': return <QuestionnaireTab parcelId={p.id} editable={live} nav={navFor(key)} />
+      case 'parcelcondemnation': return <CondemnationTab parcel={p} editable={live} />
+      case 'parcelproperty': return <PropertyTab parcel={p} editable={live} />
+      default: return null
+    }
+  }
 
   return (
     <>
@@ -136,34 +198,22 @@ export function ParcelDetailPage({ parcelId }: { parcelId: string }) {
 
       <Tabs>
         <TabsList role="tablist" aria-label="Parcel sections">
-          {TABS.filter(([key]) => !PAGE_TABS.includes(key) || manager.can(key)).map(([key, label]) => (
-            <TabsTrigger key={key} role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls={`panel-${key}`} active={tab === key} onClick={() => setTab(key)}>
-              {label}
+          {visibleTabs.map((t) => (
+            <TabsTrigger key={t.key} role="tab" id={`tab-${t.key}`} aria-selected={current?.key === t.key} aria-controls={`panel-${t.key}`} active={current?.key === t.key} onClick={() => { setTab(t.key); setRecord(null) }}>
+              {t.label}
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-          {tab === 'summary' && <SummaryTab parcel={p} />}
-          {tab === 'team' && <TeamTab parcelId={p.id} editable={live} />}
-          {tab === 'diary' && <DiaryTab parcelId={p.id} editable={live} />}
-          {tab === 'notes' && <NotesTab parcelId={p.id} editable={live} />}
-          {tab === 'reviews' && <ReviewsReportsTab parcelId={p.id} editable={live} />}
-          {tab === 'parties' && (manager.can('parties') ? <PartyLinksPanel target={{ kind: 'parcel', parcelId: p.id }} editable={live} /> : <p className="text-sm text-muted-foreground">Your role cannot see ownership interests.</p>)}
-          {tab === 'interests' && <InterestsTab parcel={p} editable={live} />}
-          {tab === 'milestones' && <MilestonesTab parcel={p} editable={live} />}
-          {tab === 'workflow' && <WorkflowTab parcel={p} editable={live} />}
-          {tab === 'visits' && <VisitsTab parcel={p} editable={live} />}
-          {tab === 'contactlog' && <ContactLogTab parcelId={p.id} editable={live} />}
-          {tab === 'easements' && <EasementsTab parcelId={p.id} editable={live} />}
-          {tab === 'titleencumbrances' && <EncumbrancesTab parcelId={p.id} editable={live} />}
-          {tab === 'titleclosing' && <TitleClosingTab parcelId={p.id} editable={live} />}
-          {tab === 'parcelcondemnation' && <CondemnationTab parcel={p} editable={live} />}
-          {tab === 'parcelproperty' && <PropertyTab parcel={p} editable={live} />}
-          {tab === 'parcelrelocation' && <RelocationTab parcel={p} editable={live} />}
-          {tab === 'parcelquestionnaire' && <QuestionnaireTab parcelId={p.id} editable={live} />}
-          {tab === 'parcelnegotiation' && <NegotiationTab parcel={p} editable={live} />}
-          {tab === 'parcelappraisal' && <AppraisalTab parcelId={p.id} editable={live} />}
-          {tab === 'parcellocation' && <ParcelLocationTab parcel={p} />}
+        <TabsContent role="tabpanel" id={`panel-${current?.key}`} aria-labelledby={`tab-${current?.key}`}>
+          {current && (open
+            // A record is on a page of its own: just that section, as before.
+            ? renderSection(open.key)
+            : current.sections.filter(canSee).map((x, _i, all) => (
+              <section key={x.key} id={`section-${x.key}`} data-section={x.key} className={all.length > 1 ? 'mb-8 scroll-mt-4 border-b pb-6 last:border-b-0' : undefined}>
+                {x.key !== 'summary' && x.title !== current.label && <h2 className="mb-3 text-base font-semibold">{x.title}</h2>}
+                {renderSection(x.key)}
+              </section>
+            )))}
         </TabsContent>
       </Tabs>
     </>
@@ -387,7 +437,7 @@ function MilestonesTab({ parcel: p, editable }: { parcel: Parcel; editable: bool
                     <TextField
                       label="Completed on" type="date" value={done} onChange={setDone} error={a.fields.completedOn}
                       disabled={m.name === NOTICE_MILESTONE}
-                      hint={m.name === NOTICE_MILESTONE ? 'Set by recording the notice on the Site visits & notice tab.' : undefined}
+                      hint={m.name === NOTICE_MILESTONE ? 'Set by recording the notice in the Site visits & notice section of the Reviews & site visits tab.' : undefined}
                     />
                     <TextField label="Milestone notes" value={mNotes} onChange={setMNotes} maxLength={500} />
                     <button type="submit" disabled={a.busy} className={buttonClassName('default', 'sm')}>Save milestone</button>

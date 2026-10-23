@@ -1,0 +1,14 @@
+# ADR 0028 — Records open on their own page inside their tab; forms open short
+
+**Status:** accepted and built 2026-10-22 (user feedback on ADR 0027's relocation page). Supersedes point 3 of ADR 0027 (the stand-alone relocation route).
+
+## Decisions
+1. **One pattern for every record.** On the parcel page a list tab (Appraisal, Title encumbrances, Easements, Contact log, Questionnaire, Relocation) shows its list with an **Open** button per row. Open shows that one record on a page of its own *inside the same tab*: the parcel header and tab strip stay, the tab is still selected, and a "Back to <list>" button returns to the list. Saving or Cancel also returns to the list. Nothing opens below the list any more. Adding a record stays an inline form under the list. State lives in `ParcelDetailPage` (`tab`, `record`), passed to the tabs as `nav` (`features/parcels/entry-kit.tsx`: `EntryNav`, `useEntryMode`, `EntryBar`).
+2. **Deep links.** `/parcels/$parcelId?tab=<page key>&record=<id>` opens a tab, or one record in it. Negotiation and Title and closing are one record per parcel, so their "Open" is the tab itself.
+3. **Work screens link, they do not embed.** On Title & Survey, Appraisal, Negotiation & Closing and Relocations the **Open** button on a record, and on a matching parcel, is a link to the parcel's tab (and record). The "Selected parcel" panel under the search results is gone.
+4. **Read-only roles see the record too.** In a record's page the form is wrapped in a disabled fieldset for a role that can read but not change that tab (no Save).
+5. **Forms open short.** Sections that are usually blank are folded (`OptionalSection`, a `<details>`) and say "(optional)"; one unfolds by itself when the record already holds a value in it, so nothing entered is hidden. Folded: relocation (planning, notices, housing, move, claim, completion, notes, contacts, eligibility), appraisal (review, concurrence), negotiation (agreement/JAT, PUA, notes, offers, settlement grids), title and closing (contract dates, conveyance, commitments), condemnation and property management sections and grids.
+6. **Duplicates dropped from the forms** (the data stays on the server and is sent back unchanged): relocation *Property site address* (the parcel's address), *Displacee mailing address* (the owner's address on the Ownership interests tab), *Displacee interest* (the linked ownership interest's role), the typed *Agents* grid (the parcel Team), the relocation *Contact log* grid (the parcel Contact log tab) and the unexplained *Relocation complete 1* date; appraisal *Appraiser company* (derived) and the review's second *Appraisal received date*.
+
+## Not changed
+Right of entry, Team, Ownership interests, milestones and the administration screens (library agents, users, roles, statuses) still edit in place: they are short rows, not records with their own form.

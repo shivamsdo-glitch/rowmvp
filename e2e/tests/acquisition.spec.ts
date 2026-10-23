@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
-import { canRead, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canRead, devToken, level, newId, ROLES, sessionToken, signInViaUi, PARCEL_TAB_OF , sectionVisible } from './support'
 
 /**
  * Phase 1, slice 3c — rights of entry, acquisition requests, staff reports and certificates, and the project plan
@@ -37,7 +37,7 @@ async function makeParcel(request: APIRequestContext, headers: Headers, projectI
 
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
-  await page.getByRole('tab', { name: tab }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, exact: true }).click()
 }
 
 /** A second person, in their own browser, signed in through the real login screen. */
@@ -140,7 +140,7 @@ test.describe('Everyone · rights of entry report', () => {
         await expect(page.getByRole('button', { name: /^Edit the/ })).toHaveCount(allowed(role, 'parcelnegotiation', 'update') ? 2 : 0)
         await expect(page.getByRole('button', { name: /^Remove the/ })).toHaveCount(allowed(role, 'parcelnegotiation', 'delete') ? 2 : 0)
       } else {
-        await expect(page.getByRole('tab', { name: 'Negotiation' })).toHaveCount(0)
+        expect(await sectionVisible(page, 'Negotiation')).toBe(false)
       }
 
       // The server agrees.
@@ -294,7 +294,7 @@ test.describe('Project Manager and Finance · staff report and certificate of ne
 
     // The project manager reworks and resubmits; finance approves; it is then final.
     await page.reload()
-    await page.getByRole('tab', { name: 'Reviews & reports' }).click()
+    await page.getByRole('tab', { name: 'Reviews & site visits' }).click()
     await card.getByRole('button', { name: /^Change the staff report/ }).click()
     const rework = page.getByRole('form', { name: 'Change the staff report' })
     await rework.getByLabel(/^Report/).fill('With the cost basis: $120 per square foot.')
@@ -303,11 +303,11 @@ test.describe('Project Manager and Finance · staff report and certificate of ne
     await expect(card.getByText('Submitted', { exact: true })).toBeVisible()
 
     await other.reload()
-    await other.getByRole('tab', { name: 'Reviews & reports' }).click()
+    await other.getByRole('tab', { name: 'Reviews & site visits' }).click()
     await other.getByRole('article', { name: 'Staff report' }).getByRole('button', { name: 'Approve' }).click()
     await expect(other.getByRole('article', { name: 'Staff report' }).getByText('Approved', { exact: true })).toBeVisible()
     await page.reload()
-    await page.getByRole('tab', { name: 'Reviews & reports' }).click()
+    await page.getByRole('tab', { name: 'Reviews & site visits' }).click()
     await expect(card.getByText('Approved', { exact: true })).toBeVisible()
     await expect(card.getByRole('button', { name: /^Change the staff report/ })).toHaveCount(0)
     expect((await request.delete(`/api/v1/parcels/${parcel.id}/staff-reports/${report.id}`, { headers: pm })).status()).toBe(409)
@@ -411,7 +411,7 @@ test.describe('Other roles · acquisition records', () => {
     await openTab(page, parcel.id, 'Negotiation')
     await expect(page.getByRole('table', { name: 'Rights of entry' })).toBeVisible()
     await expect(page.getByRole('form', { name: 'Record a right of entry' })).toHaveCount(1)
-    await page.getByRole('tab', { name: 'Reviews & reports' }).click()
+    await page.getByRole('tab', { name: 'Reviews & site visits' }).click()
     await expect(page.getByRole('status', { name: 'Plan review gate' })).toBeVisible()
     await expect(page.getByRole('form', { name: 'Record a plan review' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /^Write the/ })).toHaveCount(0)

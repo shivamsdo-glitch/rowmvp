@@ -226,8 +226,8 @@ export function DiaryTab({ parcelId, editable }: { parcelId: string; editable: b
         )}
       </Section>
       {canAdd && (
-        <form onSubmit={submit} noValidate aria-label="Log a contact" className="max-w-3xl space-y-3 rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-semibold">Log a contact</h3>
+        <form onSubmit={submit} noValidate aria-label="Log a diary contact" className="max-w-3xl space-y-3 rounded-lg border bg-card p-4">
+          <h3 className="text-sm font-semibold">Log a diary contact</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="Date of contact" required type="date" value={date} onChange={setDate} error={errors.occurredOn} />
             <SelectField label="How" required value={method} onChange={setMethod} options={METHOD_OPTIONS} error={errors.method} />

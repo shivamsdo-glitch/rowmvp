@@ -37,7 +37,7 @@ const tab = async (user: ReturnType<typeof userEventModule.setup>, name: string)
 describe('Parcel team (ROW-019)', () => {
   it('lists the team by type with the Library company and contact details', async () => {
     const { user } = open()
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
 
     const table = await screen.findByRole('table', { name: 'Parcel team' })
     const rows = within(table).getAllByRole('row').slice(1)
@@ -49,7 +49,7 @@ describe('Parcel team (ROW-019)', () => {
 
   it('only offers the Library: a type, then the people of that type, with no name to type', async () => {
     const { user } = open()
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
     const form = await screen.findByRole('form', { name: 'Assign a team member' })
 
     expect(within(form).queryByLabelText(/^Name/)).not.toBeInTheDocument()
@@ -61,7 +61,7 @@ describe('Parcel team (ROW-019)', () => {
 
   it('assigns a person from the Library and refuses leaving it blank and the same person twice', async () => {
     const { user, fake } = open()
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
     const form = await screen.findByRole('form', { name: 'Assign a team member' })
 
     await user.click(within(form).getByRole('button', { name: 'Assign' }))
@@ -83,7 +83,7 @@ describe('Parcel team (ROW-019)', () => {
 
   it('changes and removes a team member', async () => {
     const { user, fake } = open()
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
     await user.click(await screen.findByRole('button', { name: 'Edit Casey Closer, Negotiator' }))
     const form = screen.getByRole('form', { name: 'Change team member' })
 
@@ -96,7 +96,7 @@ describe('Parcel team (ROW-019)', () => {
 
   it('shows a retryable error when the team cannot be loaded', async () => {
     const { user } = open('ProjectManager', { teamFails: true })
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
     expect(await screen.findByText('The team could not be loaded')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
@@ -105,7 +105,7 @@ describe('Parcel team (ROW-019)', () => {
 describe('Negotiation diary (ROW-020)', () => {
   const diaryTab = async (role = 'Negotiator', extra: Partial<FakeRecordsOptions> = {}) => {
     const ctx = open(role, extra)
-    await tab(ctx.user, 'Diary')
+    await tab(ctx.user, 'Negotiation')
     return ctx
   }
 
@@ -122,7 +122,7 @@ describe('Negotiation diary (ROW-020)', () => {
 
   it('logs a contact, refuses missing fields, and a future date with the server\'s reason', async () => {
     const { user, fake } = await diaryTab()
-    const form = await screen.findByRole('form', { name: 'Log a contact' })
+    const form = await screen.findByRole('form', { name: 'Log a diary contact' })
 
     await user.click(within(form).getByRole('button', { name: 'Add to diary' }))
     expect(await within(form).findByText('Choose the date.')).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('Negotiation diary (ROW-020)', () => {
   it('is read-only for a project manager, and hidden from roles with no Negotiations access', async () => {
     const pm = await diaryTab('ProjectManager')
     await screen.findByRole('table', { name: 'Negotiation diary' })
-    expect(screen.queryByRole('form', { name: 'Log a contact' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Log a diary contact' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Remove the/ })).not.toBeInTheDocument()
     pm.unmount()
     sessionStorage.clear()
@@ -172,7 +172,7 @@ describe('Negotiation diary (ROW-020)', () => {
 describe('Parcel notes (ROW-021)', () => {
   it('lists notes with who made them and when, adds one, refuses an empty one and deletes one', async () => {
     const { user, fake } = open()
-    await tab(user, 'Notes')
+    await tab(user, 'Summary')
     expect(await screen.findByText('Prefers email.')).toBeInTheDocument()
     expect(screen.getByText(/Made by Dev User on/)).toBeInTheDocument()
 
@@ -193,37 +193,37 @@ describe('Team, diary and notes follow the access spec (both directions)', () =>
     const { user } = open(role)
     await screen.findByRole('heading', { name: /Parcel 001/ })
 
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
     await screen.findByRole('table', { name: 'Parcel team' })
     expect(screen.queryByRole('form', { name: 'Assign a team member' }) !== null).toBe(can(role, 'parcels', 'create'))
     expect(screen.queryByRole('button', { name: 'Remove Casey Closer, Negotiator' }) !== null).toBe(can(role, 'parcels', 'delete'))
 
-    await tab(user, 'Notes')
+    await tab(user, 'Summary')
     await screen.findByText('Prefers email.')
     expect(screen.queryByRole('form', { name: 'Add a note' }) !== null).toBe(can(role, 'parcels', 'create'))
     expect(screen.queryByRole('button', { name: /Delete the note/ }) !== null).toBe(can(role, 'parcels', 'delete'))
 
-    await tab(user, 'Diary')
+    await tab(user, 'Negotiation')
     if (!can(role, 'negotiations', 'read')) {
       expect(await screen.findByText('Your role cannot see the negotiation diary.')).toBeInTheDocument()
       return
     }
     await screen.findByRole('table', { name: 'Negotiation diary' })
-    expect(screen.queryByRole('form', { name: 'Log a contact' }) !== null).toBe(can(role, 'negotiations', 'create'))
+    expect(screen.queryByRole('form', { name: 'Log a diary contact' }) !== null).toBe(can(role, 'negotiations', 'create'))
     expect(screen.queryByRole('button', { name: /Remove the Oct 1/ }) !== null).toBe(can(role, 'negotiations', 'delete'))
   })
 
   it('a split parcel keeps its records for reading and offers no way to add or remove', async () => {
     const { user } = open('Admin', { team: [{ parcelId: 'pc-gone', name: 'Old Hand', role: 'Counsel' }], notes: [{ parcelId: 'pc-gone', text: 'Before the split.' }] }, 'pc-gone')
-    await tab(user, 'Team')
+    await tab(user, 'Summary')
     await screen.findByRole('table', { name: 'Parcel team' })
     expect(screen.queryByRole('form', { name: 'Assign a team member' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Remove/ })).not.toBeInTheDocument()
-    await tab(user, 'Notes')
+    await tab(user, 'Summary')
     expect(await screen.findByText('Before the split.')).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'Add a note' })).not.toBeInTheDocument()
-    await tab(user, 'Diary')
+    await tab(user, 'Negotiation')
     await screen.findByText('No contacts logged')
-    expect(screen.queryByRole('form', { name: 'Log a contact' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Log a diary contact' })).not.toBeInTheDocument()
   })
 })

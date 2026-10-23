@@ -13,11 +13,13 @@ import { AttachmentsPanel } from '../documents/AttachmentsPanel'
 import { optionsWith, useLibraryValues } from '../library/library-kit'
 import { RightOfEntrySection } from './AcquisitionTabs'
 import { useTeamNames } from './team-kit'
+import { Explained } from '@/components/ui/abbr'
+import { OptionalSection } from './entry-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset aria-label={title} className="mb-4 rounded-lg border bg-card p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
+      <legend className="px-1 text-sm font-semibold"><Explained text={title} /></legend>
       {children}
     </fieldset>
   )
@@ -50,7 +52,7 @@ export function Grid<T>({ title, caption, headers, rows, cells, rowLabel, onRemo
   onRemove: (i: number) => void; adding: ReactNode; onAdd: () => void; addLabel: string; error?: string; canSave: boolean
 }) {
   return (
-    <Section title={title}>
+    <OptionalSection title={title}>
       {rows.length > 0 && (
         <DataTable caption={caption} headers={[...headers, ...(canSave ? ['Actions'] : [])]}>
           {rows.map((r, i) => (
@@ -68,7 +70,7 @@ export function Grid<T>({ title, caption, headers, rows, cells, rowLabel, onRemo
           <button type="button" className={`${buttonClassName('outline', 'sm')} mt-2`} onClick={onAdd}>{addLabel}</button>
         </>
       )}
-    </Section>
+    </OptionalSection>
   )
 }
 
@@ -236,7 +238,7 @@ function NegotiationRecord({ parcel, editable }: { parcel: Parcel; editable: boo
             <TextField label="Settlement notes" value={st.notes} onChange={(v) => setSt({ ...st, notes: v })} maxLength={2000} />
           </>} />
 
-        <Section title="Agreement and JAT">
+        <OptionalSection title="Agreement and JAT">
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="Total agreement amount" type="number" inputMode="decimal" value={f.total} onChange={set('total')} disabled={disabled} error={errors.totalAgreementAmount} />
             <TextField label="Notes" value={f.notes} onChange={set('notes')} maxLength={4000} disabled={disabled} error={errors.notes} />
@@ -245,9 +247,9 @@ function NegotiationRecord({ parcel, editable }: { parcel: Parcel; editable: boo
             <TextField label="Counteroffer response from JAT" type="date" value={f.jatResponseDate} onChange={set('jatResponseDate')} disabled={disabled} error={errors.counterofferResponseFromJatDate} />
             <SelectField label="JAT response" value={f.jatResponse} onChange={set('jatResponse')} options={optionsWith(jatResponses, f.jatResponse)} blankLabel="Select one" disabled={disabled} error={errors.jatResponse} />
           </div>
-        </Section>
+        </OptionalSection>
 
-        <Section title="Possession and use agreement (PUA)">
+        <OptionalSection title="Possession and use agreement (PUA)">
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="PUA requested" type="date" value={f.puaRequested} onChange={set('puaRequested')} disabled={disabled} error={errors.puaRequestedDate} />
             <TextField label="PUA executed" type="date" value={f.puaExecuted} onChange={set('puaExecuted')} disabled={disabled} error={errors.puaExecutedDate} />
@@ -255,7 +257,7 @@ function NegotiationRecord({ parcel, editable }: { parcel: Parcel; editable: boo
             <TextField label="PUA closed" type="date" value={f.puaClosed} onChange={set('puaClosed')} disabled={disabled} error={errors.puaClosedDate} />
             <TextField label="PUA approved amount" type="number" inputMode="decimal" value={f.puaAmount} onChange={set('puaAmount')} disabled={disabled} error={errors.puaApprovedAmount} />
           </div>
-        </Section>
+        </OptionalSection>
 
         <FormError error={error} />
         {saved && <p role="status" className="mb-2 text-sm text-ok">Negotiation saved.</p>}

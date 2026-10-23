@@ -91,6 +91,37 @@ public class LibraryTests
     }
 
     [Fact]
+    public async Task Library_Every_default_list_that_forms_offer_starts_with_values_so_no_dropdown_opens_empty()
+    {
+        var store = await Provision();
+        await using var c = Admin(store);
+
+        foreach (var d in DefaultLibrary.Fields.Where(f => f.Type == CustomFieldType.List && f.Key != LibraryKeys.ParcelStatus))
+        {
+            d.Values.Should().NotBeEmpty($"{d.Key} is a dropdown");
+            (await c.Field(d.Key)).Values.Select(v => v.Value).Should().Equal(d.Values);
+        }
+    }
+
+    [Fact]
+    public async Task Library_A_default_list_created_empty_by_an_earlier_version_gets_its_starter_values_but_an_edited_one_is_left_alone()
+    {
+        var store = await Provision();
+        await using var c = Admin(store);
+        var empty = await c.Db.LibraryFields.IgnoreQueryFilters().Include(f => f.Values).SingleAsync(f => f.TenantId == TestDb.TenantA && f.Key == "cure_status");
+        c.Db.LibraryValues.RemoveRange(empty.Values);
+        var edited = await c.Field(LibraryKeys.PossessionType);
+        await c.UpdateValue.Handle(new UpdateLibraryValueCommand(edited.Id, edited.Values[0].Id, "PUA", false), default); // switched off, not deleted
+        await c.Db.SaveChangesAsync();
+
+        await using var db = TestDb.Create(store, null);
+        await new TenantProvisioner(db).EnsureDefaultRolesAsync(TestDb.TenantA);
+
+        (await c.Field("cure_status")).Values.Select(v => v.Value).Should().Equal(DefaultLibrary.Fields.Single(f => f.Key == "cure_status").Values);
+        (await c.Field(LibraryKeys.PossessionType)).Values[0].IsActive.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Library_The_parcel_status_default_list_is_the_fifteen_values_with_no_colours_and_Inactive_first()
     {
         var store = await Provision();

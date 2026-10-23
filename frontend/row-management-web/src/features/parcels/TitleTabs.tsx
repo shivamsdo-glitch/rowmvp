@@ -1,12 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { encumbrancesApi, type ContactLogLinkInput, type Encumbrance } from '@/api/parcel-tabs'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
+import { EntryBar, EntryMissing, useEntryMode, type EntryNav } from './entry-kit'
 import { optionsWith, useLibraryValues } from '../library/library-kit'
 import { LinkedRecordsEditor } from './LinkedRecordsEditor'
 
@@ -25,7 +26,7 @@ const BLANK = {
 }
 
 /** Title Encumbrances (Phase 1.5, ADR 0018): the liens, easements and other burdens found in a parcel's title research. */
-export function EncumbrancesTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
+export function EncumbrancesTab({ parcelId, editable, nav }: { parcelId: string; editable: boolean; nav?: EntryNav }) {
   const { manager } = useAuth()
   const api = encumbrancesApi(manager.api)
   const queryClient = useQueryClient()
@@ -43,6 +44,7 @@ export function EncumbrancesTab({ parcelId, editable }: { parcelId: string; edit
   const canAdd = editable && manager.can('titleencumbrances', 'create')
   const canEdit = editable && manager.can('titleencumbrances', 'update')
   const canRemove = editable && manager.can('titleencumbrances', 'delete')
+  const { entryMode, missing } = useEntryMode(nav, list.data, editing, begin, reset)
   const set = <K extends keyof typeof BLANK>(k: K) => (v: (typeof BLANK)[K]) => setF((x) => ({ ...x, [k]: v }))
 
   if (!manager.can('titleencumbrances')) return <p className="text-sm text-muted-foreground">Your role cannot see title encumbrances.</p>
@@ -98,17 +100,20 @@ export function EncumbrancesTab({ parcelId, editable }: { parcelId: string; edit
       exceptionSubmittedDate: orNull(f.submitted), exceptionApprovedDate: orNull(f.approved), impactAnalysis: orNull(f.impact), recommendedCure: orNull(f.cure),
       cureStatus: orNull(f.cureStatus), reviewNotes: orNull(f.notes), links,
     }
-    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) reset()
+    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) { reset(); if (entryMode) nav?.back() }
   }
   const errors = { ...fields, ...local }
 
   return (
     <>
+      {entryMode && nav && <EntryBar nav={nav} label="Back to encumbrances" what={editing ? `Encumbrance ${editing.number}` : 'Encumbrance'} />}
+      {missing && nav && <EntryMissing nav={nav} label="Back to encumbrances" />}
+      {!entryMode && <>
       <Section title="Title encumbrances">
         {list.data.length === 0 ? (
           <EmptyState title="No encumbrances recorded" description="Record each lien, easement or restriction found in the title research." />
         ) : (
-          <DataTable caption="Title encumbrances" headers={['Encumbrance ID', 'Type', 'Document title', 'Recorded', 'Grantor / lessor', 'Grantee / lessee', 'Cure status', ...(canEdit || canRemove ? ['Actions'] : [])]}>
+          <DataTable caption="Title encumbrances" headers={['Encumbrance ID', 'Type', 'Document title', 'Recorded', 'Grantor / lessor', 'Grantee / lessee', 'Cure status', 'Actions']}>
             {list.data.map((e) => (
               <tr key={e.id}>
                 <td className="px-3 py-2 font-medium">{e.number}</td>
@@ -118,10 +123,10 @@ export function EncumbrancesTab({ parcelId, editable }: { parcelId: string; edit
                 <td className="whitespace-pre-wrap px-3 py-2">{e.grantor}</td>
                 <td className="whitespace-pre-wrap px-3 py-2">{e.grantee}</td>
                 <td className="px-3 py-2">{e.cureStatus ?? '—'}</td>
-                {(canEdit || canRemove) && (
+                {(
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
-                      {canEdit && <button type="button" aria-label={`Edit encumbrance ${e.number}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(e)}><Pencil size={14} aria-hidden /></button>}
+                      <button type="button" aria-label={`Open encumbrance ${e.number}`} className={buttonClassName('outline', 'sm')} onClick={() => nav?.open(e.id)}>Open</button>
                       {canRemove && (
                         <button type="button" aria-label={`Remove encumbrance ${e.number}`} disabled={busy} className={buttonClassName('ghost', 'sm')}
                           onClick={() => void run(() => api.remove(parcelId, e.id)).then((ok) => { if (ok && editing?.id === e.id) reset() })}>
@@ -136,9 +141,11 @@ export function EncumbrancesTab({ parcelId, editable }: { parcelId: string; edit
           </DataTable>
         )}
       </Section>
+      </>}
 
-      {((canAdd && !editing) || (canEdit && editing)) && (
+      {((canAdd && !editing && !entryMode) || (editing && (canEdit || entryMode))) && (
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change encumbrance' : 'Add an encumbrance'} className="max-w-4xl space-y-3 rounded-lg border bg-card p-4">
+        <fieldset disabled={entryMode && !canEdit} className="m-0 min-w-0 space-y-3 border-0 p-0">
           <h3 className="text-sm font-semibold">{editing ? `Change ${editing.number}` : 'Add an encumbrance'}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField label="Encumbrance type" required value={f.type} onChange={set('type')} options={optionsWith(types, f.type)} blankLabel="Select one" error={errors.encumbranceType} />
@@ -160,8 +167,9 @@ export function EncumbrancesTab({ parcelId, editable }: { parcelId: string; edit
           <FormError error={error} />
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add encumbrance'}</button>
-            {editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
+            {entryMode && nav ? <button type="button" className={buttonClassName('outline')} onClick={() => { reset(); nav.back() }}>Cancel</button> : editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
           </div>
+        </fieldset>
         </form>
       )}
 

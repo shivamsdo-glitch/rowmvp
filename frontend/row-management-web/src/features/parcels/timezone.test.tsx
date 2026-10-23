@@ -108,7 +108,7 @@ describe('A parcel says which calendar its dates use (ROW-073)', () => {
 
   it('repeats it beside the deadlines so nobody has to guess how days were counted', async () => {
     const { user } = open('/parcels/pc2')
-    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     expect(await screen.findByText(/Days are counted in Chamorro Standard Time\./)).toBeInTheDocument()
   })

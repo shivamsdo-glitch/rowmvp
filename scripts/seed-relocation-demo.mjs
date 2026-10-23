@@ -38,22 +38,36 @@ async function login(key, username) {
 
 const FIRST = ['Maria', 'James', 'Linda', 'Robert', 'Patricia', 'Michael', 'Barbara', 'William', 'Elizabeth', 'David', 'Jennifer', 'Richard', 'Susan', 'Joseph', 'Karen']
 const LAST = ['Garcia', 'Johnson', 'Nguyen', 'Williams', 'Martinez', 'Brown', 'Davis', 'Rodriguez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Lee']
-const AGENTS = ['Casey Closer', 'Morgan Reyes', 'Priya Natarajan', 'Jordan Blake', 'Sam Okafor']
+const AGENTS = ['Lena Ortiz', 'Marcus Bell'] // the Relocation people in the Library's Agents list (scripts/seed-demo-data.mjs adds them)
+// Values of the Library's lists (backend Domain/Common/DefaultLibrary.cs)
+const DISPLACEE_STATUS = ['Owner-occupant', 'Tenant-occupant', 'Business owner', 'Owner (not occupant)']
+const DISPLACEE_INTEREST = ['Fee owner', 'Tenant', 'Business operator', 'Life estate holder']
+const ELIGIBILITY = ['Residential owner (180-day)', 'Residential tenant (90-day)', 'Business', 'Personal property only']
+const MODES = ['Phone', 'In person', 'Email', 'Letter', 'Certified mail', 'Site visit']
+const sleepless = () => {}
 const owner = () => `${pick(FIRST)} ${pick(LAST)}`
 
 // How far a case has got: 0 nothing sent … 8 complete. Each stage adds the dates Diagram 5 asks for (the earlier ones stay).
-function details(number, name, stage, extra = {}) {
+function details(number, name, stage, extra = {}, ctx = {}) {
   const t = (n) => day(-n) // n days ago
   const base = 200 - stage * 20 // earlier stages happened longer ago
-  const d = { relocationNumber: number, displaceeName: name, relocationType: pick(['Residential', 'Residential', 'Non-residential']), assignedTo: pick(AGENTS), limitedEnglishProficiency: rnd() < 0.15 }
+  const kind = pick(['Residential', 'Residential', 'Non-residential'])
+  const d = {
+    relocationNumber: number, displaceeName: name, relocationType: kind, assignedTo: pick(AGENTS), limitedEnglishProficiency: rnd() < 0.15,
+    displaceeStatus: kind === 'Residential' ? pick(DISPLACEE_STATUS.slice(0, 2)) : 'Business owner', displaceeInterest: kind === 'Residential' ? pick(DISPLACEE_INTEREST.slice(0, 2)) : 'Business operator',
+    displaceeMailingAddress: `${int(100, 9000)} ${pick(['Oak St', 'Maple Ave', 'Cedar Ln', 'Pine Dr'])}, Austin, TX 787${int(10, 99)}`, propertySiteAddress: ctx.site ?? `${int(100, 9000)} Harbor Rd, Austin, TX`,
+    housingOfLastResort: false, ineligibleForRelocation: false, demolitionRequired: false,
+  }
   if (stage >= 1) Object.assign(d, { planningStudyDate: t(base + 30), ginMailedDate: t(base), ginDeliveredDate: t(base - 3) })
   if (stage >= 2) Object.assign(d, { initialInterview: t(base - 12), advisoryNeeds: pick(['Needs a ground-floor unit; mobility limited.', 'Wants to stay in the same school district.', 'Small business: needs a site near the corridor.', 'Renting out the second unit; two tenants.']) })
+  if (stage >= 2) Object.assign(d, { certificateOfEligibility: t(base - 18) })
   if (stage >= 3) Object.assign(d, { noticeOfEligibility: t(base - 25), deliveryOfNoticeOfEligibility: t(base - 27) })
   if (stage >= 4) Object.assign(d, { replacementHousingStudyDate: t(base - 40), comparableNoticeDate: t(base - 42), inspectionDate: t(base - 50), decentSafeSanitary: true })
-  if (stage >= 5) Object.assign(d, { notice90Day: t(base - 60), deliveryOf90DayNotice: t(base - 62) })
-  if (stage >= 6) Object.assign(d, { notice30Day: undefined, notice30DayVacate: t(base - 75), notice30DayVacateDelivered: t(base - 77), targetVacateDate: day(int(5, 40) - 0) })
+  if (stage >= 5) Object.assign(d, { notice90Day: t(base - 60), deliveryOf90DayNotice: t(base - 62), vacateEligibleDate: t(base - 64) })
+  if (stage >= 6) Object.assign(d, { notice30Day: undefined, notice30DayVacate: t(base - 75), notice30DayVacateDelivered: t(base - 77), targetVacateDate: day(int(5, 40) - 0), movePlan: t(base - 70), certificationOfInventory: t(base - 72) })
   if (stage >= 7) Object.assign(d, { actualVacateDate: t(Math.max(10, base - 100)), targetVacateDate: t(Math.max(12, base - 98)) })
-  if (stage >= 8) Object.assign(d, { certificateOfCompletion: t(5), relocationComplete: t(3) })
+  if (stage >= 7) Object.assign(d, { releaseOfProperty: t(8) })
+  if (stage >= 8) Object.assign(d, { certificateOfCompletion: t(5), fileCloseOutSubmitted: t(4), relocationComplete: t(3), relocationComplete1: t(3), benefitsExpirationLetterDate: t(6), benefitExpiration: day(300) })
   return { ...d, ...extra }
 }
 
@@ -96,19 +110,42 @@ async function main() {
 
   const flagOwners = async (parcel, count, { newOwners = 0 } = {}) => {
     for (let i = 0; i < newOwners; i++) await call(people.designer.token, 'POST', `/api/v1/parcels/${parcel.id}/parties`, { newParty: { kind: 'Person', name: owner() }, role: 'FeeOwner', ownerType: 'Fee Owner', leaseOnFile: false })
-    const parties = await call(people.admin.token, 'GET', `/api/v1/parcels/${parcel.id}/parties`)
-    const links = parties.ownership.slice(0, count)
+    let parties = await call(people.admin.token, 'GET', `/api/v1/parcels/${parcel.id}/parties`)
+    if (!parties.ownership.some((l) => l.role === 'FeeOwner')) { // a parcel with no owner of its own gets one, so there is someone to displace
+      await call(people.designer.token, 'POST', `/api/v1/parcels/${parcel.id}/parties`, { newParty: { kind: 'Person', name: owner() }, role: 'FeeOwner', ownerType: 'Fee Owner', leaseOnFile: false })
+      parties = await call(people.admin.token, 'GET', `/api/v1/parcels/${parcel.id}/parties`)
+    }
+    const links = parties.ownership.filter((l) => l.role === 'FeeOwner').slice(0, count)
     for (const l of links) await call(people.admin.token, 'PUT', `/api/v1/party-links/${l.id}`, { sharePercent: l.sharePercent, notes: l.notes, leaseOnFile: false, ownerType: l.ownerType, displacementRequired: true })
     return links.map((l) => ({ id: l.id, name: l.party.name }))
   }
+  const caseBody = (parcel, link, number, stage, extra = {}) => {
+    const kind = (extra.relocationType) ?? undefined
+    const notes = [{ noteDate: day(-60), text: 'Case opened after the owner was flagged for displacement.' }, { noteDate: day(-30), text: pick(['Interview done; family prefers to rent.', 'Owner is cooperative.', 'Waiting for the comparable housing list.']) }, { noteDate: day(-9), text: pick(['Replacement housing options sent.', 'Moving quote requested.', 'Follow-up call scheduled.']) }]
+    return {
+      details: { ...details(number, link.name, stage, extra, { site: parcel.address }), partyLinkId: link.id },
+      statusNotes: notes.slice(0, Math.min(3, 1 + stage)),
+      agents: AGENTS.map((agentName) => ({ agentName })),
+      contacts: [
+        { name: link.name, contactType: 'Family member', contact: '(512) 555-0' + int(100, 199), email: 'owner@example.com', address: `${int(100, 9000)} Oak St, Austin, TX`, isPrimary: true },
+        { name: owner(), contactType: pick(['Family member', 'Representative', 'Attorney']), contact: '(512) 555-0' + int(200, 299), email: 'contact@example.com', address: `${int(100, 9000)} Elm St, Austin, TX`, isPrimary: false },
+      ],
+      eligibilities: stage >= 2 ? [{ eligibilityType: pick(ELIGIBILITY), claimLimit: int(5, 40) * 1000, submittedForApproval: day(-int(60, 90)), approved: stage >= 3 ? day(-int(30, 55)) : null }] : [],
+      contactLog: [0, 1, 2].slice(0, Math.min(3, 1 + stage)).map((i) => ({ contactedAt: new Date(Date.now() - int(2 + i * 12, 14 + i * 12) * 86_400_000).toISOString(), mode: pick(MODES), contactedBy: pick(AGENTS), contactPersons: link.name, notes: pick(['Explained the relocation benefits and next steps.', 'Reviewed the replacement housing list.', 'Confirmed the move date and mover quote.', 'Left a voicemail; will call again.']) })),
+    }
+  }
   const addCase = async (parcel, link, number, stage, extra = {}) => {
-    const r = await call(people.ra.token, 'POST', `/api/v1/parcels/${parcel.id}/relocations`, {
-      details: { ...details(number, link.name, stage, extra), partyLinkId: link.id },
-      statusNotes: stage >= 2 ? [{ noteDate: day(-20), text: pick(['Interview done; family prefers to rent.', 'Owner is cooperative.', 'Waiting for the comparable housing list.']) }] : [],
-      contacts: [{ name: link.name, contactType: 'Owner', contact: '(512) 555-0' + int(100, 199), email: 'owner@example.com', address: `${int(100, 9000)} Oak St`, isPrimary: true }],
-      contactLog: stage >= 1 ? [{ contactedAt: new Date(Date.now() - int(2, 40) * 86_400_000).toISOString(), mode: pick(['Phone', 'In person', 'Letter']), contactedBy: people.ra.name, contactPersons: link.name, notes: 'Explained the relocation benefits and next steps.' }] : [],
-    })
-    return r
+    await ensureOnTeam(parcel)
+    return call(people.ra.token, 'POST', `/api/v1/parcels/${parcel.id}/relocations`, caseBody(parcel, link, number, stage, extra))
+  }
+  // The Relocation people go on the parcel's team so "Assigned to" has them to choose from.
+  const agentIds = Object.fromEntries((await call(people.admin.token, 'GET', '/api/v1/library/agents')).map((a) => [a.name, a.id]))
+  const onTeam = new Set()
+  async function ensureOnTeam(parcel) {
+    if (onTeam.has(parcel.id)) return
+    const have = (await call(people.pm.token, 'GET', `/api/v1/parcels/${parcel.id}/team`)).map((m) => m.name)
+    for (const name of AGENTS) if (agentIds[name] && !have.includes(name)) await call(people.pm.token, 'POST', `/api/v1/parcels/${parcel.id}/team`, { agentId: agentIds[name], notes: 'Relocation advisor for the displaced owners.' })
+    onTeam.add(parcel.id)
   }
 
   let count = 0

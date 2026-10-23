@@ -85,7 +85,7 @@ test.describe('Designer · parcel details', () => {
 
     await signInViaUi(page, 'Designer')
     await page.goto(`/parcels/${parcel.id}`)
-    await page.getByRole('tab', { name: 'Interests', exact: true }).click()
+    await page.getByRole('tab', { name: 'Interests & easements', exact: true }).click()
     const table = page.getByRole('table', { name: 'Interests' })
     await expect(table.getByRole('columnheader', { name: 'Acres' })).toBeVisible()
     await expect(table.getByRole('row').nth(1)).toContainText('43,560 sq ft')

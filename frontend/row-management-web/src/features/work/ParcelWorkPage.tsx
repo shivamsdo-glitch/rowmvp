@@ -21,8 +21,8 @@ export interface WorkKind<R extends OverviewBase = OverviewBase> {
   fetch: (search: string) => Promise<R[]>
   headers: string[]
   cells: (r: R) => ReactNode[]
-  /** The parcel's own tab, which does the adding, changing and removing under that page's permissions. */
-  tab: (parcel: Parcel, editable: boolean) => ReactNode
+  /** True when the rows are records of a list tab (appraisals, easements...): Open shows that one record on its own page; otherwise Open shows the tab. */
+  opensRecord?: boolean
 }
 
 const useDebounced = (value: string, ms = 250) => {
@@ -43,7 +43,6 @@ export function ParcelWorkPage({ title, subtitle, kinds }: { title: string; subt
   const visible = kinds.filter((k) => manager.can(k.page))
   const [kindKey, setKindKey] = useState(kinds[0].key)
   const [text, setText] = useState('')
-  const [parcelId, setParcelId] = useState<string | null>(null)
   const term = useDebounced(text.trim())
   const kind = visible.find((k) => k.key === kindKey) ?? visible[0]
 
@@ -71,14 +70,13 @@ export function ParcelWorkPage({ title, subtitle, kinds }: { title: string; subt
       <div className="my-4 max-w-md">
         <TextField label="Search" value={text} onChange={setText} maxLength={100} hint="Parcel number, owner name, address or record ID" />
       </div>
-      <Records kind={kind} term={term} onOpen={setParcelId} />
-      <Parcels term={term} onOpen={setParcelId} />
-      {parcelId && <SelectedParcel key={parcelId} parcelId={parcelId} kind={kind} onClose={() => setParcelId(null)} />}
+      <Records kind={kind} term={term} />
+      <Parcels kind={kind} term={term} />
     </>
   )
 }
 
-function Records({ kind, term, onOpen }: { kind: WorkKind; term: string; onOpen: (parcelId: string) => void }) {
+function Records({ kind, term }: { kind: WorkKind; term: string }) {
   const q = useQuery({ queryKey: ['work', kind.key, term], queryFn: () => kind.fetch(term) })
   return (
     <section aria-label="Matching records" className="mb-6">
@@ -93,7 +91,11 @@ function Records({ kind, term, onOpen }: { kind: WorkKind; term: string; onOpen:
               <td className="px-3 py-2">{r.parcelNumber}{r.address ? <span className="block text-xs text-muted-foreground">{r.address}</span> : null}</td>
               <td className="px-3 py-2">{r.ownerName ?? '—'}</td>
               {kind.cells(r).map((c, i) => <td key={i} className="px-3 py-2">{c}</td>)}
-              <td className="px-3 py-2"><button type="button" aria-label={`Open ${r.number}`} className={buttonClassName('outline', 'sm')} onClick={() => onOpen(r.parcelId)}>Open</button></td>
+              <td className="px-3 py-2">
+                {/* The record opens on its own page, inside its tab of the parcel (ADR 0028), never as a panel under this table. */}
+                <Link to="/parcels/$parcelId" params={{ parcelId: r.parcelId }} search={{ tab: kind.page, ...(kind.opensRecord ? { record: r.id } : {}) }}
+                  aria-label={`Open ${r.number}`} className={buttonClassName('outline', 'sm')}>Open</Link>
+              </td>
             </tr>
           ))}
         </DataTable>
@@ -102,7 +104,7 @@ function Records({ kind, term, onOpen }: { kind: WorkKind; term: string; onOpen:
   )
 }
 
-function Parcels({ term, onOpen }: { term: string; onOpen: (parcelId: string) => void }) {
+function Parcels({ kind, term }: { kind: WorkKind; term: string }) {
   const { manager } = useAuth()
   const api = parcelsApi(manager.api)
   const q = useQuery({ queryKey: ['work-parcels', term], queryFn: () => api.list({ search: term, pageSize: 10 }), enabled: !!term && manager.can('parcels') })
@@ -119,36 +121,10 @@ function Parcels({ term, onOpen }: { term: string; onOpen: (parcelId: string) =>
               <td className="px-3 py-2 font-medium">{p.number}</td>
               <td className="px-3 py-2">{p.address ?? '—'}</td>
               <td className="px-3 py-2">{p.statusName}</td>
-              <td className="px-3 py-2"><button type="button" aria-label={`Open parcel ${p.number}`} className={buttonClassName('outline', 'sm')} onClick={() => onOpen(p.id)}>Open</button></td>
+              <td className="px-3 py-2"><Link to="/parcels/$parcelId" params={{ parcelId: p.id }} search={{ tab: kind.page }} aria-label={`Open parcel ${p.number}`} className={buttonClassName('outline', 'sm')}>Open</Link></td>
             </tr>
           ))}
         </DataTable>
-      )}
-    </section>
-  )
-}
-
-function SelectedParcel({ parcelId, kind, onClose }: { parcelId: string; kind: WorkKind; onClose: () => void }) {
-  const { manager } = useAuth()
-  const api = parcelsApi(manager.api)
-  const q = useQuery({ queryKey: ['parcel', parcelId], queryFn: () => api.get(parcelId) })
-  return (
-    <section aria-label="Selected parcel" className="mb-6 rounded-lg border bg-card p-4">
-      {q.isPending ? <LoadingRows rows={3} /> : q.isError ? <ErrorState title="The parcel could not be loaded" description={q.error.message} retry={() => void q.refetch()} /> : (
-        <>
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">Parcel {q.data.number}</h2>
-              <p className="text-sm text-muted-foreground">
-                {[q.data.ownerName, q.data.address].filter(Boolean).join(' · ') || 'No owner or address recorded'}
-                {' · '}
-                <Link to="/parcels/$parcelId" params={{ parcelId }} className="underline">Open the whole parcel</Link>
-              </p>
-            </div>
-            <button type="button" aria-label="Close parcel" className={buttonClassName('ghost', 'sm')} onClick={onClose}><X size={16} aria-hidden /></button>
-          </div>
-          {kind.tab(q.data, q.data.state === 'Active')}
-        </>
       )}
     </section>
   )

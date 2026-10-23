@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { ApiError } from '@/api/client'
 import { cn } from '@/lib/cn'
+import { Explained } from '@/components/ui/abbr'
 
 const INPUT =
   'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground ' +
@@ -21,7 +22,7 @@ export function Field({
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-xs font-medium text-foreground">
-        {label}
+        <Explained text={label} />
         {required && <span aria-hidden className="text-danger"> *</span>}
       </label>
       {children({ id, 'aria-invalid': !!error, 'aria-describedby': describedBy })}
@@ -106,7 +107,7 @@ export function CheckboxField({ label, checked, onChange, disabled }: { label: s
   return (
     <div className="flex items-center gap-2 pt-5">
       <input id={id} type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />
-      <label htmlFor={id} className="text-sm">{label}</label>
+      <label htmlFor={id} className="text-sm"><Explained text={label} /></label>
     </div>
   )
 }
@@ -169,7 +170,7 @@ export function DataTable({ caption, headers, children }: { caption: string; hea
       <table className="w-full text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
-          <tr>{headers.map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>
+          <tr>{headers.map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium"><Explained text={h} /></th>)}</tr>
         </thead>
         <tbody className="divide-y">{children}</tbody>
       </table>

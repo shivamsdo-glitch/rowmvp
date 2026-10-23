@@ -142,7 +142,7 @@ describe('Right of entry on a parcel (ROW-077)', () => {
 describe('Plan reviews (ROW-239)', () => {
   it('says the parcel is held while the gate is on and a review is missing, and releases it when both approve', async () => {
     const { user } = open('/parcels/pc1', 'ProjectManager', { gateEnabled: true })
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
 
     const banner = await screen.findByRole('status', { name: 'Plan review gate' })
     expect(banner).toHaveTextContent('held at Title & survey')
@@ -163,13 +163,13 @@ describe('Plan reviews (ROW-239)', () => {
 
   it('says reviews are only kept for the file when the gate is off', async () => {
     const { user } = open('/parcels/pc1')
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     expect(await screen.findByRole('status', { name: 'Plan review gate' })).toHaveTextContent('does not require plan reviews')
   })
 
   it('needs notes when changes are required, a reviewer and a date', async () => {
     const { user, fake } = open('/parcels/pc1')
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     const form = await screen.findByRole('form', { name: 'Record a plan review' })
 
     await user.click(within(form).getByRole('button', { name: 'Record review' }))
@@ -186,7 +186,7 @@ describe('Plan reviews (ROW-239)', () => {
 
   it('removes a review', async () => {
     const { user, fake } = open('/parcels/pc1', 'Admin', { reviews: [{ parcelId: 'pc1', id: 'pr-x', discipline: 'Surveyor', reviewedOn: '2026-10-01' }] })
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     await user.click(await screen.findByRole('button', { name: /^Remove the surveyor review/ }))
     await waitFor(() => expect(fake.reviews).toHaveLength(0))
   })
@@ -195,7 +195,7 @@ describe('Plan reviews (ROW-239)', () => {
 describe('Staff report and certificate of necessity (ROW-240)', () => {
   it('writes, changes and submits a staff report', async () => {
     const { user, fake } = open('/parcels/pc1')
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     const card = await screen.findByRole('article', { name: 'Staff report' })
 
     await user.click(within(card).getByRole('button', { name: /^Write the staff report/ }))
@@ -222,7 +222,7 @@ describe('Staff report and certificate of necessity (ROW-240)', () => {
 
   it('lets someone else approve, and rejecting needs a reason', async () => {
     const { user, fake } = open('/parcels/pc1', 'Finance', { reports: [{ parcelId: 'pc1', id: 'sr1', kind: 'CertificateOfNecessity', status: 'Submitted', title: 'Certificate', body: 'Necessary.', submittedByMe: false }] })
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     const card = await screen.findByRole('article', { name: 'Certificate of necessity' })
 
     await user.click(within(card).getByRole('button', { name: 'Reject' }))
@@ -238,14 +238,14 @@ describe('Staff report and certificate of necessity (ROW-240)', () => {
 
   it('approves a submitted report', async () => {
     const { user, fake } = open('/parcels/pc1', 'Appraiser', { reports: [{ parcelId: 'pc1', id: 'sr1', kind: 'StaffReport', status: 'Submitted', submittedByMe: false }] })
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     await user.click(await screen.findByRole('button', { name: 'Approve' }))
     await waitFor(() => expect(fake.reports[0].status).toBe('Approved'))
   })
 
   it('shows the server’s refusal when two live reports of a kind are attempted', async () => {
     const { user } = open('/parcels/pc1', 'ProjectManager', { reports: [{ parcelId: 'pc1', id: 'sr1', kind: 'StaffReport', status: 'Approved', canEdit: false }] })
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     const card = await screen.findByRole('article', { name: 'Staff report' })
     expect(within(card).queryByRole('button', { name: /^Change the staff report/ })).not.toBeInTheDocument()
     expect(within(card).getByText('Approved')).toBeInTheDocument()
@@ -256,7 +256,7 @@ describe('Staff report and certificate of necessity (ROW-240)', () => {
     const { user } = open('/parcels/pc1', role, {
       reports: [{ parcelId: 'pc1', id: 'sr1', kind: 'StaffReport', status: 'Submitted', submittedByMe: false }, { parcelId: 'pc1', id: 'sr2', kind: 'CertificateOfNecessity', status: 'Draft' }],
     })
-    await tab(user, 'Reviews & reports')
+    await tab(user, 'Reviews & site visits')
     await screen.findByRole('article', { name: 'Staff report' })
     expect(screen.queryAllByRole('button', { name: 'Approve' }).length > 0).toBe(can(role, 'approvals', 'update'))
     expect(screen.queryAllByRole('button', { name: 'Submit for approval' }).length > 0).toBe(can(role, 'parcels', 'update'))

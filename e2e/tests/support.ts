@@ -136,3 +136,31 @@ export function savedFilters(request: APIRequestContext, token: string) {
 export async function jsonOf(res: { json(): Promise<any> }) {
   return res.json()
 }
+
+/** The parcel tab each section lives in (sections share tabs; every section is a `<section data-section=…>`). */
+export const PARCEL_TAB_OF: Record<string, string> = {
+  Summary: 'Summary', Team: 'Summary', 'Parcel location': 'Summary', Notes: 'Summary',
+  Negotiation: 'Negotiation', Diary: 'Negotiation', 'Contact log': 'Negotiation',
+  'Reviews & reports': 'Reviews & site visits', 'Site visits & notice': 'Reviews & site visits',
+  Interests: 'Interests & easements', Easements: 'Interests & easements',
+  'Title encumbrances': 'Title', 'Title and closing': 'Title',
+  Workflow: 'Workflow & milestones', 'Milestones & deadlines': 'Workflow & milestones',
+  Relocation: 'Relocation', Questionnaire: 'Relocation',
+}
+
+/** The key each section carries in its `data-section` attribute (the page or tab key it had before the merge). */
+export const SECTION_KEY: Record<string, string> = {
+  Summary: 'summary', Team: 'team', 'Parcel location': 'parcellocation', Notes: 'notes',
+  Negotiation: 'parcelnegotiation', Diary: 'diary', 'Contact log': 'contactlog',
+  'Reviews & reports': 'reviews', 'Site visits & notice': 'visits', Interests: 'interests', Easements: 'easements',
+  'Title encumbrances': 'titleencumbrances', 'Title and closing': 'titleclosing',
+  Workflow: 'workflow', 'Milestones & deadlines': 'milestones', Relocation: 'parcelrelocation', Questionnaire: 'parcelquestionnaire',
+}
+
+/** Opens the tab that holds a parcel section; true when the tab and the section are shown to this person. */
+export async function sectionVisible(page: Page, section: string): Promise<boolean> {
+  const tab = page.getByRole('tab', { name: PARCEL_TAB_OF[section], exact: true })
+  if ((await tab.count()) === 0) return false
+  await tab.click()
+  return (await page.locator(`[data-section="${SECTION_KEY[section]}"]`).count()) > 0
+}

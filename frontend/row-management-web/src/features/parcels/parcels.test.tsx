@@ -383,7 +383,7 @@ describe('Parcel detail and synopsis (ROW-008, 073, 233)', () => {
 describe('Interests (ROW-234)', () => {
   it('adds an interest with its area, then removes it', async () => {
     const { fake, user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Interests' }))
+    await user.click(await screen.findByRole('tab', { name: 'Interests & easements' }))
     expect(await screen.findByText('No interests recorded')).toBeInTheDocument()
 
     const form = screen.getByRole('form', { name: 'Add an interest' })
@@ -405,7 +405,7 @@ describe('Interests (ROW-234)', () => {
 
   it('a read-only role sees the interests but no way to add or remove them', async () => {
     open('/parcels/pc1', 'Appraiser', { parcels: [{ ...SEED[0], interests: [{ id: 'i1', type: 'FeeTaking', areaSqFt: 100, notes: null }] }] })
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Interests' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Interests & easements' }))
 
     expect(await screen.findByRole('row', { name: /Fee taking/ })).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'Add an interest' })).not.toBeInTheDocument()
@@ -418,7 +418,7 @@ describe('Interests (ROW-234)', () => {
 describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
   it('adds a custom milestone, completes a standard one and removes the custom one', async () => {
     const { fake, user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     const add = screen.getByRole('form', { name: 'Add a milestone' })
     await user.click(within(add).getByRole('button', { name: 'Add milestone' }))
@@ -443,7 +443,7 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
 
   it('refuses a duplicate milestone name', async () => {
     const { user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     const add = screen.getByRole('form', { name: 'Add a milestone' })
 
     await user.type(within(add).getByLabelText(/^Milestone name/), 'Closed')
@@ -456,14 +456,14 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
     open('/parcels/pc1', 'ProjectManager', {
       parcels: [{ ...SEED[0], milestones: [{ id: 'm1', name: 'Right of entry', dueOn: '2026-09-01', completedOn: null, notes: null, isStandard: false, isOverdue: false }] }],
     })
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     expect(within(await screen.findByRole('row', { name: /Right of entry/ })).getByText('Overdue')).toBeInTheDocument()
   })
 
   it('explains a refused milestone date next to the field and keeps the milestone as it was', async () => {
     const { fake, user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     await user.click(screen.getByRole('button', { name: 'Edit milestone Offer delivered' }))
     const edit = screen.getByRole('form', { name: 'Edit milestone Offer delivered' })
 
@@ -483,7 +483,7 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
 
   it('shows a refused due date on the add form, beside the field', async () => {
     const { user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     const add = screen.getByRole('form', { name: 'Add a milestone' })
 
     await user.type(within(add).getByLabelText(/^Milestone name/), 'Stakes set')
@@ -496,14 +496,14 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
 
   it("the notice milestone's completion date is locked in the editor and points to where it is set", async () => {
     const { user } = open('/parcels/pc1', 'ProjectManager', { parcels: [{ ...SEED[0], milestones: withNotice('2026-05-01') }] })
-    await user.click(await screen.findByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     await user.click(screen.getByRole('button', { name: 'Edit milestone Notice to owner' }))
     const edit = screen.getByRole('form', { name: 'Edit milestone Notice to owner' })
 
     expect(within(edit).getByLabelText('Completed on')).toBeDisabled()
     expect(within(edit).getByLabelText('Completed on')).toHaveValue('2026-05-01')
-    expect(within(edit).getByText('Set by recording the notice on the Site visits & notice tab.')).toBeInTheDocument()
+    expect(within(edit).getByText('Set by recording the notice in the Site visits & notice section of the Reviews & site visits tab.')).toBeInTheDocument()
     // Its due date and notes can still be saved, with the completion date untouched.
     setDate('Due date', '2026-08-01', edit)
     await user.click(within(edit).getByRole('button', { name: 'Save milestone' }))
@@ -512,7 +512,7 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
 
   it('recording the notice to owner starts the offer deadline', async () => {
     const { user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Site visits & notice' }))
+    await user.click(await screen.findByRole('tab', { name: 'Reviews & site visits' }))
     const form = screen.getByRole('form', { name: 'Notice to owner' })
 
     setDate('Notice issued on', '2026-10-10', form)
@@ -522,7 +522,7 @@ describe('Milestones and deadlines (ROW-010, 073, 074)', () => {
     await user.click(within(form).getByRole('button', { name: 'Save notice' }))
     expect(await within(form).findByText('Notice saved.')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('tab', { name: 'Milestones & deadlines' }))
+    await user.click(screen.getByRole('tab', { name: 'Workflow & milestones' }))
     const row = within(await screen.findByRole('table', { name: 'Deadlines' })).getByRole('row', { name: /Offer within 90 days/ })
     expect(within(row).getByText('Jan 8, 2027')).toBeInTheDocument()
     expect(within(row).getByText('Pending')).toBeInTheDocument()
@@ -538,7 +538,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 
   it('moves to the next step in order without a reason and records it', async () => {
     const { fake, user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     expect(within(screen.getByRole('list', { name: 'Workflow steps' })).getByText('Parcel set up').closest('li')).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Advance to Title & survey' }))
@@ -552,7 +552,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 
   it('holds the offer step while the project gate is closed, and says it cannot be overridden', async () => {
     open('/parcels/pc1', 'ProjectManager', atStep('appraisal', 'p-fed'))
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     expect(await screen.findByText('Offer is on hold.')).toBeInTheDocument()
     expect(screen.getByText(/This cannot be overridden/)).toBeInTheDocument()
@@ -561,7 +561,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 
   it('opens the offer step once the project gate is open', async () => {
     const { user } = open('/parcels/pc1', 'ProjectManager', atStep('appraisal'))
-    await user.click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     await user.click(await screen.findByRole('button', { name: 'Advance to Offer' }))
 
@@ -570,7 +570,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 
   it('needs a written reason to skip ahead, then records the override', async () => {
     const { fake, user } = open('/parcels/pc1', 'ProjectManager')
-    await user.click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     const form = screen.getByRole('form', { name: 'Move to another step' })
 
     await user.selectOptions(within(form).getByLabelText('Move to step'), 'appraisal')
@@ -588,7 +588,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 
   it('does not let an override jump into a held offer step', async () => {
     const { user } = open('/parcels/pc3', 'ProjectManager', { parcels: [{ ...SEED[2] }] })
-    await user.click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     const form = screen.getByRole('form', { name: 'Move to another step' })
 
     await user.selectOptions(within(form).getByLabelText('Move to step'), 'closing')
@@ -599,7 +599,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 
   it('lets an override go backwards with a reason', async () => {
     const { fake, user } = open('/parcels/pc1', 'ProjectManager', atStep('appraisal'))
-    await user.click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await user.click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
     const form = screen.getByRole('form', { name: 'Move to another step' })
 
     await user.selectOptions(within(form).getByLabelText('Move to step'), 'title_survey')
@@ -612,7 +612,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
   it('a role that may update parcels but not override can only advance in order', async () => {
     const rows = permissionRowsFor('Negotiator').map((r) => (r.pageKey === 'parcels' ? { ...r, canUpdate: true } : r))
     open('/parcels/pc1', 'Negotiator', { rows })
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     expect(await screen.findByRole('button', { name: 'Advance to Title & survey' })).toBeEnabled()
     expect(screen.queryByRole('form', { name: 'Move to another step' })).not.toBeInTheDocument()
@@ -623,14 +623,14 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
     const rows = permissionRowsFor('Negotiator').map((r) => (r.pageKey === 'parcels' ? { ...r, canUpdate: true } : r))
     const { fake } = open('/parcels/pc1', 'Negotiator', { rows })
     fake.stepGate.extraOverrideRoles.push('Negotiator')
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     expect(await screen.findByRole('form', { name: 'Move to another step' })).toBeInTheDocument()
   })
 
   it('a read-only role sees the steps and history but no controls', async () => {
     open('/parcels/pc1', 'Appraiser')
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Workflow & milestones' }))
 
     expect(await screen.findByRole('list', { name: 'Workflow steps' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Advance to/ })).not.toBeInTheDocument()
@@ -643,7 +643,7 @@ describe('Workflow and ordered step gating (ROW-071, 072)', () => {
 describe('Site visits (ROW-237)', () => {
   it('records a visit with whether the owner was reached, then removes it', async () => {
     const { fake, user } = open('/parcels/pc1')
-    await user.click(await screen.findByRole('tab', { name: 'Site visits & notice' }))
+    await user.click(await screen.findByRole('tab', { name: 'Reviews & site visits' }))
     expect(await screen.findByText('No site visits yet')).toBeInTheDocument()
     const form = screen.getByRole('form', { name: 'Record a site visit' })
 
@@ -729,7 +729,7 @@ describe.each(ROLES.map((r) => [r]))('what %s can do with parcels', (role) => {
 
   it('can remove an interest only if the role may delete', async () => {
     open('/parcels/pc1', role, { parcels: [{ ...SEED[0], interests: [{ id: 'i1', type: 'Remainder', areaSqFt: 5, notes: null }] }] })
-    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Interests' }))
+    await userEventModule.setup().click(await screen.findByRole('tab', { name: 'Interests & easements' }))
     await screen.findByRole('row', { name: /Remainder/ })
 
     expect(!!screen.queryByRole('button', { name: 'Remove Remainder interest' })).toBe(canDelete(role))

@@ -1,3 +1,4 @@
+import { Explained } from '@/components/ui/abbr'
 import { useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -130,7 +131,7 @@ export function ProjectForm({
   return (
     <form onSubmit={submit} noValidate aria-label={project ? 'Edit project' : 'New project'} className="space-y-6">
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">ROW project details</legend>
+        <legend className="text-sm font-semibold"><Explained text="ROW project details" /></legend>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <TextField label="Project number" value={s.number} onChange={set('number')} error={errors.number} maxLength={50}
             hint={project ? 'Change only if the agency number changed.' : 'Leave blank to generate the next number.'} />

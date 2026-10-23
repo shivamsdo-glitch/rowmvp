@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { devToken, level, newId, ROLES, sessionToken, signInViaUi, PARCEL_TAB_OF } from './support'
 
 /**
  * Phase 1, slice 3b — a parcel's team, negotiation diary and notes (ROW-019, 020, 021). Real browser, real UI, real API,
@@ -33,7 +33,7 @@ async function makeAgent(request: APIRequestContext, name: string, agentType = '
 
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
-  await page.getByRole('tab', { name: tab }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, exact: true }).click()
 }
 
 test.describe('Project Manager · team and notes', () => {
@@ -119,7 +119,7 @@ test.describe('Negotiator · diary', () => {
     const parcel = await makeParcel(request, await admin(request))
     await signInViaUi(page, 'Negotiator')
     await openTab(page, parcel.id, 'Diary')
-    const form = page.getByRole('form', { name: 'Log a contact' })
+    const form = page.getByRole('form', { name: 'Log a diary contact' })
     const who = unique('Alex Marlowe')
 
     await form.getByRole('button', { name: 'Add to diary' }).click()
@@ -158,7 +158,7 @@ test.describe('Negotiator · diary', () => {
     await signInViaUi(pmPage, 'ProjectManager')
     await openTab(pmPage, parcel.id, 'Diary')
     await expect(pmPage.getByRole('table', { name: 'Negotiation diary' }).getByRole('row')).toHaveCount(3)
-    await expect(pmPage.getByRole('form', { name: 'Log a contact' })).toHaveCount(0)
+    await expect(pmPage.getByRole('form', { name: 'Log a diary contact' })).toHaveCount(0)
     await expect(pmPage.getByRole('button', { name: /^Remove the/ })).toHaveCount(0)
     const pm = { Authorization: `Bearer ${await sessionToken(pmPage)}` }
     expect((await request.post(`/api/v1/parcels/${parcel.id}/diary`, { headers: pm, data: { occurredOn: today(), method: 'Call', direction: 'Outgoing', contactName: 'X', summary: 'x' } })).status()).toBe(403)
@@ -189,14 +189,14 @@ test.describe('Everyone · team, diary and notes', () => {
       await expect(page.getByRole('table', { name: 'Parcel team' })).toBeVisible()
       await expect(page.getByRole('form', { name: 'Assign a team member' })).toHaveCount(allowed(role, 'parcels', 'create') ? 1 : 0)
       await expect(page.getByRole('button', { name: /^Remove Seed Counsel/ })).toHaveCount(allowed(role, 'parcels', 'delete') ? 1 : 0)
-      await page.getByRole('tab', { name: 'Notes' }).click()
+      await page.getByRole('tab', { name: 'Summary' }).click()
       await expect(page.getByText('seed note')).toBeVisible()
       await expect(page.getByRole('form', { name: 'Add a note' })).toHaveCount(allowed(role, 'parcels', 'create') ? 1 : 0)
       await expect(page.getByRole('button', { name: /^Delete the note/ })).toHaveCount(allowed(role, 'parcels', 'delete') ? 1 : 0)
-      await page.getByRole('tab', { name: 'Diary' }).click()
+      await page.getByRole('tab', { name: 'Negotiation' }).click()
       if (allowed(role, 'negotiations', 'read')) {
         await expect(page.getByRole('table', { name: 'Negotiation diary' })).toBeVisible()
-        await expect(page.getByRole('form', { name: 'Log a contact' })).toHaveCount(allowed(role, 'negotiations', 'create') ? 1 : 0)
+        await expect(page.getByRole('form', { name: 'Log a diary contact' })).toHaveCount(allowed(role, 'negotiations', 'create') ? 1 : 0)
         await expect(page.getByRole('button', { name: /^Remove the/ })).toHaveCount(allowed(role, 'negotiations', 'delete') ? 1 : 0)
       } else {
         await expect(page.getByText('Your role cannot see the negotiation diary.')).toBeVisible()

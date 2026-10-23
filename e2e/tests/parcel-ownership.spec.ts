@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi, PARCEL_TAB_OF } from './support'
 
 /**
  * A parcel's Ownership interests tab (ADR 0023: Ownership Details and Parties combined, with the derived Owner name) and the read-only
@@ -25,7 +25,7 @@ async function makeParcel(request: APIRequestContext, extra: Record<string, unkn
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
   await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
-  await page.getByRole('tab', { name: tab }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, exact: true }).click()
 }
 
 test.describe('Designer · ownership interests', () => {
@@ -105,7 +105,7 @@ test.describe('Designer · ownership interests', () => {
     await expect(row).toContainText(parcel.number)
     await expect(row).toContainText('CAD-2026-77')
     await expect(row).toContainText('Not saved')
-    await expect(page.getByRole('form')).toHaveCount(0)
+    await expect(page.locator('[data-section="parcellocation"]').getByRole('form')).toHaveCount(0)
 
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export to CSV' }).click()])
     expect(download.suggestedFilename()).toBe(`parcel-location-${parcel.number}.csv`)
@@ -124,7 +124,8 @@ test.describe('Everyone · ownership and location', () => {
       await page.goto(`/parcels/${parcel.id}`)
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
 
-      await expect(page.getByRole('tab', { name: 'Parcel location' }), `${role} Parcel location tab`).toHaveCount(level(role, 'parcellocation') !== null ? 1 : 0)
+      await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+      await expect(page.locator('[data-section="parcellocation"]'), `${role} Parcel location section`).toHaveCount(level(role, 'parcellocation') !== null ? 1 : 0)
       await expect(page.getByRole('tab', { name: 'Ownership details' }), `${role}: the old Ownership details tab is gone`).toHaveCount(0)
       const readable = level(role, 'parties') !== null
       await expect(page.getByRole('tab', { name: 'Ownership interests' }), `${role} Ownership interests tab`).toHaveCount(readable ? 1 : 0)

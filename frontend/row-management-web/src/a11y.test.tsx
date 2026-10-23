@@ -170,7 +170,7 @@ describe('accessibility of the parcel screens', () => {
     expect(await violations(), 'with validation errors showing').toEqual([])
   })
 
-  it.each([['Summary'], ['Interests'], ['Milestones & deadlines'], ['Workflow'], ['Site visits & notice']])('the parcel detail "%s" tab has no violations', async (tab) => {
+  it.each([['Summary'], ['Interests & easements'], ['Workflow & milestones'], ['Reviews & site visits']])('the parcel detail "%s" tab has no violations', async (tab) => {
     const user = userEventModule.setup()
     open('/parcels/pc1')
     await user.click(await screen.findByRole('tab', { name: tab }))
@@ -360,7 +360,7 @@ describe('accessibility of the parcel team, diary and notes', () => {
     })
     renderApp({ path: '/parcels/pc1', fetchImpl: fake.fetch, signedIn: true })
 
-    await user.click(await screen.findByRole('tab', { name: 'Team' }))
+    await user.click(await screen.findByRole('tab', { name: 'Summary' }))
     await screen.findByRole('table', { name: 'Parcel team' })
     await settle()
     expect(await violations(), 'team').toEqual([])
@@ -368,12 +368,12 @@ describe('accessibility of the parcel team, diary and notes', () => {
     await settle()
     expect(await violations(), 'team editor').toEqual([])
 
-    await user.click(screen.getByRole('tab', { name: 'Diary' }))
+    await user.click(screen.getByRole('tab', { name: 'Negotiation' }))
     await screen.findByRole('table', { name: 'Negotiation diary' })
     await settle()
     expect(await violations(), 'diary').toEqual([])
 
-    await user.click(screen.getByRole('tab', { name: 'Notes' }))
+    await user.click(screen.getByRole('tab', { name: 'Summary' }))
     await screen.findByText('A note')
     await settle()
     expect(await violations(), 'notes').toEqual([])
@@ -403,7 +403,7 @@ describe('accessibility of rights of entry, reviews, reports, requests and the p
     await settle()
     expect(await violations(), 'right of entry editor').toEqual([])
 
-    await user.click(screen.getByRole('tab', { name: 'Reviews & reports' }))
+    await user.click(screen.getByRole('tab', { name: 'Reviews & site visits' }))
     await screen.findByRole('article', { name: 'Staff report' })
     await settle()
     expect(await violations(), 'reviews and reports').toEqual([])

@@ -32,12 +32,19 @@ function open(role = 'Negotiator', extra: Partial<FakeTabsOptions> = {}) {
   return { fake, user, ...app }
 }
 
+/** Whether the role sees a section: its tab must be there, and the section is shown inside it (merged tabs show only the sections the role can read). */
+const hasSection = async (user: ReturnType<typeof userEventModule.setup>, tabName: string, section: string) => {
+  const t = screen.queryByRole('tab', { name: tabName })
+  if (!t) return false
+  await user.click(t)
+  return document.querySelector(`[data-section="${section}"]`) !== null
+}
 const tab = async (user: ReturnType<typeof userEventModule.setup>, name: string) => user.click(await screen.findByRole('tab', { name }))
 
 describe('Contact log (AT-NE-40)', () => {
   it('lists the contacts newest first with their ids, mode, people and how many records they refer to', async () => {
     const { user } = open()
-    await tab(user, 'Contact log')
+    await tab(user, 'Negotiation')
 
     const table = await screen.findByRole('table', { name: 'Contact log' })
     const row = within(table).getAllByRole('row')[1]
@@ -50,7 +57,7 @@ describe('Contact log (AT-NE-40)', () => {
 
   it('logs a contact with a mode from the Library and linked records, and sends the time as UTC', async () => {
     const { fake, user } = open()
-    await tab(user, 'Contact log')
+    await tab(user, 'Negotiation')
     const form = await screen.findByRole('form', { name: 'Log a contact' })
 
     await user.click(within(form).getByRole('button', { name: 'Add contact' }))
@@ -77,8 +84,8 @@ describe('Contact log (AT-NE-40)', () => {
 
   it('changes a contact (keeping its id and replacing its linked records) and removes one', async () => {
     const { fake, user } = open()
-    await tab(user, 'Contact log')
-    await user.click(await screen.findByRole('button', { name: 'Edit contact CL-PN-1001-001' }))
+    await tab(user, 'Negotiation')
+    await user.click(await screen.findByRole('button', { name: 'Open contact CL-PN-1001-001' }))
     const form = await screen.findByRole('form', { name: 'Change contact' })
 
     expect(within(form).getByLabelText(/^Contact person/)).toHaveValue('Alex Marlowe')
@@ -93,13 +100,13 @@ describe('Contact log (AT-NE-40)', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Remove contact CL-PN-1001-001' }))
     await waitFor(() => expect(fake.contactLog).toHaveLength(0))
-    expect(await screen.findByText('No contacts logged')).toBeInTheDocument()
+    expect(await within(document.querySelector<HTMLElement>('[data-section="contactlog"]')!).findByText('No contacts logged')).toBeInTheDocument()
   })
 
   it('attaches and removes a file on a contact being changed, through the shared documents API', async () => {
     const { fake, user } = open()
-    await tab(user, 'Contact log')
-    await user.click(await screen.findByRole('button', { name: 'Edit contact CL-PN-1001-001' }))
+    await tab(user, 'Negotiation')
+    await user.click(await screen.findByRole('button', { name: 'Open contact CL-PN-1001-001' }))
     const panel = await screen.findByRole('region', { name: 'Attachments for CL-PN-1001-001' })
     expect(await within(panel).findByText('No attachments')).toBeInTheDocument()
 
@@ -113,18 +120,18 @@ describe('Contact log (AT-NE-40)', () => {
 
   it('shows a message instead of a list when the parcel is no longer active', async () => {
     const { user } = open('Negotiator', { parcels: [{ id: 'pc1', projectId: 'p1', number: 'PN-1001', state: 'Split' }] })
-    await tab(user, 'Contact log')
+    await tab(user, 'Negotiation')
 
     expect(await screen.findByRole('table', { name: 'Contact log' })).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'Log a contact' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Edit contact/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Open contact/ })).toBeInTheDocument()
   })
 })
 
 describe('Easements (AT-SU-40)', () => {
   it('lists the easements with their type, dates and stations', async () => {
     const { user } = open('Surveyor')
-    await tab(user, 'Easements')
+    await tab(user, 'Interests & easements')
 
     const row = (await screen.findByRole('row', { name: /E-1/ }))
     expect(row).toHaveTextContent('Sidewalk Easement')
@@ -134,7 +141,7 @@ describe('Easements (AT-SU-40)', () => {
 
   it('adds an easement, refusing a missing number, backwards dates and a number already used', async () => {
     const { fake, user } = open('Surveyor')
-    await tab(user, 'Easements')
+    await tab(user, 'Interests & easements')
     const form = await screen.findByRole('form', { name: 'Add an easement' })
 
     await user.click(within(form).getByRole('button', { name: 'Add easement' }))
@@ -161,8 +168,8 @@ describe('Easements (AT-SU-40)', () => {
 
   it('changes and removes an easement', async () => {
     const { fake, user } = open('Surveyor')
-    await tab(user, 'Easements')
-    await user.click(await screen.findByRole('button', { name: 'Edit easement E-1' }))
+    await tab(user, 'Interests & easements')
+    await user.click(await screen.findByRole('button', { name: 'Open easement E-1' }))
     const form = await screen.findByRole('form', { name: 'Change easement' })
 
     await user.clear(within(form).getByLabelText(/^End station/))
@@ -275,7 +282,7 @@ describe('Ownership interests (AT-DE-42)', () => {
 describe('Parcel location (AT-DE-43)', () => {
   it('shows the parcel id, its CAD number and that nothing has been saved to ESRI', async () => {
     const { user } = open('Designer', { parcels: [{ id: 'pc1', projectId: 'p1', number: 'PN-1001', cadNumber: 'CAD-77' }] })
-    await tab(user, 'Parcel location')
+    await tab(user, 'Summary')
 
     const table = await screen.findByRole('table', { name: 'Parcel location' })
     const row = within(table).getAllByRole('row')[1]
@@ -292,7 +299,7 @@ describe('Title encumbrances (AT-TE-40)', () => {
 
   it('lists the encumbrances with their id, type, document, parties and cure status', async () => {
     const { user } = open('TitleResearcher', { encumbrances: ENC })
-    await tab(user, 'Title encumbrances')
+    await tab(user, 'Title')
 
     const row = await screen.findByRole('row', { name: /ENC-PN-1001-001/ })
     expect(row).toHaveTextContent('Mortgage Lien')
@@ -304,7 +311,7 @@ describe('Title encumbrances (AT-TE-40)', () => {
 
   it('adds an encumbrance, refusing the missing required fields, and an unrecorded document drops the recording date', async () => {
     const { fake, user } = open('TitleResearcher', { encumbrances: ENC })
-    await tab(user, 'Title encumbrances')
+    await tab(user, 'Title')
     const form = await screen.findByRole('form', { name: 'Add an encumbrance' })
 
     await user.click(within(form).getByRole('button', { name: 'Add encumbrance' }))
@@ -338,8 +345,8 @@ describe('Title encumbrances (AT-TE-40)', () => {
 
   it('changes an encumbrance, attaches a file, and removes it', async () => {
     const { fake, user } = open('TitleResearcher', { encumbrances: ENC })
-    await tab(user, 'Title encumbrances')
-    await user.click(await screen.findByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' }))
+    await tab(user, 'Title')
+    await user.click(await screen.findByRole('button', { name: 'Open encumbrance ENC-PN-1001-001' }))
     const form = await screen.findByRole('form', { name: 'Change encumbrance' })
 
     expect(within(form).getByLabelText(/^Grantee/)).toHaveValue('First Bank')
@@ -348,12 +355,13 @@ describe('Title encumbrances (AT-TE-40)', () => {
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(fake.encumbrances[0].reviewNotes).toBe('Release requested.'))
 
-    await user.click(await screen.findByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' }))
+    await user.click(await screen.findByRole('button', { name: 'Open encumbrance ENC-PN-1001-001' }))
     const panel = await screen.findByRole('region', { name: 'Attachments for ENC-PN-1001-001' })
     await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'release.pdf', { type: 'application/pdf' }))
     expect(await within(panel).findByText('release.pdf')).toBeInTheDocument()
     expect(fake.documents[0]).toMatchObject({ entityType: 'Encumbrance', entityId: 'en1' })
 
+    await user.click(await screen.findByRole('button', { name: 'Back to encumbrances' }))
     await user.click(await screen.findByRole('button', { name: 'Remove encumbrance ENC-PN-1001-001' }))
     await waitFor(() => expect(fake.encumbrances).toHaveLength(0))
     expect(await screen.findByText('No encumbrances recorded')).toBeInTheDocument()
@@ -370,7 +378,7 @@ describe('Title and closing (AT-TE-41)', () => {
 
   it('shows an empty form with no id yet and creates the record on the first save', async () => {
     const { fake, user } = open('TitleResearcher', { team: [{ parcelId: 'pc1', name: 'Casey Closer', role: 'Negotiator' }, { parcelId: 'pc1', name: 'Dana Whitfield', role: 'Project Lead' }] })
-    await tab(user, 'Title and closing')
+    await tab(user, 'Title')
     const form = await screen.findByRole('form', { name: 'Title and closing' })
 
     expect(form).toHaveTextContent('Assigned when saved')
@@ -395,7 +403,7 @@ describe('Title and closing (AT-TE-41)', () => {
 
   it('loads the saved record, shows the vested owner name read-only, and changes the grids and a date', async () => {
     const { fake, user } = open('TitleResearcher', { titleClosings: TC })
-    await tab(user, 'Title and closing')
+    await tab(user, 'Title')
     const form = await screen.findByRole('form', { name: 'Title and closing' })
 
     expect(form).toHaveTextContent('Vested One')
@@ -427,7 +435,7 @@ describe('Title and closing (AT-TE-41)', () => {
 
   it('refuses a settlement statement executed before it was received and a negative amount', async () => {
     const { fake, user } = open('TitleResearcher')
-    await tab(user, 'Title and closing')
+    await tab(user, 'Title')
     const form = await screen.findByRole('form', { name: 'Title and closing' })
 
     fireEvent.change(within(form).getByLabelText(/^Settlement statement received date/), { target: { value: '2026-04-05' } })
@@ -442,7 +450,7 @@ describe('Title and closing (AT-TE-41)', () => {
 
   it('attaches a file once the record exists, and removes the record', async () => {
     const { fake, user } = open('Admin', { titleClosings: TC })
-    await tab(user, 'Title and closing')
+    await tab(user, 'Title')
     const panel = await screen.findByRole('region', { name: 'Attachments for TC-PN-1001' })
 
     await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'policy.pdf', { type: 'application/pdf' }))
@@ -503,7 +511,7 @@ describe('Appraisal (AT-AP-40, AT-AA-40)', () => {
   it('shows the review section read-only to the Appraiser, who can still save the appraisal', async () => {
     const { fake, user } = open('Appraiser', { appraisals: AP })
     await tab(user, 'Appraisal')
-    await user.click(await screen.findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
+    await user.click(await screen.findByRole('button', { name: 'Open appraisal APR-PN-1001-001' }))
     const form = await screen.findByRole('form', { name: 'Change appraisal' })
 
     expect(within(form).getByLabelText(/^Approved just compensation/)).toBeDisabled()
@@ -519,7 +527,7 @@ describe('Appraisal (AT-AP-40, AT-AA-40)', () => {
   it('lets the Appraisal Approver set the approved just compensation', async () => {
     const { fake, user } = open('AppraisalApprover', { appraisals: AP })
     await tab(user, 'Appraisal')
-    await user.click(await screen.findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
+    await user.click(await screen.findByRole('button', { name: 'Open appraisal APR-PN-1001-001' }))
     const form = await screen.findByRole('form', { name: 'Change appraisal' })
 
     expect(within(form).getByLabelText(/^Approved just compensation/)).toBeEnabled()
@@ -533,13 +541,14 @@ describe('Appraisal (AT-AP-40, AT-AA-40)', () => {
   it('attaches a file to an appraisal and removes the appraisal', async () => {
     const { fake, user } = open('Admin', { appraisals: AP })
     await tab(user, 'Appraisal')
-    await user.click(await screen.findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
+    await user.click(await screen.findByRole('button', { name: 'Open appraisal APR-PN-1001-001' }))
     const panel = await screen.findByRole('region', { name: 'Attachments for APR-PN-1001-001' })
 
     await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'report.pdf', { type: 'application/pdf' }))
     expect(await within(panel).findByText('report.pdf')).toBeInTheDocument()
     expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelAppraisal', entityId: 'ap1' })
 
+    await user.click(await screen.findByRole('button', { name: 'Back to appraisals' }))
     await user.click(screen.getByRole('button', { name: 'Remove appraisal APR-PN-1001-001' }))
     await waitFor(() => expect(fake.appraisals).toHaveLength(0))
   })
@@ -644,7 +653,7 @@ const QS = [{ parcelId: 'pc1', id: 'qs1', number: 'QST-PN-1001-001', relocationT
 describe('Questionnaire (AT-RA-40)', () => {
   it('lists questionnaires with their type, dates and number of questions', async () => {
     const { user } = open('RelocationAgent', { questionnaires: QS })
-    await tab(user, 'Questionnaire')
+    await tab(user, 'Relocation')
 
     const row = within(await screen.findByRole('table', { name: 'Questionnaires' })).getAllByRole('row')[1]
     expect(row).toHaveTextContent('QST-PN-1001-001')
@@ -654,7 +663,7 @@ describe('Questionnaire (AT-RA-40)', () => {
 
   it('adds a questionnaire with interests and questions, and requires a relocation type', async () => {
     const { fake, user } = open('RelocationAgent')
-    await tab(user, 'Questionnaire')
+    await tab(user, 'Relocation')
     const form = await screen.findByRole('form', { name: 'Add a questionnaire' })
 
     await user.click(within(form).getByRole('button', { name: 'Add questionnaire' }))
@@ -682,20 +691,21 @@ describe('Questionnaire (AT-RA-40)', () => {
 
   it('changes a questionnaire, attaches a file and removes it', async () => {
     const { fake, user } = open('Admin', { questionnaires: QS })
-    await tab(user, 'Questionnaire')
-    await user.click(await screen.findByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' }))
+    await tab(user, 'Relocation')
+    await user.click(await screen.findByRole('button', { name: 'Open questionnaire QST-PN-1001-001' }))
     const form = await screen.findByRole('form', { name: 'Change questionnaire' })
 
     await user.click(within(form).getByRole('button', { name: 'Remove question 1' }))
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(fake.questionnaires[0].questions).toEqual([]))
 
-    await user.click(await screen.findByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' }))
+    await user.click(await screen.findByRole('button', { name: 'Open questionnaire QST-PN-1001-001' }))
     const panel = await screen.findByRole('region', { name: 'Attachments for QST-PN-1001-001' })
     await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'answers.pdf', { type: 'application/pdf' }))
     expect(await within(panel).findByText('answers.pdf')).toBeInTheDocument()
     expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelQuestionnaire', entityId: 'qs1' })
 
+    await user.click(await screen.findByRole('button', { name: 'Back to questionnaires' }))
     await user.click(screen.getByRole('button', { name: 'Remove questionnaire QST-PN-1001-001' }))
     await waitFor(() => expect(fake.questionnaires).toHaveLength(0))
   })
@@ -811,7 +821,7 @@ describe('Property management and disposition (AT-PM-43)', () => {
 })
 
 describe('Relocation (AT-RA-41)', () => {
-  it('adds a relocation with its required fields, contacts, eligibility and contact log', async () => {
+  it('adds a relocation with its required fields, contacts and eligibility', async () => {
     const { fake, user } = open('RelocationAgent', { parties: [{ id: 'pt1', name: 'Kamali' }], links: [{ partyId: 'pt1', parcelId: 'pc1', role: 'FeeOwner' as const }] })
     await tab(user, 'Relocation')
     const form = await screen.findByRole('form', { name: 'Add a relocation' })
@@ -843,34 +853,34 @@ describe('Relocation (AT-RA-41)', () => {
     await user.selectOptions(within(form).getByLabelText('Eligibility type'), 'Moving Expenses')
     await user.type(within(form).getByLabelText('Claim limit'), '5000')
     await user.click(within(form).getByRole('button', { name: 'Add eligibility' }))
-    fireEvent.change(within(form).getByLabelText('Log date and time'), { target: { value: '2026-03-04T15:30' } })
-    await user.type(within(form).getByLabelText('Log discussion notes'), 'Left a message.')
-    await user.click(within(form).getByRole('button', { name: 'Add contact log entry' }))
     await user.click(within(form).getByRole('button', { name: 'Add relocation' }))
 
     await waitFor(() => expect(fake.relocations).toHaveLength(1))
     expect(fake.relocations[0].details).toMatchObject({ relocationNumber: 'R-7', displaceeName: 'Kamali', relocationType: 'Residential', ginDeliveredDate: '2026-03-07' })
     expect(fake.relocations[0].contacts).toMatchObject([{ name: 'Alex', isPrimary: true }])
     expect(fake.relocations[0].eligibilities).toMatchObject([{ eligibilityType: 'Moving Expenses', claimLimit: 5000 }])
-    expect(fake.relocations[0].contactLog[0].notes).toBe('Left a message.')
   })
 
   it('changes a relocation, attaches a file and removes it', async () => {
     const { fake, user } = open('Admin', { relocations: [{ parcelId: 'pc1', id: 'rl1' }] })
     await tab(user, 'Relocation')
-    await user.click(await screen.findByRole('button', { name: 'Edit relocation R-1' }))
+    await user.click(await screen.findByRole('button', { name: 'Open relocation R-1' }))
+    // The entry opens as a page of its own, not below the list.
+    expect(await screen.findByRole('heading', { name: 'Relocation R-1' })).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Relocations' })).toBeNull()
     const form = await screen.findByRole('form', { name: 'Change relocation' })
 
-    fireEvent.change(within(form).getByLabelText('Target vacate date'), { target: { value: '2026-09-01' } })
-    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(fake.relocations[0].details.targetVacateDate).toBe('2026-09-01'))
-
-    await user.click(await screen.findByRole('button', { name: 'Edit relocation R-1' }))
     const panel = await screen.findByRole('region', { name: 'Attachments for relocation R-1' })
     await user.upload(within(panel).getByLabelText('Upload document'), new File(['x'], 'plan.pdf', { type: 'application/pdf' }))
     expect(await within(panel).findByText('plan.pdf')).toBeInTheDocument()
     expect(fake.documents[0]).toMatchObject({ entityType: 'ParcelRelocation', entityId: 'rl1' })
-    await user.click(screen.getByRole('button', { name: 'Remove relocation R-1' }))
+
+    fireEvent.change(within(form).getByLabelText('Target vacate date'), { target: { value: '2026-09-01' } })
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(fake.relocations[0].details.targetVacateDate).toBe('2026-09-01'))
+    // Saving returns to the list of relocations.
+    expect(await screen.findByRole('table', { name: 'Relocations' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Remove relocation R-1' }))
     await waitFor(() => expect(fake.relocations).toHaveLength(0))
   })
 })
@@ -880,12 +890,12 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role)
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Contact log' })).toBe(can(role, 'contactlog', 'read'))
+    expect(await hasSection(user, 'Negotiation', 'contactlog')).toBe(can(role, 'contactlog', 'read'))
     if (!can(role, 'contactlog', 'read')) return
-    await tab(user, 'Contact log')
+    await tab(user, 'Negotiation')
     await screen.findByRole('table', { name: 'Contact log' })
     expect(!!screen.queryByRole('form', { name: 'Log a contact' })).toBe(can(role, 'contactlog', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit contact CL-PN-1001-001' })).toBe(can(role, 'contactlog', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Open contact CL-PN-1001-001' })).toBe(true)
     expect(!!screen.queryByRole('button', { name: 'Remove contact CL-PN-1001-001' })).toBe(can(role, 'contactlog', 'delete'))
   })
 
@@ -893,7 +903,7 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role, { parties: [{ id: 'pt1', name: 'Kamali' }], links: [{ partyId: 'pt1', parcelId: 'pc1', role: 'FeeOwner' as const }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Parcel location' })).toBe(can(role, 'parcellocation', 'read'))
+    expect(await hasSection(user, 'Summary', 'parcellocation')).toBe(can(role, 'parcellocation', 'read'))
     expect(!!screen.queryByRole('tab', { name: 'Ownership details' })).toBe(false)
     if (!can(role, 'parties', 'read')) return
     await tab(user, 'Ownership interests')
@@ -907,12 +917,12 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role, { encumbrances: [{ parcelId: 'pc1', id: 'en1', number: 'ENC-PN-1001-001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Title encumbrances' })).toBe(can(role, 'titleencumbrances', 'read'))
+    expect(await hasSection(user, 'Title', 'titleencumbrances')).toBe(can(role, 'titleencumbrances', 'read'))
     if (!can(role, 'titleencumbrances', 'read')) return
-    await tab(user, 'Title encumbrances')
+    await tab(user, 'Title')
     await screen.findByRole('table', { name: 'Title encumbrances' })
     expect(!!screen.queryByRole('form', { name: 'Add an encumbrance' })).toBe(can(role, 'titleencumbrances', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit encumbrance ENC-PN-1001-001' })).toBe(can(role, 'titleencumbrances', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Open encumbrance ENC-PN-1001-001' })).toBe(true)
     expect(!!screen.queryByRole('button', { name: 'Remove encumbrance ENC-PN-1001-001' })).toBe(can(role, 'titleencumbrances', 'delete'))
   })
 
@@ -920,9 +930,9 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const withRecord = open(role, { titleClosings: [{ parcelId: 'pc1', id: 'tc1', number: 'TC-PN-1001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Title and closing' })).toBe(can(role, 'titleclosing', 'read'))
+    expect(await hasSection(withRecord.user, 'Title', 'titleclosing')).toBe(can(role, 'titleclosing', 'read'))
     if (!can(role, 'titleclosing', 'read')) return
-    await tab(withRecord.user, 'Title and closing')
+    await tab(withRecord.user, 'Title')
     await screen.findByRole('form', { name: 'Title and closing' })
     expect(!!screen.queryByRole('button', { name: 'Save changes' })).toBe(can(role, 'titleclosing', 'update'))
     expect(!!screen.queryByRole('button', { name: 'Remove title and closing record' })).toBe(can(role, 'titleclosing', 'delete'))
@@ -932,7 +942,7 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role)
     await screen.findByRole('heading', { name: /PN-1001/ })
     if (!can(role, 'titleclosing', 'read')) return
-    await tab(user, 'Title and closing')
+    await tab(user, 'Title')
     await screen.findByRole('form', { name: 'Title and closing' })
 
     expect(!!screen.queryByRole('button', { name: 'Save title and closing' })).toBe(can(role, 'titleclosing', 'create'))
@@ -942,12 +952,12 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role, { appraisals: [{ parcelId: 'pc1', id: 'ap1', number: 'APR-PN-1001-001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Appraisal' })).toBe(can(role, 'parcelappraisal', 'read'))
+    expect(await hasSection(user, 'Appraisal', 'parcelappraisal')).toBe(can(role, 'parcelappraisal', 'read'))
     if (!can(role, 'parcelappraisal', 'read')) return
     await tab(user, 'Appraisal')
     await screen.findByRole('table', { name: 'Appraisals' })
     expect(!!screen.queryByRole('form', { name: 'Add an appraisal' })).toBe(can(role, 'parcelappraisal', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit appraisal APR-PN-1001-001' })).toBe(can(role, 'parcelappraisal', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Open appraisal APR-PN-1001-001' })).toBe(true)
     expect(!!screen.queryByRole('button', { name: 'Remove appraisal APR-PN-1001-001' })).toBe(can(role, 'parcelappraisal', 'delete'))
   })
 
@@ -955,7 +965,7 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const withRecord = open(role, { negotiations: [{ parcelId: 'pc1', id: 'ng1', number: 'NEG-PN-1001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Negotiation' })).toBe(can(role, 'parcelnegotiation', 'read'))
+    expect(await hasSection(withRecord.user, 'Negotiation', 'parcelnegotiation')).toBe(can(role, 'parcelnegotiation', 'read'))
     if (!can(role, 'parcelnegotiation', 'read')) return
     await tab(withRecord.user, 'Negotiation')
     await screen.findByRole('form', { name: 'Negotiation' })
@@ -977,12 +987,12 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role, { questionnaires: [{ parcelId: 'pc1', id: 'qs1', number: 'QST-PN-1001-001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Questionnaire' })).toBe(can(role, 'parcelquestionnaire', 'read'))
+    expect(await hasSection(user, 'Relocation', 'parcelquestionnaire')).toBe(can(role, 'parcelquestionnaire', 'read'))
     if (!can(role, 'parcelquestionnaire', 'read')) return
-    await tab(user, 'Questionnaire')
+    await tab(user, 'Relocation')
     await screen.findByRole('table', { name: 'Questionnaires' })
     expect(!!screen.queryByRole('form', { name: 'Add a questionnaire' })).toBe(can(role, 'parcelquestionnaire', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit questionnaire QST-PN-1001-001' })).toBe(can(role, 'parcelquestionnaire', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Open questionnaire QST-PN-1001-001' })).toBe(true)
     expect(!!screen.queryByRole('button', { name: 'Remove questionnaire QST-PN-1001-001' })).toBe(can(role, 'parcelquestionnaire', 'delete'))
   })
 
@@ -990,7 +1000,7 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const withRecord = open(role, { condemnations: [{ parcelId: 'pc1', id: 'cn1', number: 'CON-PN-1001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Condemnation' })).toBe(can(role, 'parcelcondemnation', 'read'))
+    expect(await hasSection(withRecord.user, 'Condemnation', 'parcelcondemnation')).toBe(can(role, 'parcelcondemnation', 'read'))
     if (!can(role, 'parcelcondemnation', 'read')) return
     await tab(withRecord.user, 'Condemnation')
     await screen.findByRole('form', { name: 'Condemnation' })
@@ -1002,7 +1012,7 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const withRecord = open(role, { properties: [{ parcelId: 'pc1', id: 'pm1', number: 'PMD-PN-1001' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Property management & disposition' })).toBe(can(role, 'parcelproperty', 'read'))
+    expect(await hasSection(withRecord.user, 'Property management & disposition', 'parcelproperty')).toBe(can(role, 'parcelproperty', 'read'))
     if (!can(role, 'parcelproperty', 'read')) return
     await tab(withRecord.user, 'Property management & disposition')
     await screen.findByRole('form', { name: 'Property management and disposition' })
@@ -1014,12 +1024,12 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role, { relocations: [{ parcelId: 'pc1', id: 'rl1' }] })
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Relocation' })).toBe(can(role, 'parcelrelocation', 'read'))
+    expect(await hasSection(user, 'Relocation', 'parcelrelocation')).toBe(can(role, 'parcelrelocation', 'read'))
     if (!can(role, 'parcelrelocation', 'read')) return
     await tab(user, 'Relocation')
     await screen.findByRole('table', { name: 'Relocations' })
     expect(!!screen.queryByRole('form', { name: 'Add a relocation' })).toBe(can(role, 'parcelrelocation', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit relocation R-1' })).toBe(can(role, 'parcelrelocation', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Open relocation R-1' })).toBe(true)
     expect(!!screen.queryByRole('button', { name: 'Remove relocation R-1' })).toBe(can(role, 'parcelrelocation', 'delete'))
   })
 
@@ -1027,12 +1037,12 @@ describe.each(ROLES.map((r) => [r]))('what %s sees and can do on the parcel tabs
     const { user } = open(role)
     await screen.findByRole('heading', { name: /PN-1001/ })
 
-    expect(!!screen.queryByRole('tab', { name: 'Easements' })).toBe(can(role, 'easements', 'read'))
+    expect(await hasSection(user, 'Interests & easements', 'easements')).toBe(can(role, 'easements', 'read'))
     if (!can(role, 'easements', 'read')) return
-    await tab(user, 'Easements')
+    await tab(user, 'Interests & easements')
     await screen.findByRole('table', { name: 'Easements' })
     expect(!!screen.queryByRole('form', { name: 'Add an easement' })).toBe(can(role, 'easements', 'create'))
-    expect(!!screen.queryByRole('button', { name: 'Edit easement E-1' })).toBe(can(role, 'easements', 'update'))
+    expect(!!screen.queryByRole('button', { name: 'Open easement E-1' })).toBe(true)
     expect(!!screen.queryByRole('button', { name: 'Remove easement E-1' })).toBe(can(role, 'easements', 'delete'))
   })
 })

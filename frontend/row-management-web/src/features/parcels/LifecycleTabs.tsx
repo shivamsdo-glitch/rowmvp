@@ -15,14 +15,17 @@ import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
 import { Grid } from './NegotiationTab'
+import { EntryBar, EntryMissing, useEntryMode, type EntryNav } from './entry-kit'
 import { RelocationPaymentsPanel, RelocationProgressBanner } from './RelocationPayments'
 import { useTeamNames } from './team-kit'
 import { agent, bodyFrom, blankState, checkState, date, Fact, flag, list, money, SpecFields, stateFrom, StatusNotesGrid, text, type FieldSpec, type FormState } from './lifecycle-kit'
+import { Explained } from '@/components/ui/abbr'
+import { OptionalSection } from './entry-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset aria-label={title} className="mb-4 rounded-lg border bg-card p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
+      <legend className="px-1 text-sm font-semibold"><Explained text={title} /></legend>
       {children}
     </fieldset>
   )
@@ -154,8 +157,8 @@ export function CondemnationTab({ parcel, editable }: { parcel: Parcel; editable
           </div>
         </Section>
         <StatusNotesGrid title="Condemnation status notes" notes={notes} onChange={touched(setNotes)} canSave={canSave} />
-        <Section title="Preliminary condemnation"><SpecFields specs={PRELIM} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></Section>
-        <Section title="Condemnation support"><SpecFields specs={SUPPORT} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></Section>
+        <OptionalSection title="Preliminary condemnation"><SpecFields specs={PRELIM} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></OptionalSection>
+        <OptionalSection title="Condemnation support"><SpecFields specs={SUPPORT} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></OptionalSection>
 
         <Grid title="Attorney of record" caption="Attorney of record" headers={['Party represented', 'Attorney name', 'Attorney firm', 'Attorney address', 'Attorney phone', 'Attorney email']} rows={attorneys} canSave={canSave}
           cells={(r) => [r.partyRepresented, r.attorneyName ?? '—', r.firm ?? '—', r.address ?? '—', r.phone ?? '—', r.email ?? '—']} rowLabel={(r) => `Remove attorney ${r.partyRepresented}`}
@@ -308,8 +311,8 @@ export function PropertyTab({ parcel, editable }: { parcel: Parcel; editable: bo
           <div className="grid gap-3 sm:grid-cols-3"><Fact label="ID" value={record?.number ?? 'Assigned when saved'} /><Fact label="Parcel number" value={parcel.number} /></div>
         </Section>
         <StatusNotesGrid title="Property status notes" notes={notes} onChange={(n) => { setSaved(false); setNotes(n) }} canSave={canSave} />
-        <Section title="Property management"><SpecFields specs={MGMT} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></Section>
-        <Section title="Disposition"><SpecFields specs={DISP} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></Section>
+        <OptionalSection title="Property management"><SpecFields specs={MGMT} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></OptionalSection>
+        <OptionalSection title="Disposition"><SpecFields specs={DISP} state={f} onChange={setField} disabled={disabled} errors={errors} agents={agents} /></OptionalSection>
 
         <Grid title="Funding distribution" caption="Funding distribution" headers={['Fund type', 'Fund source no. / name', 'Funding amount ($)', 'Percentage (%)']} rows={funding} canSave={canSave}
           cells={(r) => [r.fundType, r.fundSource ?? '—', dollars(r.amount), r.percentage === null ? '—' : `${r.percentage}%`]} rowLabel={(r) => `Remove funding ${r.fundType}`}
@@ -356,7 +359,7 @@ const CLAIM: FieldSpec[] = [
 ]
 const COMPLETION: FieldSpec[] = [
   date('releaseOfProperty', 'Release of property'), date('certificateOfCompletion', 'Certificate of completion'), date('fileCloseOutSubmitted', 'File close out submitted'),
-  date('relocationComplete', 'Relocation complete'), date('relocationComplete1', 'Relocation complete 1'),
+  date('relocationComplete', 'Relocation complete'),
 ]
 const RELOCATION_ORDER: [string, string, string][] = [
   ['ginMailedDate', 'ginDeliveredDate', 'The GIN cannot be delivered before it is mailed.'],
@@ -368,28 +371,26 @@ const RELOCATION_ORDER: [string, string, string][] = [
 ]
 const BLANK_CONTACT = { name: '', type: '', contact: '', email: '', address: '', primary: false }
 const BLANK_ELIG = { type: '', limit: '', submitted: '', approved: '' }
-const BLANK_LOG = { at: '', mode: '', by: '', persons: '', notes: '' }
 
 /** Relocation (Phase 1.5, ADR 0020): many per parcel, each for one displacee, with their contacts, eligibility, contact log and the relocation milestones. */
-export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: boolean }) {
+export function RelocationTab({ parcel, editable, nav }: { parcel: Parcel; editable: boolean; /** Opens one relocation on a page of its own inside this tab. */ nav?: EntryNav }) {
+  const openId = nav?.id ?? undefined
+  const pageMode = !!openId
   const parcelId = parcel.id
   const { manager } = useAuth()
   const api = relocationsApi(manager.api)
   const queryClient = useQueryClient()
   const key = ['parcel-tabs', parcelId, 'relocations']
   const listQ = useQuery({ queryKey: key, queryFn: () => api.list(parcelId), enabled: manager.can('parcelrelocation') })
-  const agentList = useQuery({ queryKey: ['library', 'agents'], queryFn: () => libraryApi(manager.api).agents(), retry: false })
   const agents = useAgentNames()
   const teamNames = useTeamNames(parcelId)
   const statuses = useLibraryValues('displacee_status')
-  const interests = useLibraryValues('displacee_interest')
   const types = useLibraryValues('relocation_type')
   const eligTypes = useLibraryValues('eligibility_type')
-  const modes = useLibraryValues('mode_of_contact')
   const HEAD: FieldSpec[] = [
     text('relocationNumber', 'Relocation number', 100, true), list('assignedTo', 'Assigned to', teamNames), text('displaceeName', 'Displacee name', 200, true), flag('limitedEnglishProficiency', 'Limited English proficiency'),
-    list('displaceeStatus', 'Displacee status', statuses), list('displaceeInterest', 'Displacee interest', interests), text('displaceeMailingAddress', 'Displacee mailing address', 1000),
-    list('relocationType', 'Relocation type', types, true), text('propertySiteAddress', 'Property site address', 1000),
+    list('displaceeStatus', 'Displacee status', statuses), 
+    list('relocationType', 'Relocation type', types, true),
   ]
   const EXCEPTION: FieldSpec = list('eligibilityException', 'Eligibility exception', [...RELOCATION_EXCEPTIONS])
   const specs = [...HEAD, ...PLANNING, ...NOTICES, ...HOUSING, EXCEPTION, ...MOVE, ...CLAIM, ...COMPLETION]
@@ -398,7 +399,7 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   const interestChoices = (partiesQ.data?.ownership ?? []).map((l) => ({ value: l.id, label: `${l.party.name} (${ROLE_LABEL[l.role]}${l.displacementRequired ? ', displacement required' : ''})`, name: l.party.name }))
   const [linkId, setLinkId] = useState('')
   const [dss, setDss] = useState('')
-  const [paymentsFor, setPaymentsFor] = useState<string | null>(null)
+  const [paymentsFor, setPaymentsFor] = useState<string | null>(openId ?? null)
   const [editing, setEditing] = useState<Relocation | null>(null)
   const [f, setF] = useState<FormState>(() => blankState(specs))
   const [notes, setNotes] = useState<StatusNote[]>([])
@@ -406,10 +407,8 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   const [contacts, setContacts] = useState<RelocationContact[]>([])
   const [eligibilities, setEligibilities] = useState<RelocationEligibility[]>([])
   const [log, setLog] = useState<RelocationContactLog[]>([])
-  const [ag, setAg] = useState('')
   const [ct, setCt] = useState(BLANK_CONTACT)
   const [el, setEl] = useState(BLANK_ELIG)
-  const [lg, setLg] = useState(BLANK_LOG)
   const [local, setLocal] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
@@ -418,6 +417,9 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   const canEdit = editable && manager.can('parcelrelocation', 'update')
   const canRemove = editable && manager.can('parcelrelocation', 'delete')
   const err = (k: string, m: string) => setLocal((l) => ({ ...l, [k]: m }))
+  const readOnly = pageMode && !canEdit
+
+  const { missing } = useEntryMode(nav, listQ.data, editing, begin, reset)
 
   if (!manager.can('parcelrelocation')) return <p className="text-sm text-muted-foreground">Your role cannot see relocations.</p>
   if (listQ.isPending) return <LoadingRows rows={3} />
@@ -425,7 +427,7 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
 
   function reset() {
     setLinkId(''); setDss(''); setEditing(null); setF(blankState(specs)); setNotes([]); setAgentRows([]); setContacts([]); setEligibilities([]); setLog([])
-    setAg(''); setCt(BLANK_CONTACT); setEl(BLANK_ELIG); setLg(BLANK_LOG); setLocal({}); setError(null); setFields({})
+    setCt(BLANK_CONTACT); setEl(BLANK_ELIG); setLocal({}); setError(null); setFields({})
   }
   function begin(r: Relocation) {
     reset()
@@ -451,12 +453,6 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
     }
   }
 
-  function addAgent() {
-    if (!ag) return err('agent', 'Choose the agent.')
-    const lib = agentList.data?.find((a) => a.name === ag)
-    setAgentRows([...agentRows, { agentName: ag, agentType: lib?.agentType ?? null, company: lib?.company ?? null, phone: lib?.phone ?? null, email: lib?.email ?? null }])
-    setAg(''); err('agent', '')
-  }
   function addContact() {
     if (!ct.name.trim()) return err('contact', 'Enter the name of the contact.')
     if (ct.primary && contacts.some((c) => c.isPrimary)) return err('contact', 'Only one contact can be the primary contact.')
@@ -470,11 +466,6 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
     setEligibilities([...eligibilities, { eligibilityType: el.type, claimLimit: numOrNull(el.limit), submittedForApproval: orNull(el.submitted), approved: orNull(el.approved) }])
     setEl(BLANK_ELIG); err('eligibility', '')
   }
-  function addLog() {
-    if (!lg.at || Number.isNaN(Date.parse(lg.at))) return err('log', 'Enter the date and time of the contact.')
-    setLog([{ contactedAt: new Date(lg.at).toISOString(), mode: orNull(lg.mode), contactedBy: orNull(lg.by), contactPersons: orNull(lg.persons), notes: orNull(lg.notes) }, ...log])
-    setLg(BLANK_LOG); err('log', '')
-  }
 
   async function submit(ev: FormEvent) {
     ev.preventDefault()
@@ -483,10 +474,10 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
     setLocal(errs)
     if (Object.keys(errs).length) return
     const body = {
-      details: { ...bodyFrom(specs, f), partyLinkId: linkId || null, decentSafeSanitary: dss === 'yes' ? true : dss === 'no' ? false : null }, statusNotes: notes.map(({ noteDate, text: t }) => ({ noteDate, text: t })), agents: agentRows.map(({ agentName }) => ({ agentName })),
-      contacts, eligibilities, contactLog: log,
+      details: { ...bodyFrom(specs, f), partyLinkId: linkId || null, decentSafeSanitary: dss === 'yes' ? true : dss === 'no' ? false : null }, statusNotes: notes.map(({ noteDate, text: t }) => ({ noteDate, text: t })), agents: agentRows.map(({ agentName }) => ({ agentName })), // kept as recorded; the parcel Team is the list of people now
+      contacts, eligibilities, contactLog: log, // kept as recorded; the parcel's Contact log tab is where contacts are logged now
     }
-    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) reset()
+    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) { reset(); if (pageMode) nav?.back() }
   }
   const errors = { ...fields, ...local }
   const setField = (k: string, v: string | boolean) => setF((x) => ({ ...x, [k]: v }))
@@ -501,7 +492,9 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
   return (
     <>
       <RelocationProgressBanner parcelId={parcelId} />
-      <fieldset aria-label="Relocations" className="mb-6 rounded-lg border bg-card p-4">
+      {pageMode && nav && <EntryBar nav={nav} label="Back to relocations" what={editing ? `Relocation ${label(editing)}` : 'Relocation'} />}
+      {missing && nav && <EntryMissing nav={nav} label="Back to relocations" />}
+      {!pageMode && <fieldset aria-label="Relocations" className="mb-6 rounded-lg border bg-card p-4">
         <legend className="px-1 text-sm font-semibold">Relocations</legend>
         {listQ.data.length === 0 ? (
           <EmptyState title="No relocations yet" description="Record each displacee's relocation on this parcel." />
@@ -522,7 +515,7 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
                       <button type="button" aria-label={`Payments for relocation ${label(r)}`} aria-expanded={paymentsFor === r.id} className={buttonClassName('outline', 'sm')} onClick={() => setPaymentsFor(paymentsFor === r.id ? null : r.id)}>
                         Payments{(r.payments?.length ?? 0) > 0 ? ` (${r.payments!.length})` : ''}
                       </button>
-                      {canEdit && <button type="button" aria-label={`Edit relocation ${label(r)}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(r)}><Pencil size={14} aria-hidden /></button>}
+                      <button type="button" aria-label={`Open relocation ${label(r)}`} className={buttonClassName('outline', 'sm')} onClick={() => nav?.open(r.id)}>Open</button>
                       {canRemove && (
                         <button type="button" aria-label={`Remove relocation ${label(r)}`} disabled={busy} className={buttonClassName('ghost', 'sm')}
                           onClick={() => void run(() => api.remove(parcelId, r.id)).then((ok) => { if (ok && editing?.id === r.id) reset() })}><Trash2 size={14} aria-hidden /></button>
@@ -534,11 +527,11 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
             ))}
           </DataTable>
         )}
-      </fieldset>
+      </fieldset>}
 
-      {((canAdd && !editing) || (canEdit && editing)) && (
+      {((canAdd && !editing && !pageMode) || (editing && (canEdit || pageMode))) && (
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change relocation' : 'Add a relocation'} className="max-w-5xl">
-          <h3 className="mb-3 text-sm font-semibold">{editing ? `Change relocation ${label(editing)}` : 'Add a relocation'}</h3>
+          {!pageMode && <h3 className="mb-3 text-sm font-semibold">{editing ? `${readOnly ? 'Relocation' : 'Change relocation'} ${label(editing)}` : 'Add a relocation'}</h3>}
           <Section title="Relocation">
             <div className="mb-3 grid gap-3 sm:grid-cols-3">
               <Fact label="Parcel number" value={parcel.number} /><Fact label="Vested owner name" value={editing?.vestedOwnerName} />
@@ -546,31 +539,27 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
             </div>
             <div className="mb-3 max-w-md">
               <SelectField label="Ownership interest" required={!editing} value={linkId} onChange={pickInterest} options={interestChoices} blankLabel="Select one" error={errors.partyLinkId}
-                disabled={!!editing && !canEdit} />
+                disabled={readOnly || (!!editing && !canEdit)} />
               {interestChoices.length === 0 && <p className="text-xs text-muted-foreground">No ownership interests are recorded on this parcel yet. Add the owners on the Ownership interests tab first.</p>}
             </div>
-            <SpecFields specs={HEAD} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" />
+            <SpecFields disabled={readOnly} specs={HEAD} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" />
           </Section>
-          <Section title="Planning and advisory"><SpecFields specs={PLANNING} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
-          <Section title="Notices"><SpecFields specs={NOTICES} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
-          <Section title="Housing and inspection">
-            <SpecFields specs={HOUSING} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" />
+          <OptionalSection title="Planning and advisory"><SpecFields disabled={readOnly} specs={PLANNING} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></OptionalSection>
+          <OptionalSection title="Notices"><SpecFields disabled={readOnly} specs={NOTICES} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></OptionalSection>
+          <OptionalSection title="Housing and inspection">
+            <SpecFields disabled={readOnly} specs={HOUSING} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" />
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SelectField label="Replacement dwelling decent, safe and sanitary?" value={dss} onChange={setDss} blankLabel="Not inspected" options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} />
-              <SpecFields specs={[EXCEPTION]} state={f} onChange={setField} errors={errors} agents={agents} columns="" />
+              <SpecFields disabled={readOnly} specs={[EXCEPTION]} state={f} onChange={setField} errors={errors} agents={agents} columns="" />
             </div>
-          </Section>
-          <Section title="Move"><SpecFields specs={MOVE} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
-          <Section title="Claim and appeal"><SpecFields specs={CLAIM} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
-          <Section title="Completion"><SpecFields specs={COMPLETION} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></Section>
-          <StatusNotesGrid title="Relocation status notes" notes={notes} onChange={setNotes} canSave />
+          </OptionalSection>
+          <OptionalSection title="Move"><SpecFields disabled={readOnly} specs={MOVE} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></OptionalSection>
+          <OptionalSection title="Claim and appeal"><SpecFields disabled={readOnly} specs={CLAIM} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></OptionalSection>
+          <OptionalSection title="Completion"><SpecFields disabled={readOnly} specs={COMPLETION} state={f} onChange={setField} errors={errors} agents={agents} columns="sm:grid-cols-2 lg:grid-cols-3" /></OptionalSection>
+          <StatusNotesGrid title="Relocation status notes" notes={notes} onChange={setNotes} canSave={!readOnly} />
 
-          <Grid title="Agents" caption="Agents" headers={['Agent name', 'Agent type', 'Company', 'Phone number', 'Email address']} rows={agentRows} canSave
-            cells={(r) => [r.agentName, r.agentType ?? '—', r.company ?? '—', r.phone ?? '—', r.email ?? '—']} rowLabel={(r) => `Remove agent ${r.agentName}`}
-            onRemove={(i) => setAgentRows(agentRows.filter((_, j) => j !== i))} addLabel="Add agent" onAdd={addAgent} error={errors.agent}
-            adding={<SelectField label="Agent" value={ag} onChange={setAg} options={optionsWith(agents, ag)} blankLabel="Select one" />} />
 
-          <Grid title="Relocation contacts" caption="Relocation contacts" headers={['Name', 'Type', 'Contact', 'Email', 'Address', 'Is primary']} rows={contacts} canSave
+          <Grid title="Relocation contacts" caption="Relocation contacts" headers={['Name', 'Type', 'Contact', 'Email', 'Address', 'Is primary']} rows={contacts} canSave={!readOnly}
             cells={(r) => [r.name, r.contactType ?? '—', r.contact ?? '—', r.email ?? '—', r.address ?? '—', r.isPrimary ? 'Yes' : 'No']} rowLabel={(r) => `Remove contact ${r.name}`}
             onRemove={(i) => setContacts(contacts.filter((_, j) => j !== i))} addLabel="Add relocation contact" onAdd={addContact} error={errors.contact}
             adding={<>
@@ -582,7 +571,7 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
               <CheckboxField label="Primary contact" checked={ct.primary} onChange={(v) => setCt({ ...ct, primary: v })} />
             </>} />
 
-          <Grid title="Relocation eligibility" caption="Relocation eligibility" headers={['Eligibility type', 'Claim limit ($)', 'Submitted for approval', 'Approved']} rows={eligibilities} canSave
+          <Grid title="Relocation eligibility" caption="Relocation eligibility" headers={['Eligibility type', 'Claim limit ($)', 'Submitted for approval', 'Approved']} rows={eligibilities} canSave={!readOnly}
             cells={(r) => [r.eligibilityType, dollars(r.claimLimit), day(r.submittedForApproval), day(r.approved)]} rowLabel={(r) => `Remove eligibility ${r.eligibilityType}`}
             onRemove={(i) => setEligibilities(eligibilities.filter((_, j) => j !== i))} addLabel="Add eligibility" onAdd={addEligibility} error={errors.eligibility}
             adding={<>
@@ -592,21 +581,12 @@ export function RelocationTab({ parcel, editable }: { parcel: Parcel; editable: 
               <TextField label="Eligibility approved" type="date" value={el.approved} onChange={(v) => setEl({ ...el, approved: v })} />
             </>} />
 
-          <Grid title="Contact log" caption="Contact log" headers={['Date/time of contact', 'Mode of contact', 'Contacted by', 'Contact person(s)', 'Discussion notes']} rows={log} canSave
-            cells={(r) => [new Date(r.contactedAt).toLocaleString(), r.mode ?? '—', r.contactedBy ?? '—', r.contactPersons ?? '—', r.notes ?? '—']} rowLabel={(_, i) => `Remove contact log entry ${i + 1}`}
-            onRemove={(i) => setLog(log.filter((_, j) => j !== i))} addLabel="Add contact log entry" onAdd={addLog} error={errors.log}
-            adding={<>
-              <TextField label="Log date and time" type="datetime-local" value={lg.at} onChange={(v) => setLg({ ...lg, at: v })} />
-              <SelectField label="Log mode of contact" value={lg.mode} onChange={(v) => setLg({ ...lg, mode: v })} options={optionsWith(modes, lg.mode)} blankLabel="Select one" />
-              <SelectField label="Log contacted by" value={lg.by} onChange={(v) => setLg({ ...lg, by: v })} options={optionsWith(agents, lg.by)} blankLabel="Select one" />
-              <TextField label="Log contact persons" value={lg.persons} onChange={(v) => setLg({ ...lg, persons: v })} maxLength={500} />
-              <TextField label="Log discussion notes" value={lg.notes} onChange={(v) => setLg({ ...lg, notes: v })} maxLength={4000} />
-            </>} />
 
           <FormError error={error} />
           <div className="flex gap-2">
-            <button type="submit" disabled={busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add relocation'}</button>
-            {editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
+            {!readOnly && <button type="submit" disabled={busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add relocation'}</button>}
+            {pageMode && nav ? <button type="button" className={buttonClassName('outline')} onClick={() => { reset(); nav.back() }}>Cancel</button>
+              : editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
           </div>
         </form>
       )}

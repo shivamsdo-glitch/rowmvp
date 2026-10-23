@@ -1,19 +1,22 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { appraisalsApi, type Appraisal, type AppraisalAmount } from '@/api/parcel-tabs'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf, numOrNull, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
+import { EntryBar, EntryMissing, useEntryMode, type EntryNav } from './entry-kit'
 import { useTeamNames } from './team-kit'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
+import { Explained } from '@/components/ui/abbr'
+import { OptionalSection } from './entry-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset aria-label={title} className="mb-4 rounded-lg border bg-card p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
+      <legend className="px-1 text-sm font-semibold"><Explained text={title} /></legend>
       {children}
     </fieldset>
   )
@@ -43,7 +46,7 @@ function fromRecord(a: Appraisal) {
  * Appraisal (Phase 1.5, ADR 0018): many appraisals per parcel. The Appraiser records the appraisal and its amounts; the review section, with the
  * approved just compensation, belongs to the Appraisal Approver (the form shows it, read-only, to everyone else).
  */
-export function AppraisalTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
+export function AppraisalTab({ parcelId, editable, nav }: { parcelId: string; editable: boolean; nav?: EntryNav }) {
   const { manager } = useAuth()
   const api = appraisalsApi(manager.api)
   const queryClient = useQueryClient()
@@ -66,6 +69,7 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
   const canAdd = editable && manager.can('parcelappraisal', 'create')
   const canEdit = editable && manager.can('parcelappraisal', 'update')
   const canRemove = editable && manager.can('parcelappraisal', 'delete')
+  const { entryMode, missing } = useEntryMode(nav, list.data, editing, begin, reset)
   const canReview = manager.hasRole('AppraisalApprover', 'Admin')
   const set = <K extends keyof typeof BLANK>(k: K) => (v: (typeof BLANK)[K]) => setF((x) => ({ ...x, [k]: v }))
 
@@ -129,7 +133,7 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
       reviewRecommendation: orNull(f.recommendation), reviewRecommendedValue: numOrNull(f.recommendedValue),
       submittedToJatDate: orNull(f.jatSubmitted), approvedByJatDate: orNull(f.jatApproved), ftaConcurrenceNeeded: f.fta,
     }
-    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) reset()
+    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) { reset(); if (entryMode) nav?.back() }
   }
   const errors = { ...fields, ...local }
   const total = amounts.reduce((s, a) => s + a.amount, 0)
@@ -137,12 +141,15 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
 
   return (
     <>
+      {entryMode && nav && <EntryBar nav={nav} label="Back to appraisals" what={editing ? `Appraisal ${editing.number}` : 'Appraisal'} />}
+      {missing && nav && <EntryMissing nav={nav} label="Back to appraisals" />}
+      {!entryMode && <>
       <fieldset aria-label="Appraisals" className="mb-6 rounded-lg border bg-card p-4">
         <legend className="px-1 text-sm font-semibold">Appraisals</legend>
         {list.data.length === 0 ? (
           <EmptyState title="No appraisals yet" description="Record each appraisal ordered for this parcel." />
         ) : (
-          <DataTable caption="Appraisals" headers={['Appraisal ID', 'Type', 'Appraiser', 'Company', 'Received', 'Appraisal total', 'Approved just compensation', ...(canEdit || canRemove ? ['Actions'] : [])]}>
+          <DataTable caption="Appraisals" headers={['Appraisal ID', 'Type', 'Appraiser', 'Company', 'Received', 'Appraisal total', 'Approved just compensation', 'Actions']}>
             {list.data.map((a) => (
               <tr key={a.id}>
                 <td className="px-3 py-2 font-medium">{a.number}</td>
@@ -152,10 +159,10 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
                 <td className="px-3 py-2">{a.receivedDate ? dateText(a.receivedDate) : '—'}</td>
                 <td className="px-3 py-2">{money(a.appraisalTotal)}</td>
                 <td className="px-3 py-2">{a.approvedJustCompensation === null ? '—' : money(a.approvedJustCompensation)}</td>
-                {(canEdit || canRemove) && (
+                {(
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
-                      {canEdit && <button type="button" aria-label={`Edit appraisal ${a.number}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(a)}><Pencil size={14} aria-hidden /></button>}
+                      <button type="button" aria-label={`Open appraisal ${a.number}`} className={buttonClassName('outline', 'sm')} onClick={() => nav?.open(a.id)}>Open</button>
                       {canRemove && (
                         <button type="button" aria-label={`Remove appraisal ${a.number}`} disabled={busy} className={buttonClassName('ghost', 'sm')}
                           onClick={() => void run(() => api.remove(parcelId, a.id)).then((ok) => { if (ok && editing?.id === a.id) reset() })}>
@@ -170,17 +177,18 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
           </DataTable>
         )}
       </fieldset>
+      </>}
 
-      {((canAdd && !editing) || (canEdit && editing)) && (
+      {((canAdd && !editing && !entryMode) || (editing && (canEdit || entryMode))) && (
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change appraisal' : 'Add an appraisal'} className="max-w-5xl">
-          <h3 className="mb-3 text-sm font-semibold">{editing ? `Change ${editing.number}` : 'Add an appraisal'}</h3>
+        <fieldset disabled={entryMode && !canEdit} className="m-0 min-w-0 space-y-3 border-0 p-0">
+          {!entryMode && <h3 className="mb-3 text-sm font-semibold">{editing ? `Change ${editing.number}` : 'Add an appraisal'}</h3>}
 
           <Section title="Appraisal">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="text-sm"><span className="text-xs text-muted-foreground">ID</span><div>{editing?.number ?? 'Assigned when saved'}</div></div>
               <SelectField label="Appraisal type" value={f.type} onChange={set('type')} options={optionsWith(types, f.type)} blankLabel="Select one" error={errors.appraisalType} />
               <SelectField label="Appraiser" value={f.appraiser} onChange={set('appraiser')} options={optionsWith(agents, f.appraiser)} blankLabel="Select one" error={errors.appraiser} />
-              <div className="text-sm"><span className="text-xs text-muted-foreground">Appraiser company</span><div>{editing?.appraiserCompany ?? '—'}</div></div>
               <SelectField label="Assigned to" value={f.assignedTo} onChange={set('assignedTo')} options={optionsWith(teamNames, f.assignedTo)} blankLabel="Select one" error={errors.assignedTo} />
               <CheckboxField label="Land planner required" checked={f.landPlanner} onChange={set('landPlanner')} />
               <TextField label="Appraisal requested date" type="date" value={f.requested} onChange={set('requested')} error={errors.requestedDate} />
@@ -214,33 +222,33 @@ export function AppraisalTab({ parcelId, editable }: { parcelId: string; editabl
             <button type="button" className={`${buttonClassName('outline', 'sm')} mt-2`} onClick={addAmount}>Add amount</button>
           </Section>
 
-          <Section title="Appraisal review">
+          <OptionalSection title="Appraisal review">
             {reviewOff && <p className="mb-2 text-xs text-muted-foreground">Only the Appraisal Approver sets the review and the approved just compensation.</p>}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SelectField label="Review appraiser" value={f.reviewAppraiser} onChange={set('reviewAppraiser')} options={optionsWith(agents, f.reviewAppraiser)} blankLabel="Select one" disabled={reviewOff} error={errors.reviewAppraiser} />
               <SelectField label="Review type" value={f.reviewType} onChange={set('reviewType')} options={optionsWith(reviewTypes, f.reviewType)} blankLabel="Select one" disabled={reviewOff} error={errors.reviewType} />
-              <TextField label="Appraisal received date (review)" type="date" value={f.appraisalReceived} onChange={set('appraisalReceived')} disabled={reviewOff} error={errors.appraisalReceivedDate} />
               <TextField label="Approved just compensation" type="number" inputMode="decimal" value={f.approvedJc} onChange={set('approvedJc')} disabled={reviewOff} error={errors.approvedJustCompensation} />
               <TextField label="Review completed date" type="date" value={f.reviewCompleted} onChange={set('reviewCompleted')} disabled={reviewOff} error={errors.reviewCompletedDate} />
               <TextField label="Review submitted date" type="date" value={f.reviewSubmitted} onChange={set('reviewSubmitted')} disabled={reviewOff} error={errors.reviewSubmittedDate} />
               <SelectField label="Review recommendation" value={f.recommendation} onChange={set('recommendation')} options={optionsWith(recommendations, f.recommendation)} blankLabel="Select one" disabled={reviewOff} error={errors.reviewRecommendation} />
               <TextField label="Review recommended value" type="number" inputMode="decimal" value={f.recommendedValue} onChange={set('recommendedValue')} disabled={reviewOff} error={errors.reviewRecommendedValue} />
             </div>
-          </Section>
+          </OptionalSection>
 
-          <Section title="Concurrence">
+          <OptionalSection title="Concurrence">
             <div className="grid gap-3 sm:grid-cols-3">
               <TextField label="Submitted to JAT date" type="date" value={f.jatSubmitted} onChange={set('jatSubmitted')} error={errors.submittedToJatDate} />
               <TextField label="Approved by JAT date" type="date" value={f.jatApproved} onChange={set('jatApproved')} error={errors.approvedByJatDate} />
               <CheckboxField label="FTA concurrence needed" checked={f.fta} onChange={set('fta')} />
             </div>
-          </Section>
+          </OptionalSection>
 
           <FormError error={error} />
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add appraisal'}</button>
-            {editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
+            {entryMode && nav ? <button type="button" className={buttonClassName('outline')} onClick={() => { reset(); nav.back() }}>Cancel</button> : editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
           </div>
+        </fieldset>
         </form>
       )}
 

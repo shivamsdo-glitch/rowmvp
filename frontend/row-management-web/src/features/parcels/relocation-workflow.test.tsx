@@ -209,10 +209,24 @@ describe('AT-X-64 the Relocations work screen', () => {
 
     await user.type(screen.getByLabelText('Search'), 'quillfeather')
     await waitFor(() => expect(screen.getByRole('table', { name: 'Relocations found' })).not.toHaveTextContent('RW-88'))
-    await user.click(screen.getByRole('button', { name: 'Open RW-77' }))
-    const panel = await screen.findByRole('region', { name: 'Selected parcel' })
-    expect(panel).toHaveTextContent('Parcel PN-1001')
-    expect(await within(panel).findByRole('button', { name: 'Edit relocation RW-77' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Open RW-77' }))
+    // It opens inside the parcel's Relocation tab: the parcel and its tab strip stay.
+    expect(await screen.findByRole('heading', { name: /^Relocation RW-77/ })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'Relocation', selected: true })).toBeInTheDocument()
+    expect(await screen.findByRole('form', { name: 'Change relocation' })).toHaveTextContent('Parcel numberPN-1001')
+    expect(screen.queryByRole('region', { name: 'Selected parcel' })).toBeNull()
+  })
+
+  it('AT-RA-45 opens a case on a page of its own, read-only for a role that cannot change it', async () => {
+    const { user } = open('/parcels/pc1?tab=parcelrelocation&record=rl1', 'Designer', { relocations: [rel()] })
+    expect(await screen.findByRole('heading', { name: /^Relocation RW-77/ })).toBeInTheDocument()
+    const form = await screen.findByRole('form', { name: 'Change relocation' })
+    expect(form).toHaveTextContent('Parcel numberPN-1001')
+    expect(within(form).getByLabelText(/^Displacee name/)).toBeDisabled()
+    expect(within(form).queryByRole('button', { name: 'Save changes' })).toBeNull()
+    expect(screen.queryByRole('table', { name: 'Relocations' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Back to relocations' }))
+    expect(await screen.findByRole('table', { name: 'Relocations' })).toBeInTheDocument()
   })
 
   it('is in the menu for every role, because every role reads the page', async () => {

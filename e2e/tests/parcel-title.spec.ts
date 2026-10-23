@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi, PARCEL_TAB_OF , sectionVisible } from './support'
 
 /**
  * Phase 1.5 slice 6 (ADR 0018): a parcel's Title Encumbrances tab. Real browser, UI, API and Postgres.
@@ -30,7 +30,7 @@ async function makeParcel(request: APIRequestContext) {
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
   await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
-  await page.getByRole('tab', { name: tab }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, exact: true }).click()
 }
 
 test.describe('Title Researcher · title encumbrances', () => {
@@ -71,7 +71,7 @@ test.describe('Title Researcher · title encumbrances', () => {
     await expect(row).toContainText('Kamali Family')
     await expect(row).toContainText('In progress')
 
-    await page.getByRole('button', { name: `Edit encumbrance ${number}` }).click()
+    await page.getByRole('button', { name: `Open encumbrance ${number}` }).click()
     const edit = page.getByRole('form', { name: 'Change encumbrance' })
     await expect(edit.getByLabel(/^Grantee/)).toHaveValue('First Bank')
     await edit.getByLabel('Unrecorded document').check()
@@ -80,7 +80,7 @@ test.describe('Title Researcher · title encumbrances', () => {
     await edit.getByRole('button', { name: 'Save changes' }).click()
     await expect(page.getByRole('row', { name: new RegExp(number) })).toContainText('Unrecorded')
 
-    await page.getByRole('button', { name: `Edit encumbrance ${number}` }).click()
+    await page.getByRole('button', { name: `Open encumbrance ${number}` }).click()
     const panel = page.getByRole('region', { name: `Attachments for ${number}` })
     await panel.getByLabel('Upload document').setInputFiles({ name: 'deed-of-trust.txt', mimeType: 'text/plain', buffer: Buffer.from('deed of trust') })
     await expect(panel.getByText('deed-of-trust.txt')).toBeVisible()
@@ -95,6 +95,7 @@ test.describe('Title Researcher · title encumbrances', () => {
 
     await panel.getByRole('button', { name: 'Remove deed-of-trust.txt' }).click()
     await expect(panel.getByText('No attachments')).toBeVisible()
+    await page.getByRole('button', { name: 'Back to encumbrances' }).click()
     await page.getByRole('button', { name: `Remove encumbrance ${number}` }).click()
     await expect(page.getByText('No encumbrances recorded')).toBeVisible()
   })
@@ -176,7 +177,7 @@ test.describe('Title Researcher · title and closing', () => {
 
     // Reload: everything is read back from the server.
     await page.reload()
-    await page.getByRole('tab', { name: 'Title and closing' }).click()
+    await page.getByRole('tab', { name: 'Title' }).click()
     const again = page.getByRole('form', { name: 'Title and closing' })
     await expect(again.getByLabel(/^GF number/)).toHaveValue('GF-100')
     await expect(again.getByLabel(/^Title company/)).toHaveValue('Lone Star Title')
@@ -236,9 +237,9 @@ test.describe('Everyone · title and closing', () => {
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
 
       const readable = level(role, 'titleclosing') !== null
-      await expect(page.getByRole('tab', { name: 'Title and closing' }), `${role} tab`).toHaveCount(readable ? 1 : 0)
+      expect(await sectionVisible(page, 'Title and closing'), `${role} section`).toBe(readable)
       if (readable) {
-        await page.getByRole('tab', { name: 'Title and closing' }).click()
+        await page.getByRole('tab', { name: 'Title' }).click()
         await expect(page.getByRole('form', { name: 'Title and closing' })).toBeVisible()
         await expect(page.getByRole('button', { name: 'Save changes' }), `${role} save`).toHaveCount(canUpdate(role, 'titleclosing') ? 1 : 0)
         await expect(page.getByRole('button', { name: 'Remove title and closing record' }), `${role} remove`).toHaveCount(canDelete(role, 'titleclosing') ? 1 : 0)
@@ -269,12 +270,12 @@ test.describe('Everyone · title encumbrances', () => {
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
 
       const readable = level(role, 'titleencumbrances') !== null
-      await expect(page.getByRole('tab', { name: 'Title encumbrances' }), `${role} tab`).toHaveCount(readable ? 1 : 0)
+      expect(await sectionVisible(page, 'Title encumbrances'), `${role} section`).toBe(readable)
       if (readable) {
-        await page.getByRole('tab', { name: 'Title encumbrances' }).click()
+        await page.getByRole('tab', { name: 'Title' }).click()
         await expect(page.getByRole('table', { name: 'Title encumbrances' })).toBeVisible()
         await expect(page.getByRole('form', { name: 'Add an encumbrance' }), `${role} add`).toHaveCount(canCreate(role, 'titleencumbrances') ? 1 : 0)
-        await expect(page.getByRole('button', { name: new RegExp(`^Edit encumbrance ENC-${parcel.number}-001$`) }), `${role} edit`).toHaveCount(canUpdate(role, 'titleencumbrances') ? 1 : 0)
+        await expect(page.getByRole('button', { name: new RegExp(`^Open encumbrance ENC-${parcel.number}-001$`) }), `${role} edit`).toHaveCount(1)
         await expect(page.getByRole('button', { name: new RegExp(`^Remove encumbrance ENC-${parcel.number}-001$`) }), `${role} remove`).toHaveCount(canDelete(role, 'titleencumbrances') ? 1 : 0)
       }
 

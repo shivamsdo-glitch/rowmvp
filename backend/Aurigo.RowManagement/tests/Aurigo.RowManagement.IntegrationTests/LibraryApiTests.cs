@@ -68,7 +68,7 @@ public class LibraryApiTests : IClassFixture<PgApi>
         (await Field(admin, "relocation_type")).Values.Select(v => v.Value).Should().Equal("Residential", "Non-residential", "Personal Property only");
         (await Field(admin, "encumbrance_type")).Values.Select(v => v.Value).Should().Contain(new[] { "Mortgage Lien", "Mechanic Lien", "Financing Statements (UCC-1)", "Deed of Trust" }).And.HaveCount(17);
         (await Field(admin, "agent_type")).Values.Select(v => v.Value).Should().Contain(new[] { "Row Designer", "Surveyor", "Title Researcher", "Appraiser", "Negotiator", "Broker" });
-        (await Field(admin, "appraisal_type")).Values.Should().BeEmpty("the agency fills these in");
+        (await Field(admin, "appraisal_type")).Values.Select(v => v.Value).Should().Contain(new[] { "Full Appraisal", "Waiver Valuation" }, "no dropdown opens empty (ADR 0027)");
         fields.Single(f => f.Key == "possession_type").IsLibraryDriven.Should().BeTrue();
         fields.Single(f => f.Key == "cad_number").IsLibraryDriven.Should().BeFalse();
         (await Field(admin, "possession_type")).Values.Select(v => v.Value).Should().StartWith(new[] { "PUA", "Closing", "Notice of Deposit", "Judgement" });

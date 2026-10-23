@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi, PARCEL_TAB_OF , sectionVisible } from './support'
 
 /**
  * Phase 1.5 slice 5b (ADR 0017): a parcel's Contact Log and Easements tabs, with attachments. Real browser, UI, API and Postgres.
@@ -33,7 +33,7 @@ async function makeParcel(request: APIRequestContext) {
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
   await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
-  await page.getByRole('tab', { name: tab }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, exact: true }).click()
 }
 
 test.describe('Negotiator · contact log', () => {
@@ -61,7 +61,7 @@ test.describe('Negotiator · contact log', () => {
     await expect(row).toContainText('Dana Owner')
 
     // Change it: the id stays, the linked record can be removed, and a file can be attached.
-    await page.getByRole('button', { name: `Edit contact ${number}` }).click()
+    await page.getByRole('button', { name: `Open contact ${number}` }).click()
     const edit = page.getByRole('form', { name: 'Change contact' })
     await expect(edit.getByLabel(/^Discussion notes/)).toHaveValue('Walked the boundary.')
     await edit.getByRole('button', { name: 'Remove linked record OFFER-7' }).click()
@@ -69,7 +69,7 @@ test.describe('Negotiator · contact log', () => {
     await edit.getByRole('button', { name: 'Save changes' }).click()
     await expect(page.getByRole('row', { name: new RegExp(number) })).toContainText('Changed notes.')
 
-    await page.getByRole('button', { name: `Edit contact ${number}` }).click()
+    await page.getByRole('button', { name: `Open contact ${number}` }).click()
     const panel = page.getByRole('region', { name: `Attachments for ${number}` })
     await expect(panel.getByText('No attachments')).toBeVisible()
     await panel.getByLabel('Upload document').setInputFiles({ name: 'owner-letter.txt', mimeType: 'text/plain', buffer: Buffer.from('letter to the owner') })
@@ -85,6 +85,7 @@ test.describe('Negotiator · contact log', () => {
 
     await panel.getByRole('button', { name: 'Remove owner-letter.txt' }).click()
     await expect(panel.getByText('No attachments')).toBeVisible()
+    await page.getByRole('button', { name: 'Back to the contact log' }).click()
     await page.getByRole('button', { name: `Remove contact ${number}` }).click()
     await expect(page.getByText('No contacts logged')).toBeVisible()
   })
@@ -135,7 +136,7 @@ test.describe('Surveyor · easements', () => {
     await page.getByRole('form', { name: 'Add an easement' }).getByRole('button', { name: 'Add easement' }).click()
     await expect(page.getByText("This parcel already has an easement numbered 'E-1'.")).toBeVisible()
 
-    await page.getByRole('button', { name: 'Edit easement E-1' }).click()
+    await page.getByRole('button', { name: 'Open easement E-1' }).click()
     const edit = page.getByRole('form', { name: 'Change easement' })
     await edit.getByLabel(/^End station/).fill('13+00')
     await edit.getByRole('button', { name: 'Save changes' }).click()
@@ -165,15 +166,15 @@ test.describe('Everyone · parcel tabs', () => {
 
       for (const [tab, name, pageKey] of [['Contact log', 'Contact log', 'contactlog'], ['Easements', 'Easements', 'easements']] as const) {
         const readable = level(role, pageKey) !== null
-        await expect(page.getByRole('tab', { name: tab }), `${role} ${tab} tab`).toHaveCount(readable ? 1 : 0)
+        expect(await sectionVisible(page, tab), `${role} ${tab} section`).toBe(readable)
         if (!readable) continue
-        await page.getByRole('tab', { name: tab }).click()
+        await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, exact: true }).click()
         await expect(page.getByRole('table', { name })).toBeVisible()
         const form = tab === 'Contact log' ? 'Log a contact' : 'Add an easement'
-        const edit = tab === 'Contact log' ? new RegExp(`^Edit contact CL-${parcel.number}-001$`) : 'Edit easement SEED'
+        const edit = tab === 'Contact log' ? new RegExp(`^Open contact CL-${parcel.number}-001$`) : 'Open easement SEED'
         const remove = tab === 'Contact log' ? new RegExp(`^Remove contact CL-${parcel.number}-001$`) : 'Remove easement SEED'
         await expect(page.getByRole('form', { name: form }), `${role} ${tab} add`).toHaveCount(canCreate(role, pageKey) ? 1 : 0)
-        await expect(page.getByRole('button', { name: edit }), `${role} ${tab} edit`).toHaveCount(canUpdate(role, pageKey) ? 1 : 0)
+        await expect(page.getByRole('button', { name: edit }), `${role} ${tab} edit`).toHaveCount(1)
         await expect(page.getByRole('button', { name: remove }), `${role} ${tab} remove`).toHaveCount(canDelete(role, pageKey) ? 1 : 0)
       }
 

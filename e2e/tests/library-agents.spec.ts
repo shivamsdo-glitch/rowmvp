@@ -102,7 +102,7 @@ test.describe('Administrator · library agents', () => {
     await expect(page.getByRole('region', { name: typed })).toContainText('people type it in on forms')
   })
 
-  test('AT-AD-38 the default lists the parcel forms need are there: owner, relocation and encumbrance types, and empty lists to fill', async ({ page }) => {
+  test('AT-AD-38 the default lists the parcel forms need are there: owner, relocation and encumbrance types, and starter values in every list', async ({ page }) => {
     await signInViaUi(page, 'Admin')
     await page.goto('/library')
     const nav = page.getByRole('navigation', { name: 'Library fields' })
@@ -116,7 +116,7 @@ test.describe('Administrator · library agents', () => {
     await nav.getByRole('button', { name: /Encumbrance type/ }).click()
     await expect(page.getByRole('table', { name: 'Encumbrance type values' }).getByRole('cell', { name: 'Mortgage Lien', exact: true })).toBeVisible()
     await nav.getByRole('button', { name: /Appraisal type/ }).click()
-    await expect(page.getByText('No values yet')).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Appraisal type values' }).getByRole('cell', { name: 'Full Appraisal', exact: true })).toBeVisible()
   })
 })
 

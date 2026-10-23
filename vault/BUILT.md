@@ -2,7 +2,7 @@
 
 **Read this first in every new chat, then `CLAUDE.md` (rules) and `SKILLS.md` (recipes).** This file says *what has been built and where*; it does not repeat the rules. It is the map. **It must be updated in the same commit as every feature change** (add a row, a route, a page key, an ADR link, the acceptance IDs, bump "Last updated"). This is enforced: the release gate's first check, `scripts/check-built.mjs`, fails if `backend/*/src` or `frontend/*/src` changed and this file did not (`--skip-built-check` only for pure bug fixes and refactors).
 
-Last updated: 2026-10-22, after the relocation case workflow (ADR 0026), the Program view settings (ADR 0025), the ROW Director's Program view (ADR 0024), the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
+Last updated: 2026-10-22, after merging the parcel tabs into 11 (ADR 0029), records opening on their own page inside their tab and short forms (ADR 0028), starter Library values, the relocation entry page and abbreviation tooltips (ADR 0027), the relocation case workflow (ADR 0026), the Program view settings (ADR 0025), the ROW Director's Program view (ADR 0024), the dashboard, Team roll-up and Help center (ADR 0022) and the one-form-per-process clean-up (ADR 0023). Commit history (`git log`) is the detailed record; ADRs in `vault/decisions/` hold the *why*; `vault/acceptance/` holds the per-role *proof*.
 
 ---
 
@@ -69,6 +69,9 @@ Release gate: `node scripts/verify.mjs` (9 checks; the first fails if product co
 | — | **Program view settings** (Configuration page): stuck days, health thresholds and the step-to-team mapping, with the ADR 0024 values as defaults | 0025 |
 | — | **ROW Director's Program view**: every project's health, % closed, pipeline and cost; drill-down to each parcel; time per step and per team; stuck parcels | 0024 |
 | — | **Relocation case workflow**: an ownership interest can be flagged *Displacement required*; each relocation is linked to one interest; when every flagged interest has a relocation with *Relocation complete* set, the parcel moves to the **Acquired** status automatically (new default status; never moves back). Payments (typed amount) go through an approval chain stored as bands (placeholder defaults until an administrator saves their own) and Finance marks them paid. New `/relocations` work screen; dashboard, Team, Program view, parcel Summary and Help updated | 0026 |
+| — | **Starter Library values, relocation entry page, abbreviation tooltips**: every dropdown list ships with values (existing agencies get them on start if a list has no values at all); a relocation opens on its own page (`/parcels/$parcelId/relocations/$relocationId`, from the tab's **Open** link and the `/relocations` screen; read-only for roles that cannot change it; the parcel route takes `?tab=`); known abbreviations in labels, headings and titles carry a hover tooltip from one dictionary (`lib/abbreviations.ts`); the demo seed scripts fill records fully | 0027 |
+| — | **Records open on their own page inside their tab; forms open short** (ADR 0028): Open on a row of Appraisal, Title encumbrances, Easements, Contact log, Questionnaire or Relocation shows that record in the same tab with a Back button (deep link `/parcels/{id}?tab=…&record=…`); the work screens' Open links there; rarely used form sections are folded; duplicate fields dropped from the relocation and appraisal forms | 0028 |
+| — | **Merged parcel tabs** (ADR 0029): 21 tabs → 11; related tabs are sections of one tab (Summary = Summary+Team+Parcel location+Notes; Negotiation = +Diary+Contact log; Reviews & site visits; Interests & easements; Title = encumbrances+closing; Workflow & milestones; Relocation = +Questionnaire). Sections keep their own page keys and are hidden per role; old `?tab=` keys deep-link and scroll to the section | 0029 · `features/parcels/ParcelDetailPage.tsx` (`TAB_DEFS`) |
 | — | Tab strip restyle (active tab = blue label + full-width blue bottom border; wraps instead of scrolling) | `components/ui/tabs.tsx` |
 
 ---
@@ -94,7 +97,7 @@ Each tab has its own **page key** (so access is per tab), its own ADR section an
 
 Everyone else reads every tab (Basic). Admin does everything. The full matrix is `vault/acceptance/permission-matrix.json` (generated from `Support/Spec.cs`).
 
-Older parcel tabs from Phase 1 (Summary, Team, Diary, Notes, Reviews & reports, Interests, Milestones & deadlines, Workflow, Site visits & notice) live in `features/parcels/` and are governed by the `parcels` page.
+Since ADR 0029 several of these share one tab as sections (see the table in §3 and the ADR); the page keys below are unchanged. Older parcel tabs from Phase 1 (Summary, Team, Diary, Notes, Reviews & reports, Interests, Milestones & deadlines, Workflow, Site visits & notice) live in `features/parcels/` and are governed by the `parcels` page.
 
 ## 6. Screens (routes in `frontend/.../src/routes/_app/`)
 
@@ -103,7 +106,7 @@ Older parcel tabs from Phase 1 (Summary, Team, Diary, Notes, Reviews & reports, 
 | `/` | **Dashboard**: *My work* for everyone (waiting, done, recent); managers (Project Manager, Admin) also get *Program* (their default: projects with health, drill-down to parcels, time by step and team) and *Team* | `dashboard` |
 | **`/help`** | **Help center**: contents, search, topics, "What your role can do"; open to every signed-in person (`?topic=<id>`) | none (signed in) |
 | `/projects`, `/projects/$projectId` | Project list and detail (tabs) | `projects` |
-| `/parcels`, `/parcels/$parcelId` | Parcel board and detail (tabs in §5) | `parcels` |
+| `/parcels`, `/parcels/$parcelId` | Parcel board and detail (tabs in §5; `?tab=<page key>` opens a tab, `&record=<id>` one record of it on its own page, ADR 0028) | `parcels` |
 | `/parties`, `/parties/$partyId` | Parties (owners, W-9) | `parties` |
 | `/requests` | Acquisition requests and approvals | `approvals` |
 | `/rights-of-entry` | Rights-of-entry report | `parcels` |
@@ -142,6 +145,8 @@ Special rules beyond the page grid: appraisal review fields (Approver/Admin only
 | Migrations | `Infrastructure/Persistence/Migrations/` (one per slice) | — |
 | Ownership + team + right of entry (ADR 0023) | `Application/Parties/ParcelOwners.cs`, `PartyService.cs`, `Application/ParcelRecords/ParcelRecordRequests.cs` (team), `Application/RightsOfEntry/RightOfEntryRequests.cs`, `Domain/Entities/Party.cs` (`PartyAddress`, `PartyContact`) | `features/parties/PartyLinksPanel.tsx`, `PartyGrids.tsx`, `features/parcels/ParcelRecordTabs.tsx` (Team), `team-kit.ts`, `AcquisitionTabs.tsx` (right of entry, shown in `NegotiationTab.tsx`) |
 | Relocation workflow (ADR 0026) | `Application/ParcelTabs/RelocationRequests.cs` (case), `RelocationPaymentRequests.cs` (payments, bands, progress, work-screen query), `RelocationSync.cs` (parcel → Acquired), `Application/Calculations/RelocationCalc.cs` (pure rules + placeholder chain), `Domain/Entities/ParcelLifecycle.cs` (`RelocationPayment`, `RelocationPaymentBand`), `PartyLink.DisplacementRequired`; endpoints on `ParcelTabsController` (`/relocations/{id}/payments…`, `/relocation-progress`), `RelocationBandsController` (`/api/v1/relocation-payment-bands`), `OverviewController` | see ADR 0026 section of the frontend (Relocation tab, `/relocations`, Configuration bands card, dashboards) |
+| Abbreviation tooltips (ADR 0027) | — | `lib/abbreviations.ts` (dictionary + splitter), `components/ui/abbr.tsx` (`Abbr`, `Explained`); applied in `form-kit.tsx` (labels, headers), `page-header.tsx`, section legends |
+| Record pages inside tabs (ADR 0028) | — | `features/parcels/entry-kit.tsx` (`EntryNav`, `useEntryMode`, `EntryBar`, `OptionalSection`); `nav` prop on `AppraisalTab`, `EncumbrancesTab`, `EasementsTab`, `ContactLogTab`, `QuestionnaireTab`, `RelocationTab`; state in `ParcelDetailPage`; work-screen links in `work/ParcelWorkPage.tsx` |
 | Test fakes | — | `test/fake-tabs.ts` (layered over `fake-records.ts`, `fake-parcels.ts`), `test/fake-api.ts` |
 | Role spec | `tests/.../IntegrationTests/Support/Spec.cs` → `vault/acceptance/permission-matrix.json` | `test/contract.ts` |
 | E2E | — | `e2e/tests/*.spec.ts` (one file per area; case IDs `AT-xx-nn` in test names) |

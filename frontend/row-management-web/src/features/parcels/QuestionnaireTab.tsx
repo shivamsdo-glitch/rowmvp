@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { questionnairesApi, type Questionnaire, type QuestionnaireInterest, type QuestionnaireQuestion } from '@/api/parcel-tabs'
 import { useAuth } from '@/auth/auth-context'
 import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
+import { EntryBar, EntryMissing, useEntryMode, type EntryNav } from './entry-kit'
 import { optionsWith, useLibraryValues } from '../library/library-kit'
 import { Grid } from './NegotiationTab'
 
@@ -15,7 +16,7 @@ const BLANK_INTEREST = { name: '', phone: '', contact: '', email: '', address: '
 const BLANK_QUESTION = { question: '', answer: '', notes: '' }
 
 /** Questionnaire (Phase 1.5, ADR 0019): many relocation questionnaires per parcel, each with the ownership interests it covers and its questions and answers. */
-export function QuestionnaireTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
+export function QuestionnaireTab({ parcelId, editable, nav }: { parcelId: string; editable: boolean; nav?: EntryNav }) {
   const { manager } = useAuth()
   const api = questionnairesApi(manager.api)
   const queryClient = useQueryClient()
@@ -35,6 +36,7 @@ export function QuestionnaireTab({ parcelId, editable }: { parcelId: string; edi
   const canAdd = editable && manager.can('parcelquestionnaire', 'create')
   const canEdit = editable && manager.can('parcelquestionnaire', 'update')
   const canRemove = editable && manager.can('parcelquestionnaire', 'delete')
+  const { entryMode, missing } = useEntryMode(nav, list.data, editing, begin, reset)
   const set = <K extends keyof typeof BLANK>(k: K) => (v: (typeof BLANK)[K]) => setF((x) => ({ ...x, [k]: v }))
   const err = (k: string, m: string) => setLocal((l) => ({ ...l, [k]: m }))
 
@@ -94,18 +96,21 @@ export function QuestionnaireTab({ parcelId, editable }: { parcelId: string; edi
       interests: interests.map(({ name, phone, contact, email, address }) => ({ name, phone, contact, email, address })),
       questions: questions.map(({ question, answer, notes }) => ({ question, answer, notes })),
     }
-    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) reset()
+    if (await run(() => (editing ? api.update(parcelId, editing.id, body) : api.add(parcelId, body)))) { reset(); if (entryMode) nav?.back() }
   }
   const errors = { ...fields, ...local }
 
   return (
     <>
+      {entryMode && nav && <EntryBar nav={nav} label="Back to questionnaires" what={editing ? `Questionnaire ${editing.number}` : 'Questionnaire'} />}
+      {missing && nav && <EntryMissing nav={nav} label="Back to questionnaires" />}
+      {!entryMode && <>
       <fieldset aria-label="Questionnaires" className="mb-6 rounded-lg border bg-card p-4">
         <legend className="px-1 text-sm font-semibold">Questionnaires</legend>
         {list.data.length === 0 ? (
           <EmptyState title="No questionnaires yet" description="Record each relocation questionnaire for this parcel." />
         ) : (
-          <DataTable caption="Questionnaires" headers={['Questionnaire ID', 'Relocation type', 'Due by', 'Sent to owner', 'Questions', ...(canEdit || canRemove ? ['Actions'] : [])]}>
+          <DataTable caption="Questionnaires" headers={['Questionnaire ID', 'Relocation type', 'Due by', 'Sent to owner', 'Questions', 'Actions']}>
             {list.data.map((q) => (
               <tr key={q.id}>
                 <td className="px-3 py-2 font-medium">{q.number}</td>
@@ -113,10 +118,10 @@ export function QuestionnaireTab({ parcelId, editable }: { parcelId: string; edi
                 <td className="px-3 py-2">{q.dueByDate ? dateText(q.dueByDate) : '—'}</td>
                 <td className="px-3 py-2">{q.sentToOwnerDate ? dateText(q.sentToOwnerDate) : '—'}</td>
                 <td className="px-3 py-2">{q.questions.length}</td>
-                {(canEdit || canRemove) && (
+                {(
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
-                      {canEdit && <button type="button" aria-label={`Edit questionnaire ${q.number}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(q)}><Pencil size={14} aria-hidden /></button>}
+                      <button type="button" aria-label={`Open questionnaire ${q.number}`} className={buttonClassName('outline', 'sm')} onClick={() => nav?.open(q.id)}>Open</button>
                       {canRemove && (
                         <button type="button" aria-label={`Remove questionnaire ${q.number}`} disabled={busy} className={buttonClassName('ghost', 'sm')}
                           onClick={() => void run(() => api.remove(parcelId, q.id)).then((ok) => { if (ok && editing?.id === q.id) reset() })}>
@@ -131,10 +136,12 @@ export function QuestionnaireTab({ parcelId, editable }: { parcelId: string; edi
           </DataTable>
         )}
       </fieldset>
+      </>}
 
-      {((canAdd && !editing) || (canEdit && editing)) && (
+      {((canAdd && !editing && !entryMode) || (editing && (canEdit || entryMode))) && (
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change questionnaire' : 'Add a questionnaire'} className="max-w-5xl">
-          <h3 className="mb-3 text-sm font-semibold">{editing ? `Change ${editing.number}` : 'Add a questionnaire'}</h3>
+        <fieldset disabled={entryMode && !canEdit} className="m-0 min-w-0 space-y-3 border-0 p-0">
+          {!entryMode && <h3 className="mb-3 text-sm font-semibold">{editing ? `Change ${editing.number}` : 'Add a questionnaire'}</h3>}
           <fieldset aria-label="Questionnaire" className="mb-4 rounded-lg border bg-card p-4">
             <legend className="px-1 text-sm font-semibold">Questionnaire</legend>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -167,8 +174,9 @@ export function QuestionnaireTab({ parcelId, editable }: { parcelId: string; edi
           <FormError error={error} />
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add questionnaire'}</button>
-            {editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
+            {entryMode && nav ? <button type="button" className={buttonClassName('outline')} onClick={() => { reset(); nav.back() }}>Cancel</button> : editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
           </div>
+        </fieldset>
         </form>
       )}
 

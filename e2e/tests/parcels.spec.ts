@@ -212,7 +212,7 @@ test.describe('Project Manager · parcels', () => {
     await openParcel(page, parcel.id, 'Parcel 001')
 
     // Interests (ROW-234).
-    await page.getByRole('tab', { name: 'Interests', exact: true }).click()
+    await page.getByRole('tab', { name: 'Interests & easements', exact: true }).click()
     await expect(page.getByText('No interests recorded')).toBeVisible()
     const interest = page.getByRole('form', { name: 'Add an interest' })
     await interest.getByRole('button', { name: 'Add interest' }).click()
@@ -224,7 +224,7 @@ test.describe('Project Manager · parcels', () => {
     await expect(page.getByRole('row', { name: /Permanent easement/ })).toContainText('2,500 sq ft')
 
     // Milestones (ROW-010): the standard ones are there and cannot be removed; custom ones can be added and removed.
-    await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+    await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
     for (const name of ['Parcel set up', 'Notice to owner', 'Offer delivered', 'Agreement signed', 'Closed']) {
       await expect(page.getByRole('row').filter({ hasText: name }).first()).toBeVisible()
       await expect(page.getByRole('button', { name: `Remove milestone ${name}` })).toHaveCount(0)
@@ -243,7 +243,7 @@ test.describe('Project Manager · parcels', () => {
     await expect(page.getByRole('row', { name: /Right of entry/ })).toHaveCount(0)
 
     // Notice to owner (ROW-237): needs a method; saving it completes the milestone and starts the offer deadline.
-    await page.getByRole('tab', { name: 'Site visits & notice' }).click()
+    await page.getByRole('tab', { name: 'Reviews & site visits' }).click()
     const notice = page.getByRole('form', { name: 'Notice to owner' })
     await notice.getByLabel('Notice issued on').fill('2026-01-05')
     await notice.getByRole('button', { name: 'Save notice' }).click()
@@ -263,12 +263,12 @@ test.describe('Project Manager · parcels', () => {
     await expect(page.getByRole('row', { name: /Oct 1, 2026/ })).toContainText('Yes')
 
     // Milestone dates are facts (ROW-010): the notice's date stays with the notice, and nothing completes in the future.
-    await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+    await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
     await page.getByRole('button', { name: 'Edit milestone Notice to owner' }).click()
     const locked = page.getByRole('form', { name: 'Edit milestone Notice to owner' })
     await expect(locked.getByLabel('Completed on')).toBeDisabled()
     await expect(locked.getByLabel('Completed on')).toHaveValue('2026-01-05')
-    await expect(locked).toContainText('Set by recording the notice on the Site visits & notice tab.')
+    await expect(locked).toContainText('Set by recording the notice in the Site visits & notice section of the Reviews & site visits tab.')
     await locked.getByRole('button', { name: 'Cancel' }).click()
     await page.getByRole('button', { name: 'Edit milestone Offer delivered' }).click()
     const dated = page.getByRole('form', { name: 'Edit milestone Offer delivered' })
@@ -282,7 +282,7 @@ test.describe('Project Manager · parcels', () => {
     await dated.getByRole('button', { name: 'Cancel' }).click()
 
     // Deadlines (ROW-073): 90 days after 5 Jan 2026 was 5 Apr 2026, and nothing has been offered.
-    await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+    await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
     const deadline = page.getByRole('table', { name: 'Deadlines' }).getByRole('row', { name: /Offer within 90 days/ })
     await expect(deadline).toContainText('Apr 5, 2026')
     await expect(deadline).toContainText('Overdue')
@@ -330,7 +330,7 @@ test.describe('Project Manager · parcels', () => {
     const parcel = await makeParcel(request, admin, project, { address: '7 Gate Rd' })
     await signInViaUi(page, 'ProjectManager')
     await openParcel(page, parcel.id, 'Parcel 001')
-    await page.getByRole('tab', { name: 'Workflow' }).click()
+    await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
     await expect(stepList(page).getByRole('listitem').filter({ hasText: 'Parcel set up' })).toHaveAttribute('aria-current', 'step')
 
     // In order is free.
@@ -375,7 +375,7 @@ test.describe('Project Manager · parcels', () => {
     await expect(page.getByRole('status', { name: 'Acquisition status' })).toContainText('Offers and negotiations are open')
 
     await openParcel(page, parcel.id, 'Parcel 001')
-    await page.getByRole('tab', { name: 'Workflow' }).click()
+    await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
     await page.getByRole('button', { name: 'Advance to Title & survey' }).click()
     await page.getByRole('button', { name: 'Advance to Appraisal & just compensation' }).click()
     await expect(page.getByRole('button', { name: 'Advance to Offer' })).toBeEnabled()
@@ -556,7 +556,7 @@ test.describe('Administrator · parcel rules', () => {
       await signOutViaUi(page)
       await signInViaUi(page, 'ProjectManager')
       await openParcel(page, parcel.id, 'Parcel 001')
-      await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+      await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
       const row = page.getByRole('table', { name: 'Deadlines' }).getByRole('row', { name: new RegExp(ruleName) })
       await expect(row).toContainText('Mar 18, 2026') // 1 Feb 2026 + 45 days
       await expect(row).toContainText('Overdue')
@@ -648,7 +648,7 @@ test.describe('Administrator · parcel rules', () => {
       await expect(section).toContainText('Chamorro Time (Guam, Northern Mariana Islands)')
       await openParcel(page, parcel.id, 'Parcel 001')
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toContainText('Chamorro Standard Time')
-      await page.getByRole('tab', { name: 'Milestones & deadlines' }).click()
+      await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
       await expect(page.getByText('Days are counted in Chamorro Standard Time.')).toBeVisible()
       expect((await getParcel(request, admin, parcel.id)).timeZoneId).toBe('Pacific/Guam')
 
@@ -722,15 +722,15 @@ for (const role of ROLES) {
       await openParcel(page, parcel.id, 'Parcel 001')
       await expect(page.getByRole('button', { name: 'Edit parcel' }), `${role} Edit parcel`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
       await expect(page.getByRole('button', { name: 'Split', exact: true }), `${role} Split`).toHaveCount(canCreate(role) ? 1 : 0)
-      await page.getByRole('tab', { name: 'Interests', exact: true }).click()
+      await page.getByRole('tab', { name: 'Interests & easements', exact: true }).click()
       await expect(page.getByRole('row', { name: /Remainder/ })).toBeVisible()
       await expect(page.getByRole('form', { name: 'Add an interest' }), `${role} add interest`).toHaveCount(canCreate(role) ? 1 : 0)
       await expect(page.getByRole('button', { name: 'Remove Remainder interest' }), `${role} remove interest`).toHaveCount(canDelete(role) ? 1 : 0)
-      await page.getByRole('tab', { name: 'Workflow' }).click()
+      await page.getByRole('tab', { name: 'Workflow & milestones' }).click()
       await expect(stepList(page)).toBeVisible()
       await expect(page.getByRole('button', { name: 'Advance to Title & survey' }), `${role} advance`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
       await expect(page.getByRole('form', { name: 'Move to another step' }), `${role} override`).toHaveCount(canUpdate(role, 'parcels') && mayOverride(role) ? 1 : 0)
-      await page.getByRole('tab', { name: 'Site visits & notice' }).click()
+      await page.getByRole('tab', { name: 'Reviews & site visits' }).click()
       await expect(page.getByRole('form', { name: 'Notice to owner' }), `${role} notice`).toHaveCount(canUpdate(role, 'parcels') ? 1 : 0)
       await expect(page.getByRole('form', { name: 'Record a site visit' }), `${role} site visit`).toHaveCount(canCreate(role) ? 1 : 0)
 

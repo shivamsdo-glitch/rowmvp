@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import {
   parcelTabsApi, type ContactLogEntry, type ContactLogLinkInput, type Easement,
 } from '@/api/parcel-tabs'
@@ -9,6 +9,7 @@ import { buttonClassName } from '@/components/ui/button'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/states'
 import { DataTable, dateText, fieldErrorsOf, FormError, messageOf, orNull, SelectField, TextField } from '../projects/form-kit'
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
+import { EntryBar, EntryMissing, useEntryMode, type EntryNav } from './entry-kit'
 import { optionsWith, useLibraryValues } from '../library/library-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -60,7 +61,7 @@ const dateTimeText = (iso: string) => new Date(iso).toLocaleString('en-US', { da
 
 // ── Contact Log ─────────────────────────────────────────────────────────
 
-export function ContactLogTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
+export function ContactLogTab({ parcelId, editable, nav }: { parcelId: string; editable: boolean; nav?: EntryNav }) {
   const { manager, user } = useAuth()
   const api = parcelTabsApi(manager.api)
   const key = ['parcel-tabs', parcelId, 'contact-log']
@@ -81,6 +82,7 @@ export function ContactLogTab({ parcelId, editable }: { parcelId: string; editab
   const canAdd = editable && manager.can('contactlog', 'create')
   const canEdit = editable && manager.can('contactlog', 'update')
   const canRemove = editable && manager.can('contactlog', 'delete')
+  const { entryMode, missing } = useEntryMode(nav, log.data, editing, begin, reset)
 
   if (!manager.can('contactlog')) return <p className="text-sm text-muted-foreground">Your role cannot see the contact log.</p>
   if (log.isPending) return <LoadingRows rows={3} />
@@ -110,17 +112,20 @@ export function ContactLogTab({ parcelId, editable }: { parcelId: string; editab
     const body = {
       contactedAt: new Date(at).toISOString(), mode: orNull(mode), contactedBy: orNull(by), contactPerson: orNull(person), notes: orNull(notes), links,
     }
-    if (await a.run(() => (editing ? api.updateContactLog(parcelId, editing.id, body) : api.addContactLog(parcelId, body)))) reset()
+    if (await a.run(() => (editing ? api.updateContactLog(parcelId, editing.id, body) : api.addContactLog(parcelId, body)))) { reset(); if (entryMode) nav?.back() }
   }
   const errors = { ...a.fields, ...local }
 
   return (
     <>
+      {entryMode && nav && <EntryBar nav={nav} label="Back to the contact log" what={editing ? `Contact ${editing.number}` : 'Contact'} />}
+      {missing && nav && <EntryMissing nav={nav} label="Back to the contact log" />}
+      {!entryMode && <>
       <Section title="Contact log">
         {log.data.length === 0 ? (
           <EmptyState title="No contacts logged" description="Log each call, meeting, letter or visit with the owner or other parties." />
         ) : (
-          <DataTable caption="Contact log" headers={['Contact ID', 'Date and time', 'Mode', 'Contacted by', 'Contact person', 'Notes', 'Linked', ...(canEdit || canRemove ? ['Actions'] : [])]}>
+          <DataTable caption="Contact log" headers={['Contact ID', 'Date and time', 'Mode', 'Contacted by', 'Contact person', 'Notes', 'Linked', 'Actions']}>
             {log.data.map((e) => (
               <tr key={e.id}>
                 <td className="px-3 py-2 font-medium">{e.number}</td>
@@ -130,10 +135,10 @@ export function ContactLogTab({ parcelId, editable }: { parcelId: string; editab
                 <td className="px-3 py-2">{e.contactPerson ?? '—'}</td>
                 <td className="whitespace-pre-wrap px-3 py-2">{e.notes ?? '—'}</td>
                 <td className="px-3 py-2">{e.links.length}</td>
-                {(canEdit || canRemove) && (
+                {(
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
-                      {canEdit && <button type="button" aria-label={`Edit contact ${e.number}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(e)}><Pencil size={14} aria-hidden /></button>}
+                      <button type="button" aria-label={`Open contact ${e.number}`} className={buttonClassName('outline', 'sm')} onClick={() => nav?.open(e.id)}>Open</button>
                       {canRemove && (
                         <button type="button" aria-label={`Remove contact ${e.number}`} disabled={a.busy} className={buttonClassName('ghost', 'sm')}
                           onClick={() => void a.run(() => api.removeContactLog(parcelId, e.id)).then((ok) => { if (ok && editing?.id === e.id) reset() })}>
@@ -148,9 +153,11 @@ export function ContactLogTab({ parcelId, editable }: { parcelId: string; editab
           </DataTable>
         )}
       </Section>
+      </>}
 
-      {((canAdd && !editing) || (canEdit && editing)) && (
+      {((canAdd && !editing && !entryMode) || (editing && (canEdit || entryMode))) && (
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change contact' : 'Log a contact'} className="max-w-3xl space-y-3 rounded-lg border bg-card p-4">
+        <fieldset disabled={entryMode && !canEdit} className="m-0 min-w-0 space-y-3 border-0 p-0">
           <h3 className="text-sm font-semibold">{editing ? `Change ${editing.number}` : 'Log a contact'}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="Date and time of contact" required type="datetime-local" value={at} onChange={setAt} error={errors.contactedAt} />
@@ -189,8 +196,9 @@ export function ContactLogTab({ parcelId, editable }: { parcelId: string; editab
           <FormError error={a.error} />
           <div className="flex gap-2">
             <button type="submit" disabled={a.busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add contact'}</button>
-            {editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
+            {entryMode && nav ? <button type="button" className={buttonClassName('outline')} onClick={() => { reset(); nav.back() }}>Cancel</button> : editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
           </div>
+        </fieldset>
         </form>
       )}
 
@@ -201,7 +209,7 @@ export function ContactLogTab({ parcelId, editable }: { parcelId: string; editab
 
 // ── Easements ───────────────────────────────────────────────────────────
 
-export function EasementsTab({ parcelId, editable }: { parcelId: string; editable: boolean }) {
+export function EasementsTab({ parcelId, editable, nav }: { parcelId: string; editable: boolean; nav?: EntryNav }) {
   const { manager } = useAuth()
   const api = parcelTabsApi(manager.api)
   const key = ['parcel-tabs', parcelId, 'easements']
@@ -220,6 +228,7 @@ export function EasementsTab({ parcelId, editable }: { parcelId: string; editabl
   const canAdd = editable && manager.can('easements', 'create')
   const canEdit = editable && manager.can('easements', 'update')
   const canRemove = editable && manager.can('easements', 'delete')
+  const { entryMode, missing } = useEntryMode(nav, list.data, editing, begin, reset)
 
   if (!manager.can('easements')) return <p className="text-sm text-muted-foreground">Your role cannot see easements.</p>
   if (list.isPending) return <LoadingRows rows={3} />
@@ -245,17 +254,20 @@ export function EasementsTab({ parcelId, editable }: { parcelId: string; editabl
       number: number.trim(), easementType: orNull(type), description: orNull(description), startDate: orNull(start), endDate: orNull(end),
       startStation: orNull(startStation), endStation: orNull(endStation),
     }
-    if (await a.run(() => (editing ? api.updateEasement(parcelId, editing.id, body) : api.addEasement(parcelId, body)))) reset()
+    if (await a.run(() => (editing ? api.updateEasement(parcelId, editing.id, body) : api.addEasement(parcelId, body)))) { reset(); if (entryMode) nav?.back() }
   }
   const errors = { ...a.fields, ...local }
 
   return (
     <>
+      {entryMode && nav && <EntryBar nav={nav} label="Back to easements" what={editing ? `Easement ${editing.number}` : 'Easement'} />}
+      {missing && nav && <EntryMissing nav={nav} label="Back to easements" />}
+      {!entryMode && <>
       <Section title="Easements">
         {list.data.length === 0 ? (
           <EmptyState title="No easements recorded" description="Record each easement on this parcel with its term and station range." />
         ) : (
-          <DataTable caption="Easements" headers={['Easement number', 'Type', 'Description', 'Start date', 'End date', 'Start station', 'End station', ...(canEdit || canRemove ? ['Actions'] : [])]}>
+          <DataTable caption="Easements" headers={['Easement number', 'Type', 'Description', 'Start date', 'End date', 'Start station', 'End station', 'Actions']}>
             {list.data.map((e) => (
               <tr key={e.id}>
                 <td className="px-3 py-2 font-medium">{e.number}</td>
@@ -265,10 +277,10 @@ export function EasementsTab({ parcelId, editable }: { parcelId: string; editabl
                 <td className="px-3 py-2">{e.endDate ? dateText(e.endDate) : '—'}</td>
                 <td className="px-3 py-2">{e.startStation ?? '—'}</td>
                 <td className="px-3 py-2">{e.endStation ?? '—'}</td>
-                {(canEdit || canRemove) && (
+                {(
                   <td className="px-3 py-2">
                     <span className="inline-flex gap-1">
-                      {canEdit && <button type="button" aria-label={`Edit easement ${e.number}`} className={buttonClassName('ghost', 'sm')} onClick={() => begin(e)}><Pencil size={14} aria-hidden /></button>}
+                      <button type="button" aria-label={`Open easement ${e.number}`} className={buttonClassName('outline', 'sm')} onClick={() => nav?.open(e.id)}>Open</button>
                       {canRemove && (
                         <button type="button" aria-label={`Remove easement ${e.number}`} disabled={a.busy} className={buttonClassName('ghost', 'sm')}
                           onClick={() => void a.run(() => api.removeEasement(parcelId, e.id)).then((ok) => { if (ok && editing?.id === e.id) reset() })}>
@@ -283,9 +295,11 @@ export function EasementsTab({ parcelId, editable }: { parcelId: string; editabl
           </DataTable>
         )}
       </Section>
+      </>}
 
-      {((canAdd && !editing) || (canEdit && editing)) && (
+      {((canAdd && !editing && !entryMode) || (editing && (canEdit || entryMode))) && (
         <form onSubmit={submit} noValidate aria-label={editing ? 'Change easement' : 'Add an easement'} className="max-w-3xl space-y-3 rounded-lg border bg-card p-4">
+        <fieldset disabled={entryMode && !canEdit} className="m-0 min-w-0 space-y-3 border-0 p-0">
           <h3 className="text-sm font-semibold">{editing ? `Change easement ${editing.number}` : 'Add an easement'}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="Easement number" required value={number} onChange={setNumber} maxLength={50} error={errors.number} />
@@ -302,8 +316,9 @@ export function EasementsTab({ parcelId, editable }: { parcelId: string; editabl
           <FormError error={a.error} />
           <div className="flex gap-2">
             <button type="submit" disabled={a.busy} className={buttonClassName('default')}>{editing ? 'Save changes' : 'Add easement'}</button>
-            {editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
+            {entryMode && nav ? <button type="button" className={buttonClassName('outline')} onClick={() => { reset(); nav.back() }}>Cancel</button> : editing && <button type="button" className={buttonClassName('outline')} onClick={reset}>Cancel</button>}
           </div>
+        </fieldset>
         </form>
       )}
 

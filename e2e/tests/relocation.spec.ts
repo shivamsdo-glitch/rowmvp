@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { devToken, newId, signInViaUi, signOutViaUi } from './support'
+import { devToken, newId, signInViaUi, signOutViaUi, PARCEL_TAB_OF } from './support'
 
 /**
  * ADR 0026: the relocation case workflow. A relocation is for one ownership interest; the parcel becomes Acquired when every displaced interest
@@ -42,7 +42,7 @@ async function statusOf(request: APIRequestContext, parcelId: string) {
 async function openTab(page: Page, parcelId: string, tab: string) {
   await page.goto(`/parcels/${parcelId}`)
   await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
-  await page.getByRole('tab', { name: tab, ...exact }).click()
+  await page.getByRole('tab', { name: PARCEL_TAB_OF[tab] ?? tab, ...exact }).click()
 }
 
 async function addRelocation(page: Page, number: string, owner: string, complete?: string) {
@@ -141,9 +141,11 @@ test.describe('Everyone · Relocations work screen', () => {
     const found = page.getByRole('table', { name: 'Relocations found' })
     await expect(found).toContainText('RW-1')
     await expect(found).toContainText('Not started')
-    await page.getByRole('button', { name: 'Open RW-1' }).click()
-    const panel = page.getByRole('region', { name: 'Selected parcel' })
-    await expect(panel).toContainText(`Parcel ${parcel.number}`)
-    await expect(panel.getByRole('button', { name: 'Edit relocation RW-1' })).toBeVisible()
+    await page.getByRole('link', { name: 'Open RW-1' }).click()
+    // The case opens as a page of its own with every detail, not as a panel under the search results.
+    await expect(page.getByRole('heading', { name: 'Relocation RW-1', ...exact })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Relocation', selected: true, ...exact })).toBeVisible()
+    await expect(page.getByRole('form', { name: 'Change relocation' })).toContainText(parcel.number)
+    await expect(page.getByRole('region', { name: 'Selected parcel' })).toHaveCount(0)
   })
 })

@@ -3,6 +3,7 @@ import type { DetailValues, StatusNote } from '@/api/parcel-tabs'
 import { CheckboxField, SelectField, TextField, numOrNull, orNull } from '../projects/form-kit'
 import { optionsWith } from '../library/library-kit'
 import { Grid } from './NegotiationTab'
+import { Explained } from '@/components/ui/abbr'
 
 /** One field of a record's form: how it is labelled, what kind of input it is and where its choices come from. */
 export interface FieldSpec {
@@ -92,5 +93,5 @@ export function StatusNotesGrid({ notes, onChange, canSave, title }: { notes: St
 }
 
 export function Fact({ label, value }: { label: string; value: ReactNode }) {
-  return <div className="text-sm"><span className="text-xs text-muted-foreground">{label}</span><div>{value || '—'}</div></div>
+  return <div className="text-sm"><span className="text-xs text-muted-foreground"><Explained text={label} /></span><div>{value || '—'}</div></div>
 }

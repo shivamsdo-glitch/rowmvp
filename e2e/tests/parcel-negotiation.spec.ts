@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi } from './support'
+import { canUpdate, devToken, level, newId, ROLES, sessionToken, signInViaUi , sectionVisible } from './support'
 
 /**
  * Phase 1.5 slice 7a (ADR 0019): a parcel's Negotiation tab. Real browser, UI, API and Postgres.
@@ -142,7 +142,7 @@ test.describe('Everyone · negotiation', () => {
       await expect(page.getByRole('region', { name: 'Parcel synopsis' })).toBeVisible()
 
       const readable = level(role, 'parcelnegotiation') !== null
-      await expect(page.getByRole('tab', { name: 'Negotiation' }), `${role} tab`).toHaveCount(readable ? 1 : 0)
+      expect(await sectionVisible(page, 'Negotiation'), `${role} section`).toBe(readable)
       if (readable) {
         await page.getByRole('tab', { name: 'Negotiation' }).click()
         await expect(page.getByRole('form', { name: 'Negotiation' })).toBeVisible()

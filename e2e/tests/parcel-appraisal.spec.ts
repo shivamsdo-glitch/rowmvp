@@ -76,7 +76,7 @@ test.describe('Appraiser · appraisals', () => {
     await expect(table).toContainText(`APR-${parcel.number}-001`)
     await expect(table).toContainText('$102,500.25')
 
-    await page.getByRole('button', { name: `Edit appraisal APR-${parcel.number}-001` }).click()
+    await page.getByRole('button', { name: `Open appraisal APR-${parcel.number}-001` }).click()
     const panel = page.getByRole('region', { name: `Attachments for APR-${parcel.number}-001` })
     await panel.getByLabel('Upload document').setInputFiles({ name: 'report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') })
     await expect(panel.getByText('report.pdf')).toBeVisible()
@@ -103,7 +103,7 @@ test.describe('Appraisal Approver · review', () => {
 
     await signInViaUi(page, 'AppraisalApprover')
     await openTab(page, parcel.id)
-    await page.getByRole('button', { name: `Edit appraisal ${seed.number}` }).click()
+    await page.getByRole('button', { name: `Open appraisal ${seed.number}` }).click()
     const form = page.getByRole('form', { name: 'Change appraisal' })
     await form.getByLabel(/^Approved just compensation/).fill('-5')
     await form.getByRole('button', { name: 'Save changes' }).click()
@@ -120,7 +120,7 @@ test.describe('Appraisal Approver · review', () => {
 
     await signInViaUi(page, 'Appraiser')
     await openTab(page, parcel.id)
-    await page.getByRole('button', { name: `Edit appraisal ${seed.number}` }).click()
+    await page.getByRole('button', { name: `Open appraisal ${seed.number}` }).click()
     const form = page.getByRole('form', { name: 'Change appraisal' })
     await expect(form.getByLabel(/^Approved just compensation/)).toBeDisabled()
     await expect(form.getByLabel(/^Approved just compensation/)).toHaveValue('1400')
@@ -152,7 +152,7 @@ test.describe('Everyone · appraisals', () => {
         await page.getByRole('tab', { name: 'Appraisal' }).click()
         await expect(page.getByRole('table', { name: 'Appraisals' })).toBeVisible()
         await expect(page.getByRole('form', { name: 'Add an appraisal' }), `${role} add`).toHaveCount(canCreate(role, 'parcelappraisal') ? 1 : 0)
-        await expect(page.getByRole('button', { name: `Edit appraisal ${seed.number}` }), `${role} edit`).toHaveCount(canUpdate(role, 'parcelappraisal') ? 1 : 0)
+        await expect(page.getByRole('button', { name: `Open appraisal ${seed.number}` }), `${role} edit`).toHaveCount(1)
         await expect(page.getByRole('button', { name: `Remove appraisal ${seed.number}` }), `${role} remove`).toHaveCount(canDelete(role, 'parcelappraisal') ? 1 : 0)
       }
 

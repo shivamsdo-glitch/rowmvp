@@ -40,7 +40,7 @@ describe('Parcel details form (AT-DE-40)', () => {
     expect(within(synopsis).getByText('Possession date').closest('div')).toHaveTextContent('2026')
     expect(within(synopsis).getByText('Proposed possession date').closest('div')).toHaveTextContent('2026')
 
-    await userEventModule.setup().click(screen.getByRole('tab', { name: 'Interests' }))
+    await userEventModule.setup().click(screen.getByRole('tab', { name: 'Interests & easements' }))
     const table = await screen.findByRole('table', { name: 'Interests' })
     expect(within(table).getByRole('columnheader', { name: 'Acres' })).toBeInTheDocument()
     expect(within(table).getAllByRole('row')[1]).toHaveTextContent('43,560 sq ft1')

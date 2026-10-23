@@ -47,12 +47,12 @@ describe('Appraisal work screen (AT-AP-41)', () => {
     await user.type(screen.getByLabelText('Search'), 'kamali')
     await waitFor(() => expect(screen.getByRole('table', { name: 'Appraisals found' })).toHaveTextContent('APR-PN-1001-001'))
 
-    await user.click(screen.getByRole('button', { name: 'Open APR-PN-1001-001' }))
-    const panel = await screen.findByRole('region', { name: 'Selected parcel' })
-    expect(panel).toHaveTextContent('Parcel PN-1001')
-    expect(panel).toHaveTextContent('Kamali Trust')
-    await user.click(await within(panel).findByRole('button', { name: 'Edit appraisal APR-PN-1001-001' }))
-    const form = await within(panel).findByRole('form', { name: 'Change appraisal' })
+    await user.click(screen.getByRole('link', { name: 'Open APR-PN-1001-001' }))
+    // The appraisal opens on its own page, inside the parcel's Appraisal tab (ADR 0028): no panel under the search results.
+    expect(screen.queryByRole('region', { name: 'Selected parcel' })).toBeNull()
+    expect(await screen.findByRole('heading', { name: /PN-1001/ })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Appraisal APR-PN-1001-001' })).toBeInTheDocument()
+    const form = await screen.findByRole('form', { name: 'Change appraisal' })
     fireEvent.change(within(form).getByLabelText('Appraisal due date'), { target: { value: '2026-09-01' } })
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(fake.appraisals[0].dueDate).toBe('2026-09-01'))
@@ -63,23 +63,20 @@ describe('Appraisal work screen (AT-AP-41)', () => {
     await screen.findByRole('table', { name: 'Appraisals found' })
 
     await user.type(screen.getByLabelText('Search'), 'PN-2002')
-    await user.click(await screen.findByRole('button', { name: 'Open parcel PN-2002' }))
-    const panel = await screen.findByRole('region', { name: 'Selected parcel' })
-    expect(panel).toHaveTextContent('Brightwater LLC')
-    const form = await within(panel).findByRole('form', { name: 'Add an appraisal' })
+    await user.click(await screen.findByRole('link', { name: 'Open parcel PN-2002' }))
+    expect(await screen.findByRole('heading', { name: /PN-2002/ })).toBeInTheDocument()
+    const form = await screen.findByRole('form', { name: 'Add an appraisal' })
     await user.click(within(form).getByRole('button', { name: 'Add appraisal' }))
 
     await waitFor(() => expect(fake.appraisals).toHaveLength(2))
     expect(fake.appraisals[1]).toMatchObject({ parcelId: 'pc2', number: 'APR-PN-2002-001' })
-    await user.click(within(panel).getByRole('button', { name: 'Close parcel' }))
-    expect(screen.queryByRole('region', { name: 'Selected parcel' })).toBeNull()
   })
 
   it('finds a parcel by its owner name even when it has no records yet', async () => {
     const { user } = open('/appraisals', 'Appraiser', { appraisals: [] })
     await user.type(await screen.findByLabelText('Search'), 'brightwater')
-    expect(await screen.findByRole('button', { name: 'Open parcel PN-2002' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Open parcel PN-1001' })).toBeNull()
+    expect(await screen.findByRole('link', { name: 'Open parcel PN-2002' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open parcel PN-1001' })).toBeNull()
   })
 })
 
@@ -92,17 +89,24 @@ describe('Negotiation & Closing work screen (AT-NE-44)', () => {
     expect(await screen.findByRole('heading', { name: 'Negotiation & Closing' })).toBeInTheDocument()
     expect(await screen.findByRole('table', { name: 'Negotiations found' })).toHaveTextContent('Casey Closer')
 
-    await user.click(screen.getByRole('button', { name: 'Open NEG-PN-1001' }))
+    await user.click(screen.getByRole('link', { name: 'Open NEG-PN-1001' }))
     const form = await screen.findByRole('form', { name: 'Negotiation' })
     await user.type(within(form).getByLabelText('Notes'), 'Called the owner.')
     await user.click(within(form).getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(fake.negotiations[0].notes).toBe('Called the owner.'))
+  })
 
+  it('opens a title and closing record on the parcel Title and closing tab', async () => {
+    const { user } = open('/negotiations', 'Negotiator', {
+      negotiations: [{ parcelId: 'pc1', id: 'ng1', number: 'NEG-PN-1001', assignedTo: 'Casey Closer', totalAgreementAmount: 5000 }],
+      titleClosings: [{ parcelId: 'pc2', id: 'tc1', number: 'TC-PN-2002', titleCompany: 'Lone Star Title' }],
+    })
+    await screen.findByRole('table', { name: 'Negotiations found' })
     await user.click(screen.getByRole('tab', { name: 'Title and closing' }))
     expect(await screen.findByRole('table', { name: 'Title and closing found' })).toHaveTextContent('Lone Star Title')
-    await user.click(screen.getByRole('button', { name: 'Open TC-PN-2002' }))
+    await user.click(screen.getByRole('link', { name: 'Open TC-PN-2002' }))
     expect(await screen.findByRole('form', { name: 'Title and closing' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Selected parcel' })).toHaveTextContent('Parcel PN-2002')
+    expect(screen.getAllByRole('heading', { name: /PN-2002/ }).length).toBeGreaterThan(0)
   })
 })
 
@@ -117,9 +121,8 @@ describe('Title & Survey work screen (AT-TE-42)', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Easements' }))
     expect(await screen.findByRole('table', { name: 'Easements found' })).toHaveTextContent('Brightwater LLC')
-    await user.click(screen.getByRole('button', { name: 'Open E-9' }))
-    const panel = await screen.findByRole('region', { name: 'Selected parcel' })
-    expect(await within(panel).findByRole('table', { name: 'Easements' })).toHaveTextContent('E-9')
+    await user.click(screen.getByRole('link', { name: 'Open E-9' }))
+    expect(await screen.findByRole('heading', { name: 'Easement E-9' })).toBeInTheDocument()
     expect(fake.easements).toHaveLength(1)
   })
 })
@@ -130,11 +133,10 @@ describe.each(ROLES.map((r) => [r]))('what %s sees on the work screens (AT-X-57)
     const { user } = open('/appraisals', role, { appraisals: [] })
     await screen.findByRole('heading', { name: 'Appraisal' })
     await user.type(screen.getByLabelText('Search'), 'PN-1001')
-    await user.click(await screen.findByRole('button', { name: 'Open parcel PN-1001' }))
-    const panel = await screen.findByRole('region', { name: 'Selected parcel' })
-    await within(panel).findByRole('group', { name: 'Appraisals' })
+    await user.click(await screen.findByRole('link', { name: 'Open parcel PN-1001' }))
+    await screen.findByRole('group', { name: 'Appraisals' })
 
-    expect(!!within(panel).queryByRole('form', { name: 'Add an appraisal' })).toBe(can(role, 'parcelappraisal', 'create'))
+    expect(!!screen.queryByRole('form', { name: 'Add an appraisal' })).toBe(can(role, 'parcelappraisal', 'create'))
   })
 
   it('offers the Negotiation & Closing screen with the save button following the negotiation page', async () => {
@@ -142,10 +144,9 @@ describe.each(ROLES.map((r) => [r]))('what %s sees on the work screens (AT-X-57)
     const { user } = open('/negotiations', role, { appraisals: [] })
     await screen.findByRole('heading', { name: 'Negotiation & Closing' })
     await user.type(screen.getByLabelText('Search'), 'PN-1001')
-    await user.click(await screen.findByRole('button', { name: 'Open parcel PN-1001' }))
-    const panel = await screen.findByRole('region', { name: 'Selected parcel' })
-    await within(panel).findByRole('form', { name: 'Negotiation' })
+    await user.click(await screen.findByRole('link', { name: 'Open parcel PN-1001' }))
+    await screen.findByRole('form', { name: 'Negotiation' })
 
-    expect(!!within(panel).queryByRole('button', { name: 'Save negotiation' })).toBe(can(role, 'parcelnegotiation', 'create'))
+    expect(!!screen.queryByRole('button', { name: 'Save negotiation' })).toBe(can(role, 'parcelnegotiation', 'create'))
   })
 })

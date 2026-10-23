@@ -9,11 +9,13 @@ import { CheckboxField, DataTable, dateText, fieldErrorsOf, FormError, messageOf
 import { AttachmentsPanel } from '../documents/AttachmentsPanel'
 import { useTeamNames } from './team-kit'
 import { optionsWith, useAgentNames, useLibraryValues } from '../library/library-kit'
+import { Explained } from '@/components/ui/abbr'
+import { OptionalSection } from './entry-kit'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset aria-label={title} className="mb-4 rounded-lg border bg-card p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
+      <legend className="px-1 text-sm font-semibold"><Explained text={title} /></legend>
       {children}
     </fieldset>
   )
@@ -155,7 +157,7 @@ export function TitleClosingTab({ parcelId, editable }: { parcelId: string; edit
           </div>
         </Section>
 
-        <Section title="Agreement / contract dates">
+        <OptionalSection title="Agreement / contract dates">
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="Purchase and sale agreement signed by owner date" type="date" value={f.psaOwner} onChange={set('psaOwner')} disabled={disabled} error={errors.psaSignedByOwnerDate} />
             <TextField label="Closing package submitted date" type="date" value={f.pkgSubmitted} onChange={set('pkgSubmitted')} disabled={disabled} error={errors.closingPackageSubmittedDate} />
@@ -169,9 +171,9 @@ export function TitleClosingTab({ parcelId, editable }: { parcelId: string; edit
             <TextField label="Actual closing date" type="date" value={f.actual} onChange={set('actual')} disabled={disabled} error={errors.actualClosingDate} />
             <CheckboxField label="Curative items completed" checked={f.curative} onChange={(v) => !disabled && set('curative')(v)} />
           </div>
-        </Section>
+        </OptionalSection>
 
-        <Section title="Conveyance documents">
+        <OptionalSection title="Conveyance documents">
           {conveyances.length > 0 && (
             <DataTable caption="Conveyance documents" headers={['Conveyance type', 'Signed date', 'Recorded date', 'Recording number', ...(canSave ? ['Actions'] : [])]}>
               {conveyances.map((c, i) => (
@@ -196,9 +198,9 @@ export function TitleClosingTab({ parcelId, editable }: { parcelId: string; edit
               <button type="button" className={`${buttonClassName('outline', 'sm')} mt-2`} onClick={addConveyance}>Add conveyance document</button>
             </>
           )}
-        </Section>
+        </OptionalSection>
 
-        <Section title="Title commitments">
+        <OptionalSection title="Title commitments">
           {commitments.length > 0 && (
             <DataTable caption="Title commitments" headers={['Vested owner name', 'Requested', 'Received', 'Effective', 'Issued', 'Curative plan submitted', 'Curative plan approved', ...(canSave ? ['Actions'] : [])]}>
               {commitments.map((c, i) => (
@@ -224,7 +226,7 @@ export function TitleClosingTab({ parcelId, editable }: { parcelId: string; edit
               <button type="button" className={`${buttonClassName('outline', 'sm')} mt-2`} onClick={addCommitment}>Add title commitment</button>
             </>
           )}
-        </Section>
+        </OptionalSection>
 
         <FormError error={error} />
         {saved && <p role="status" className="mb-2 text-sm text-ok">Title and closing saved.</p>}
